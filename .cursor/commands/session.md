@@ -1,0 +1,1 @@
+`Docs/session.md` dosyasını oku (depo kökü: `Now/Docs/session.md`). Varsa **Current Focus**, **Pending Work** ve **Safe Next Actions** bölümlerine göre devam et; dosya yoksa kullanıcıya kısa bir oturum özeti oluşturmayı öner.

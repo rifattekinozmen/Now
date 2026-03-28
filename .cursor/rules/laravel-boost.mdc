@@ -1,0 +1,26 @@
+---
+alwaysApply: true
+---
+
+# Laravel Boost ve proje kuralları
+
+## Tek doğruluk kaynağı
+
+Tüm paket sürümleri, PHP/Laravel/Livewire/Pest kuralları ve Boost MCP araç kullanımı bu dizindeki **`CLAUDE.md`** dosyasındaki `<laravel-boost-guidelines>` bloğunda tanımlıdır. Kod veya test yazmadan önce bu kurallara uy.
+
+Özet stack (ayrıntı için `CLAUDE.md`): PHP 8.3, Laravel 13, Livewire 4, Flux, Pest 4, Tailwind v4, Pint (`vendor/bin/pint --dirty --format agent`).
+
+## Boost MCP (aktifse)
+
+- `search-docs` — Laravel ekosisteminde değişiklikten önce dokümantasyon araması; atma.
+- `database-schema` / `database-query` — şema ve salt okunur sorgular.
+- `get-absolute-url` — kullanıcıya URL vermeden önce.
+- `browser-logs` — yalnızca güncel kayıtlar anlamlıdır.
+
+## Proje dokümantasyonu
+
+- `Docs/README.md` — dokümantasyon haritası
+- `Docs/session.md` — oturum / odak notları (isteğe bağlı)
+- Cursor skill dosyaları: `laravel/.cursor/skills/*/SKILL.md`
+
+Yeni Markdown dokümanı yalnızca kullanıcı açıkça istediğinde oluştur.

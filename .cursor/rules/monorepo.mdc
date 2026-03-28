@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+
+# Now — Cursor bağlamı
+
+- Laravel uygulaması workspace **kökündedir** (`artisan`, `composer.json`, `app/`, `tests/`).
+- **Kurallar ve skill dosyaları:** `Now/.cursor/rules/`, `Now/.cursor/skills/`, `Now/.cursor/commands/`
+- **Tam kodlama kuralları (Boost):** `Now/CLAUDE.md`
+- **Dokümantasyon:** `Docs/` (ör. `Docs/project.md`, `Docs/session.md`)
+- **Diğer ajan skill’leri:** `Now/.agents/skills/`
+
+MCP (`laravel-boost`) için `Now/.cursor/mcp.json` kullanılır; `artisan` yolu **`${workspaceFolder}/artisan`** olmalıdır (`php …/artisan boost:mcp`).
