@@ -409,6 +409,28 @@ new #[Title('PIN pool')] class extends Component
         </flux:card>
     </div>
 
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="flex flex-col gap-4">
+                <flux:input
+                    wire:model.live.debounce.400ms="filterSearch"
+                    :label="__('Search (PIN, SAS)')"
+                />
+                <flux:select wire:model.live="filterStatus" :label="__('Filter by PIN status')" class="max-w-md">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (\App\Enums\DeliveryNumberStatus::cases() as $case)
+                        <option value="{{ $case->value }}">{{ $this->pinStatusLabel($case) }}</option>
+                    @endforeach
+                </flux:select>
+            </div>
+        @endif
+    </x-admin.filter-bar>
+
     <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Bulk import (CSV)') }}</flux:heading>
         <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
@@ -453,52 +475,17 @@ new #[Title('PIN pool')] class extends Component
                     <flux:field :label="__('PIN code')">
                         <flux:input wire:model="assign_pin_code" required maxlength="64" />
                     </flux:field>
-                    <div>
-                        <flux:field :label="__('Order')">
-                            <select
-                                wire:model="assign_order_id"
-                                required
-                                class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                            >
-                                <option value="">{{ __('Select…') }}</option>
-                                @foreach ($this->orderOptions() as $o)
-                                    <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
-                                @endforeach
-                            </select>
-                        </flux:field>
-                    </div>
+                    <flux:select wire:model="assign_order_id" :label="__('Order')" required>
+                        <option value="">{{ __('Select…') }}</option>
+                        @foreach ($this->orderOptions() as $o)
+                            <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
+                        @endforeach
+                    </flux:select>
                     <flux:button type="submit" variant="filled">{{ __('Assign') }}</flux:button>
                 </form>
             </flux:card>
         </div>
     @endif
-
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <div class="flex flex-col gap-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (PIN, SAS)')"
-                />
-                <flux:field :label="__('Filter by PIN status')">
-                    <select
-                        wire:model.live="filterStatus"
-                        class="w-full max-w-md rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                    >
-                        <option value="">{{ __('All statuses') }}</option>
-                        @foreach (\App\Enums\DeliveryNumberStatus::cases() as $case)
-                            <option value="{{ $case->value }}">{{ $this->pinStatusLabel($case) }}</option>
-                        @endforeach
-                    </select>
-                </flux:field>
-            </div>
-        @endif
-    </x-admin.filter-bar>
 
     @if ($canWritePins)
         @if (count($selectedIds) > 0)

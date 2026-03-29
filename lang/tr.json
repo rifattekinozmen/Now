@@ -5,7 +5,7 @@
     "Vehicles": "Araçlar",
     "Orders": "Siparişler",
     "Shipments": "Sevkiyatlar",
-    "PIN pool": "PIN havuzu",
+    "PIN pool": "Teslimat No (PIN) havuzu",
     "Warehouse": "Depo",
     "Inventory & stock (placeholder)": "Envanter ve stok (yer tutucu)",
     "Stock movements, warehouses, and transfers will be added in a later iteration. This route is wired for navigation parity with the logistics ERP checklist.": "Stok hareketleri, depolar ve transferler sonraki bir iterasyonda eklenecektir. Bu rota lojistik ERP kontrol listesiyle menü uyumu için bağlanmıştır.",

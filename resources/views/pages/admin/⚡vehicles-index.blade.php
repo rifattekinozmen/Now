@@ -339,6 +339,20 @@ new #[Title('Vehicles')] class extends Component
         </flux:card>
     </div>
 
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :label="__('Search (plate, brand, model)')"
+            />
+        @endif
+    </x-admin.filter-bar>
+
     @if ($canWriteVehicles)
         @if ($editingVehicleId !== null)
             <flux:card>
@@ -378,20 +392,6 @@ new #[Title('Vehicles')] class extends Component
             </div>
         </flux:card>
     @endif
-
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <flux:input
-                wire:model.live.debounce.400ms="filterSearch"
-                :label="__('Search (plate, brand, model)')"
-            />
-        @endif
-    </x-admin.filter-bar>
 
     @can(\App\Authorization\LogisticsPermission::ADMIN)
         @if (count($selectedIds) > 0)

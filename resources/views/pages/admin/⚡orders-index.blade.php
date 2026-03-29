@@ -496,34 +496,45 @@ new #[Title('Orders')] class extends Component
         </flux:card>
     </div>
 
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="flex flex-col gap-4">
+                <flux:input
+                    wire:model.live.debounce.400ms="filterSearch"
+                    :label="__('Search (order no, SAS, customer)')"
+                />
+                <flux:select wire:model.live="filterStatus" :label="__('Filter by status')" class="max-w-md">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (\App\Enums\OrderStatus::cases() as $case)
+                        <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
+                    @endforeach
+                </flux:select>
+            </div>
+        @endif
+    </x-admin.filter-bar>
+
     @if ($canWriteOrders && $editingOrderId !== null)
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('Edit order') }}</flux:heading>
             <form wire:submit="updateOrder" class="flex max-w-2xl flex-col gap-4">
-                <flux:field :label="__('Status')">
-                    <select
-                        wire:model="edit_status"
-                        required
-                        class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                    >
-                        @foreach (\App\Enums\OrderStatus::cases() as $case)
-                            <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
-                        @endforeach
-                    </select>
-                </flux:field>
+                <flux:select wire:model="edit_status" :label="__('Status')" required>
+                    @foreach (\App\Enums\OrderStatus::cases() as $case)
+                        <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
+                    @endforeach
+                </flux:select>
                 <flux:input wire:model="edit_sas_no" :label="__('SAS / PO reference')" />
                 <flux:textarea wire:model="edit_loading_site" :label="__('Loading site')" rows="2" />
                 <flux:textarea wire:model="edit_unloading_site" :label="__('Unloading site')" rows="2" />
-                <flux:field :label="__('Currency')">
-                    <select
-                        wire:model="edit_currency_code"
-                        class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                    >
-                        <option value="TRY">TRY</option>
-                        <option value="EUR">EUR</option>
-                        <option value="USD">USD</option>
-                    </select>
-                </flux:field>
+                <flux:select wire:model="edit_currency_code" :label="__('Currency')">
+                    <option value="TRY">TRY</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                </flux:select>
                 <flux:input wire:model="edit_freight_amount" :label="__('Freight amount')" />
                 <flux:input wire:model="edit_distance_km" type="number" step="0.01" :label="__('Distance (km)')" />
                 <flux:input wire:model="edit_tonnage" type="number" step="0.001" :label="__('Tonnage')" />
@@ -537,33 +548,18 @@ new #[Title('Orders')] class extends Component
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('New order') }}</flux:heading>
             <form wire:submit="saveOrder" class="flex flex-col gap-4">
-                <div>
-                    <flux:field :label="__('Customer')">
-                        <select
-                            wire:model="customer_id"
-                            required
-                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                        >
-                            <option value="">{{ __('Select…') }}</option>
-                            @foreach ($this->customerOptions as $c)
-                                <option value="{{ $c->id }}">{{ $c->legal_name }}</option>
-                            @endforeach
-                        </select>
-                    </flux:field>
-                </div>
+                <flux:select wire:model="customer_id" :label="__('Customer')" required>
+                    <option value="">{{ __('Select…') }}</option>
+                    @foreach ($this->customerOptions as $c)
+                        <option value="{{ $c->id }}">{{ $c->legal_name }}</option>
+                    @endforeach
+                </flux:select>
 
-                <div>
-                    <flux:field :label="__('Currency')">
-                        <select
-                            wire:model="currency_code"
-                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                        >
-                            <option value="TRY">TRY</option>
-                            <option value="EUR">EUR</option>
-                            <option value="USD">USD</option>
-                        </select>
-                    </flux:field>
-                </div>
+                <flux:select wire:model="currency_code" :label="__('Currency')">
+                    <option value="TRY">TRY</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                </flux:select>
 
                 <flux:input wire:model="distance_km" type="number" step="0.01" :label="__('Distance (km)')" />
                 <flux:input wire:model="tonnage" type="number" step="0.001" :label="__('Tonnage')" />
@@ -571,20 +567,13 @@ new #[Title('Orders')] class extends Component
                 <flux:input wire:model="freight_amount" :label="__('Freight amount')" />
                 <flux:input wire:model="exchange_rate" type="number" step="0.000001" :label="__('Exchange rate (optional)')" />
 
-                <div>
-                    <flux:field :label="__('Incoterms')">
-                        <select
-                            wire:model="incoterms"
-                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                        >
-                            <option value="">{{ __('—') }}</option>
-                            <option value="EXW">EXW</option>
-                            <option value="FOB">FOB</option>
-                            <option value="CIF">CIF</option>
-                            <option value="DDP">DDP</option>
-                        </select>
-                    </flux:field>
-                </div>
+                <flux:select wire:model="incoterms" :label="__('Incoterms')">
+                    <option value="">{{ __('—') }}</option>
+                    <option value="EXW">EXW</option>
+                    <option value="FOB">FOB</option>
+                    <option value="CIF">CIF</option>
+                    <option value="DDP">DDP</option>
+                </flux:select>
 
                 <flux:input wire:model="sas_no" :label="__('SAS / PO reference')" />
 
@@ -606,33 +595,6 @@ new #[Title('Orders')] class extends Component
             </div>
         </flux:card>
     @endif
-
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <div class="flex flex-col gap-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (order no, SAS, customer)')"
-                />
-                <flux:field :label="__('Filter by status')">
-                    <select
-                        wire:model.live="filterStatus"
-                        class="w-full max-w-md rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                    >
-                        <option value="">{{ __('All statuses') }}</option>
-                        @foreach (\App\Enums\OrderStatus::cases() as $case)
-                            <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
-                        @endforeach
-                    </select>
-                </flux:field>
-            </div>
-        @endif
-    </x-admin.filter-bar>
 
     @if ($canWriteOrders)
         @if (count($selectedIds) > 0)

@@ -396,6 +396,20 @@ new #[Title('Customers')] class extends Component
         </flux:card>
     </div>
 
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :label="__('Search (name, tax ID, trade name)')"
+            />
+        @endif
+    </x-admin.filter-bar>
+
     @if ($canWriteCustomers)
         <div class="grid gap-6 lg:grid-cols-2">
             @if ($editingCustomerId !== null)
@@ -437,20 +451,6 @@ new #[Title('Customers')] class extends Component
             </flux:card>
         </div>
     @endif
-
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <flux:input
-                wire:model.live.debounce.400ms="filterSearch"
-                :label="__('Search (name, tax ID, trade name)')"
-            />
-        @endif
-    </x-admin.filter-bar>
 
     @if ($canWriteCustomers)
         @if (count($selectedIds) > 0)

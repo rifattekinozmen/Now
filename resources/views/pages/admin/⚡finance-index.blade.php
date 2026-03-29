@@ -266,17 +266,6 @@ new #[Title('Finance summary')] class extends Component
             </x-slot>
         </x-admin.page-header>
 
-        <x-admin.filter-bar :label="__('Report period')">
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Filter KPIs and tables by order date (ordered_at). CSV export stays full tenant scope.') }}
-            </flux:text>
-            <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
-                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From date')" />
-                <flux:input wire:model.live="filterDateTo" type="date" :label="__('To date')" />
-                <flux:button type="button" variant="ghost" wire:click="clearDateFilters">{{ __('Clear date filters') }}</flux:button>
-            </div>
-        </x-admin.filter-bar>
-
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <flux:card class="!p-4">
                 <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total orders') }}</flux:text>
@@ -295,6 +284,17 @@ new #[Title('Finance summary')] class extends Component
                 <flux:heading size="xl">{{ $this->financeIndexKpis['currency_kinds'] }}</flux:heading>
             </flux:card>
         </div>
+
+        <x-admin.filter-bar :label="__('Report period')">
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Filter KPIs and tables by order date (ordered_at). CSV export stays full tenant scope.') }}
+            </flux:text>
+            <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From date')" />
+                <flux:input wire:model.live="filterDateTo" type="date" :label="__('To date')" />
+                <flux:button type="button" variant="ghost" wire:click="clearDateFilters">{{ __('Clear date filters') }}</flux:button>
+            </div>
+        </x-admin.filter-bar>
 
         <flux:callout variant="warning" icon="exclamation-triangle">
             <flux:callout.heading>{{ __('Operational reference only') }}</flux:callout.heading>

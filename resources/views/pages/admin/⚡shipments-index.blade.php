@@ -356,44 +356,6 @@ new #[Title('Shipments')] class extends Component
         </flux:card>
     </div>
 
-    @if ($canWriteShipments)
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('New shipment') }}</flux:heading>
-            <form wire:submit="saveShipment" class="flex max-w-xl flex-col gap-4">
-                <div>
-                    <flux:field :label="__('Order')">
-                        <select
-                            wire:model="order_id"
-                            required
-                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                        >
-                            <option value="">{{ __('Select…') }}</option>
-                            @foreach ($this->orderOptions() as $o)
-                                <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
-                            @endforeach
-                        </select>
-                    </flux:field>
-                </div>
-
-                <div>
-                    <flux:field :label="__('Vehicle (optional)')">
-                        <select
-                            wire:model="vehicle_id"
-                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                        >
-                            <option value="">{{ __('—') }}</option>
-                            @foreach ($this->vehicleOptions() as $v)
-                                <option value="{{ $v->id }}">{{ $v->plate }}</option>
-                            @endforeach
-                        </select>
-                    </flux:field>
-                </div>
-
-                <flux:button type="submit" variant="primary">{{ __('Save shipment') }}</flux:button>
-            </form>
-        </flux:card>
-    @endif
-
     <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
@@ -406,20 +368,38 @@ new #[Title('Shipments')] class extends Component
                     wire:model.live.debounce.400ms="filterSearch"
                     :label="__('Search (shipment id, order no, plate)')"
                 />
-                <flux:field :label="__('Filter by shipment status')">
-                    <select
-                        wire:model.live="filterStatus"
-                        class="w-full max-w-md rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                    >
-                        <option value="">{{ __('All statuses') }}</option>
-                        @foreach (\App\Enums\ShipmentStatus::cases() as $case)
-                            <option value="{{ $case->value }}">{{ $this->shipmentStatusLabel($case) }}</option>
-                        @endforeach
-                    </select>
-                </flux:field>
+                <flux:select wire:model.live="filterStatus" :label="__('Filter by shipment status')" class="max-w-md">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (\App\Enums\ShipmentStatus::cases() as $case)
+                        <option value="{{ $case->value }}">{{ $this->shipmentStatusLabel($case) }}</option>
+                    @endforeach
+                </flux:select>
             </div>
         @endif
     </x-admin.filter-bar>
+
+    @if ($canWriteShipments)
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('New shipment') }}</flux:heading>
+            <form wire:submit="saveShipment" class="flex max-w-xl flex-col gap-4">
+                <flux:select wire:model="order_id" :label="__('Order')" required>
+                    <option value="">{{ __('Select…') }}</option>
+                    @foreach ($this->orderOptions() as $o)
+                        <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
+                    @endforeach
+                </flux:select>
+
+                <flux:select wire:model="vehicle_id" :label="__('Vehicle (optional)')">
+                    <option value="">{{ __('—') }}</option>
+                    @foreach ($this->vehicleOptions() as $v)
+                        <option value="{{ $v->id }}">{{ $v->plate }}</option>
+                    @endforeach
+                </flux:select>
+
+                <flux:button type="submit" variant="primary">{{ __('Save shipment') }}</flux:button>
+            </form>
+        </flux:card>
+    @endif
 
     @if ($canWriteShipments)
         @if (count($selectedIds) > 0)
@@ -448,7 +428,7 @@ new #[Title('Shipments')] class extends Component
                             type="checkbox"
                             class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
                             @checked($this->isPageFullySelected())
-                            wire:click="toggleSelectPage"
+                            wire:click.prevent="toggleSelectPage"
                             wire:key="select-page-shipments"
                         />
                     </flux:table.column>

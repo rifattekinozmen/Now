@@ -435,6 +435,20 @@ new #[Title('Employees')] class extends Component
         </flux:card>
     </div>
 
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :label="__('Search (name, national ID, phone)')"
+            />
+        @endif
+    </x-admin.filter-bar>
+
     @if ($canWriteEmployees)
         @if ($editingEmployeeId !== null)
             <flux:card>
@@ -446,7 +460,17 @@ new #[Title('Employees')] class extends Component
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="national_id" :label="__('National ID')" maxlength="11" />
-                        <flux:input wire:model="blood_group" :label="__('Blood group')" />
+                        <flux:select wire:model="blood_group" :label="__('Blood group')">
+                            <option value="">{{ __('—') }}</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="0+">0+</option>
+                            <option value="0-">0-</option>
+                        </flux:select>
                     </div>
                     <flux:checkbox wire:model="is_driver" :label="__('Driver')" />
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -477,7 +501,17 @@ new #[Title('Employees')] class extends Component
                     </div>
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="national_id" :label="__('National ID')" maxlength="11" />
-                        <flux:input wire:model="blood_group" :label="__('Blood group')" />
+                        <flux:select wire:model="blood_group" :label="__('Blood group')">
+                            <option value="">{{ __('—') }}</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="0+">0+</option>
+                            <option value="0-">0-</option>
+                        </flux:select>
                     </div>
                     <flux:checkbox wire:model="is_driver" :label="__('Driver')" />
                     <div class="grid gap-4 sm:grid-cols-2">
@@ -508,20 +542,6 @@ new #[Title('Employees')] class extends Component
             </div>
         </flux:card>
     @endif
-
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <flux:input
-                wire:model.live.debounce.400ms="filterSearch"
-                :label="__('Search (name, national ID, phone)')"
-            />
-        @endif
-    </x-admin.filter-bar>
 
     @if ($canWriteEmployees && count($selectedIds) > 0)
         <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">

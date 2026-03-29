@@ -8,10 +8,10 @@
         <div class="flex min-h-screen w-full bg-background dark:bg-zinc-800">
         {{-- @persist: navigasyonda sidebar DOM yeniden boyanmaz (daha hızlı). :current + wire:current.ignore menüyü kilitliyordu; bunun yerine wire:current ile Livewire yolu eşleştirir. --}}
         @persist('app-sidebar')
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-border-app bg-card dark:border-zinc-700">
+        <flux:sidebar sticky :collapsible="true" class="border-e border-border-app bg-card dark:border-zinc-700">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
-                <flux:sidebar.collapse class="lg:hidden" />
+                <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
@@ -26,15 +26,6 @@
                         <flux:sidebar.item icon="users" :href="route('admin.customers.index')" wire:navigate wire:current="font-medium">
                             {{ __('Customers') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" wire:navigate wire:current="font-medium">
-                            {{ __('Vehicles') }}
-                        </flux:sidebar.item>
-                        <flux:sidebar.item icon="bolt" :href="route('admin.fuel-intakes.index')" wire:navigate wire:current.exact="font-medium">
-                            {{ __('Fuel intakes') }}
-                        </flux:sidebar.item>
-                        <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="font-medium">
-                            {{ __('Employees') }}
-                        </flux:sidebar.item>
                         <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders.index')" wire:navigate wire:current="font-medium">
                             {{ __('Orders') }}
                         </flux:sidebar.item>
@@ -43,6 +34,15 @@
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" wire:navigate wire:current="font-medium">
                             {{ __('PIN pool') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" wire:navigate wire:current="font-medium">
+                            {{ __('Vehicles') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="bolt" :href="route('admin.fuel-intakes.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Fuel intakes') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="font-medium">
+                            {{ __('Employees') }}
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="archive-box" :href="route('admin.warehouse.index')" wire:navigate wire:current="font-medium">
                             {{ __('Warehouse') }}
@@ -82,12 +82,6 @@
             </flux:sidebar.nav>
 
             <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="cog-6-tooth" :href="route('profile.edit')" wire:navigate>
-                    {{ __('Settings') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>

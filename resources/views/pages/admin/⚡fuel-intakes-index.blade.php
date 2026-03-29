@@ -215,6 +215,10 @@ new #[Title('Fuel intakes')] class extends Component
         </flux:card>
     </div>
 
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="max-w-md" />
+    </x-admin.filter-bar>
+
     @if ($canWriteFuel)
         <flux:card class="p-4">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -245,24 +249,42 @@ new #[Title('Fuel intakes')] class extends Component
     @endif
 
     <flux:card class="p-4">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="mb-4 max-w-md" />
-
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
                         <th class="py-2 pe-4">
-                            <button type="button" class="hover:underline" wire:click="sortBy('id')">ID</button>
+                            <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                                ID
+                                @if ($sortColumn === 'id')
+                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                                @endif
+                            </button>
                         </th>
                         <th class="py-2 pe-4">
-                            <button type="button" class="hover:underline" wire:click="sortBy('vehicle_id')">{{ __('Vehicle') }}</button>
+                            <button type="button" wire:click="sortBy('vehicle_id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                                {{ __('Vehicle') }}
+                                @if ($sortColumn === 'vehicle_id')
+                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                                @endif
+                            </button>
                         </th>
                         <th class="py-2 pe-4">
-                            <button type="button" class="hover:underline" wire:click="sortBy('liters')">{{ __('Liters') }}</button>
+                            <button type="button" wire:click="sortBy('liters')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                                {{ __('Liters') }}
+                                @if ($sortColumn === 'liters')
+                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                                @endif
+                            </button>
                         </th>
                         <th class="py-2 pe-4">{{ __('Odometer') }}</th>
                         <th class="py-2 pe-4">
-                            <button type="button" class="hover:underline" wire:click="sortBy('recorded_at')">{{ __('Recorded') }}</button>
+                            <button type="button" wire:click="sortBy('recorded_at')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                                {{ __('Recorded') }}
+                                @if ($sortColumn === 'recorded_at')
+                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                                @endif
+                            </button>
                         </th>
                         @if ($canWriteFuel)
                             <th class="py-2 text-end">{{ __('Actions') }}</th>
