@@ -4,7 +4,9 @@ use App\Enums\OrderStatus;
 use App\Models\Customer;
 use App\Models\Order;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -18,6 +20,53 @@ new #[Title('Customer profile')] class extends Component
     {
         Gate::authorize('view', $customer);
         $this->customer = $customer->loadCount('orders');
+    }
+
+    /**
+     * Siparişlerde geçen boşaltma / teslimat metinleri (operasyonel adres defteri öncesi özet).
+     *
+     * @return Collection<int, string>
+     */
+    #[Computed]
+    public function recentUnloadingSites(): Collection
+    {
+        return Order::query()
+            ->where('customer_id', $this->customer->id)
+            ->whereNotNull('unloading_site')
+            ->where('unloading_site', '!=', '')
+            ->orderByDesc('ordered_at')
+            ->limit(50)
+            ->pluck('unloading_site')
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function contactMetaFields(): array
+    {
+        $meta = $this->customer->meta;
+        if (! is_array($meta)) {
+            return [];
+        }
+
+        $keys = [
+            'operation_contact_name' => __('Operations contact'),
+            'operation_contact_phone' => __('Operations phone'),
+            'accounting_contact_name' => __('Accounting contact'),
+            'accounting_email' => __('Accounting email'),
+        ];
+
+        $out = [];
+        foreach ($keys as $key => $label) {
+            if (isset($meta[$key]) && is_string($meta[$key]) && trim($meta[$key]) !== '') {
+                $out[$label] = trim($meta[$key]);
+            }
+        }
+
+        return $out;
     }
 
     public function setTab(string $tab): void
@@ -68,8 +117,11 @@ new #[Title('Customer profile')] class extends Component
                 @endif
             </flux:text>
             <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Tax ID') }}: {{ $this->customer->tax_id ?? '—' }} · {{ __('Payment term') }}:
-                {{ $this->customer->payment_term_days }} {{ __('days') }}
+                {{ __('Tax ID') }}: {{ $this->customer->tax_id ?? '—' }}
+                @if ($this->customer->partner_number)
+                    · {{ __('Partner no.') }}: {{ $this->customer->partner_number }}
+                @endif
+                · {{ __('Payment term') }}: {{ $this->customer->payment_term_days }} {{ __('days') }}
             </flux:text>
         </div>
         <flux:button :href="route('admin.customers.index')" variant="ghost" wire:navigate>
@@ -147,16 +199,37 @@ new #[Title('Customer profile')] class extends Component
     @elseif ($activeTab === 'locations')
         <flux:card>
             <flux:heading size="lg" class="mb-2">{{ __('Delivery locations') }}</flux:heading>
-            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Favorite addresses / destination book — planned module.') }}
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Distinct unloading / delivery sites from orders (last 50 rows). Use this until a dedicated address book is enabled.') }}
             </flux:text>
+            @if ($this->recentUnloadingSites->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No unloading site text on orders yet.') }}</flux:text>
+            @else
+                <ul class="list-inside list-disc space-y-1 text-sm text-zinc-800 dark:text-zinc-200">
+                    @foreach ($this->recentUnloadingSites as $site)
+                        <li class="break-words">{{ $site }}</li>
+                    @endforeach
+                </ul>
+            @endif
         </flux:card>
     @elseif ($activeTab === 'contacts')
         <flux:card>
             <flux:heading size="lg" class="mb-2">{{ __('Company contacts') }}</flux:heading>
-            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Operation and accounting contacts — use customer meta or a later CRM tab.') }}
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Optional fields stored on customer meta: operation_contact_*, accounting_*') }}
             </flux:text>
+            @if (empty($this->contactMetaFields))
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No contact fields in customer meta yet.') }}</flux:text>
+            @else
+                <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                    @foreach ($this->contactMetaFields as $label => $value)
+                        <div class="sm:col-span-2">
+                            <dt class="text-zinc-500 dark:text-zinc-400">{{ $label }}</dt>
+                            <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $value }}</dd>
+                        </div>
+                    @endforeach
+                </dl>
+            @endif
         </flux:card>
     @else
         <flux:card>

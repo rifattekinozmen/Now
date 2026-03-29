@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Models\Customer;
 use App\Models\DeliveryNumber;
 use App\Models\Employee;
+use App\Models\FuelIntake;
 use App\Models\Order;
 use App\Models\Vehicle;
 use Carbon\Carbon;
@@ -350,9 +351,44 @@ class ExcelImportService
             'customer_legal_name', 'currency_code', 'loading_site', 'unloading_site',
             'plate', 'vin', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone' => is_scalar($value) ? trim((string) $value) : null,
             'distance_km', 'tonnage', 'gross_weight_kg', 'tara_weight_kg', 'net_weight_kg', 'moisture_percent' => is_numeric($value) ? $value : null,
+            'liters' => is_numeric($value) ? $value : null,
+            'odometer_km' => is_numeric($value) ? $value : null,
             'inspection_valid_until' => $this->normalizeImportDate($value),
+            'recorded_at' => $this->normalizeImportDateTime($value),
             default => $value,
         };
+    }
+
+    /**
+     * @param  list<mixed>  $row
+     */
+    private function normalizeImportDateTime(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d H:i:s');
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            try {
+                return Carbon::parse($value)->format('Y-m-d H:i:s');
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        if (is_numeric($value)) {
+            try {
+                return Carbon::createFromTimestampMs((int) $value)->format('Y-m-d H:i:s');
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -713,6 +749,126 @@ class ExcelImportService
                     'is_driver' => false,
                 ]);
                 $created++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['created' => $created, 'errors' => $errors];
+    }
+
+    /**
+     * Yakıt alımı CSV/XLSX; başlıklar şablon ile uyumlu (`FuelIntakeImportTemplateExport`).
+     *
+     * @return array<string, string>
+     */
+    public function getFuelIntakeImportMapping(): array
+    {
+        return [
+            'Plaka' => 'plate',
+            'Plate' => 'plate',
+            'Litre' => 'liters',
+            'Liters' => 'liters',
+            'Litres' => 'liters',
+            'Kilometre' => 'odometer_km',
+            'Odometer (km)' => 'odometer_km',
+            'Odometer' => 'odometer_km',
+            'Kayıt Tarihi' => 'recorded_at',
+            'Recorded at' => 'recorded_at',
+        ];
+    }
+
+    /**
+     * @return array{created: int, errors: list<array{row: int, message: string}>}
+     */
+    public function importFuelIntakesFromPath(string $path, int $tenantId): array
+    {
+        $mapping = $this->getFuelIntakeImportMapping();
+        $matrix = $this->loadMatrixFromFile($path);
+        if ($matrix === []) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        $headerRow = array_shift($matrix);
+        if (! is_array($headerRow)) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        /** @var list<string> $headers */
+        $headers = array_map(function (mixed $cell): string {
+            if ($cell === null) {
+                return '';
+            }
+
+            return is_string($cell) ? trim($cell) : trim((string) $cell);
+        }, $headerRow);
+
+        $created = 0;
+        /** @var list<array{row: int, message: string}> $errors */
+        $errors = [];
+
+        foreach ($matrix as $offset => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowNumber = $offset + 2;
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = $row[$index] ?? null;
+            }
+
+            try {
+                $raw = $this->normalizeRow($assoc, $mapping);
+                $plate = strtoupper(trim((string) ($raw['plate'] ?? '')));
+                if ($plate === '') {
+                    throw new \InvalidArgumentException(__('Plate is required.'));
+                }
+
+                $vehicle = Vehicle::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('plate', $plate)
+                    ->first();
+                if ($vehicle === null) {
+                    throw new \InvalidArgumentException(__('Unknown vehicle plate: :p', ['p' => $plate]));
+                }
+
+                $liters = $raw['liters'] ?? null;
+                if ($liters === null || $liters === '' || ! is_numeric($liters)) {
+                    throw new \InvalidArgumentException(__('Liters is required and must be numeric.'));
+                }
+
+                $recordedAt = $raw['recorded_at'] ?? null;
+                if ($recordedAt === null || $recordedAt === '') {
+                    throw new \InvalidArgumentException(__('Recorded at is required.'));
+                }
+
+                $odometer = $raw['odometer_km'] ?? null;
+                $odometerVal = $odometer !== null && $odometer !== '' && is_numeric($odometer) ? $odometer : null;
+
+                FuelIntake::query()->create([
+                    'tenant_id' => $tenantId,
+                    'vehicle_id' => $vehicle->id,
+                    'liters' => $liters,
+                    'odometer_km' => $odometerVal,
+                    'recorded_at' => $recordedAt,
+                ]);
+                $created++;
+            } catch (ValidationException $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->validator->errors()->first() ?? $e->getMessage(),
+                ];
             } catch (\Throwable $e) {
                 $errors[] = [
                     'row' => $rowNumber,

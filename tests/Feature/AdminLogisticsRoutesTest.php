@@ -27,6 +27,7 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.warehouse.index'))->assertRedirect(route('login'));
     $this->get(route('admin.fuel-intakes.index'))->assertRedirect(route('login'));
+    $this->get(route('admin.fuel-intakes.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.index'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.reports'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.payment-due-calendar'))->assertRedirect(route('login'));
@@ -81,6 +82,7 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.warehouse.index'))->assertSuccessful();
     $this->get(route('admin.fuel-intakes.index'))->assertSuccessful();
+    $this->get(route('admin.fuel-intakes.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.finance.index'))->assertSuccessful();
     $this->get(route('admin.finance.reports'))->assertSuccessful();
     $this->get(route('admin.finance.payment-due-calendar'))->assertSuccessful();

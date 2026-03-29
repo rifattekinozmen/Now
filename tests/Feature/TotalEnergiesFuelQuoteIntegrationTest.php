@@ -4,6 +4,12 @@ use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
+test('contract documentation url is available in config for operators', function () {
+    config(['totalenergies.contract_documentation_url' => 'https://docs.example.test/fuel-api']);
+
+    expect(config('totalenergies.contract_documentation_url'))->toBe('https://docs.example.test/fuel-api');
+});
+
 test('fromConfig sends api key accept and region query to quote endpoint', function () {
     config([
         'totalenergies.enabled' => true,

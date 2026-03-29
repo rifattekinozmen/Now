@@ -6,6 +6,26 @@ use App\Models\Order;
 use App\Services\Integrations\Logo\LogoErpExportService;
 use Illuminate\Support\Carbon;
 
+test('builds xml with tenant id from configured order fields', function () {
+    $customer = Customer::factory()->make(['legal_name' => 'Tenant A.Ş.']);
+    $order = Order::factory()->make([
+        'tenant_id' => 77,
+        'order_number' => 'ORD-TEN-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 1,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<TenantId>')
+        ->and($xml)->toContain('77');
+});
+
 test('builds xml with order record id', function () {
     $customer = Customer::factory()->make(['legal_name' => 'Rec A.Ş.']);
     $order = Order::factory()->make([

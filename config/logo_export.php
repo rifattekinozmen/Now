@@ -13,6 +13,7 @@ return [
     */
 
     'order_fields' => [
+        'TenantId' => 'tenant_id',
         'OrderedAt' => 'ordered_at',
         'OrderStatus' => 'status',
         'LoadingSite' => 'loading_site',

@@ -20,6 +20,11 @@ return [
 
     'schema_version' => 1,
 
+    /*
+    | Müşteri API sözleşmesi / teknik doküman (yalnızca referans; runtime’da okunmaz).
+    */
+    'contract_documentation_url' => env('TOTALENERGIES_CONTRACT_DOC_URL'),
+
     'enabled' => (bool) env('TOTALENERGIES_ENABLED', false),
 
     'api_key' => env('TOTALENERGIES_API_KEY'),

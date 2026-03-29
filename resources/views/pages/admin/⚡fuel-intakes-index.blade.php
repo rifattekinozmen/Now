@@ -4,18 +4,24 @@ use App\Authorization\LogisticsPermission;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\FuelIntake;
 use App\Models\Vehicle;
+use App\Services\Logistics\ExcelImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Title('Fuel intakes')] class extends Component
 {
     use RequiresLogisticsAdmin;
+    use WithFileUploads;
     use WithPagination;
+
+    public $importFile = null;
 
     public ?int $editingId = null;
 
@@ -184,6 +190,31 @@ new #[Title('Fuel intakes')] class extends Component
         $this->odometer_km = '';
         $this->recorded_at = now()->timezone(config('app.timezone'))->format('Y-m-d\TH:i');
     }
+
+    public function importFuelIntakes(ExcelImportService $excelImport): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
+        Gate::authorize('create', FuelIntake::class);
+
+        $tenantId = auth()->user()?->tenant_id;
+        if ($tenantId === null) {
+            abort(403);
+        }
+
+        $this->validate([
+            'importFile' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $stored = $this->importFile->store('imports', 'local');
+        $path = Storage::disk('local')->path($stored);
+        $result = $excelImport->importFuelIntakesFromPath($path, (int) $tenantId);
+        Storage::disk('local')->delete($stored);
+
+        session()->flash('import_created', $result['created']);
+        session()->flash('import_errors', $result['errors']);
+        $this->reset('importFile');
+        $this->resetPage();
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
@@ -218,6 +249,37 @@ new #[Title('Fuel intakes')] class extends Component
     <x-admin.filter-bar :label="__('Advanced filters')">
         <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="max-w-md" />
     </x-admin.filter-bar>
+
+    @if (session()->has('import_created'))
+        <flux:callout variant="success">
+            {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('import_errors') && count(session('import_errors')) > 0)
+        <flux:callout variant="danger">
+            <flux:heading size="sm" class="mb-2">{{ __('Import errors') }}</flux:heading>
+            <ul class="list-inside list-disc text-sm">
+                @foreach (session('import_errors') as $err)
+                    <li>{{ __('Row :row: :msg', ['row' => $err['row'], 'msg' => $err['message']]) }}</li>
+                @endforeach
+            </ul>
+        </flux:callout>
+    @endif
+
+    @if ($canWriteFuel)
+        <flux:card class="p-4">
+            <flux:heading size="lg" class="mb-2">{{ __('Import fuel intakes (CSV / Excel)') }}</flux:heading>
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Use the template headers: Plaka, Litre, Kilometre, Kayıt Tarihi. Vehicle plate must exist in this tenant.') }}
+            </flux:text>
+            <div class="flex flex-wrap items-end gap-4">
+                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
+                <flux:button type="button" wire:click="importFuelIntakes" variant="primary">{{ __('Import') }}</flux:button>
+                <flux:button :href="route('admin.fuel-intakes.template.xlsx')" variant="ghost">{{ __('Download template') }}</flux:button>
+            </div>
+        </flux:card>
+    @endif
 
     @if ($canWriteFuel)
         <flux:card class="p-4">

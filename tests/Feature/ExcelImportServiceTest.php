@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Customer;
+use App\Models\FuelIntake;
 use App\Models\Tenant;
 use App\Models\Vehicle;
 use App\Services\Logistics\ExcelImportService;
@@ -62,4 +63,30 @@ test('vehicle csv import stores vin when şasi column present', function () {
     expect($vehicle)->not->toBeNull()
         ->and($vehicle->plate)->toBe('35 XLS 99')
         ->and($vehicle->vin)->toBe('WVM12345678901234');
+});
+
+test('fuel intake csv import creates rows linked to vehicle plate', function () {
+    $tenant = Tenant::factory()->create();
+    $vehicle = Vehicle::factory()->create([
+        'tenant_id' => $tenant->id,
+        'plate' => '99 FUEL 01',
+    ]);
+    $service = app(ExcelImportService::class);
+
+    $csv = "Plaka,Litre,Kilometre,Kayıt Tarihi\n".
+        "99 FUEL 01,88.25,50000,2026-03-29 10:00:00\n";
+
+    $path = sys_get_temp_dir().'/now-fi-import-'.uniqid('', true).'.csv';
+    file_put_contents($path, $csv);
+
+    $result = $service->importFuelIntakesFromPath($path, $tenant->id);
+    unlink($path);
+
+    expect($result['created'])->toBe(1)
+        ->and($result['errors'])->toBeEmpty();
+
+    $intake = FuelIntake::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first();
+    expect($intake)->not->toBeNull()
+        ->and($intake->vehicle_id)->toBe($vehicle->id)
+        ->and((string) $intake->liters)->toBe('88.250');
 });
