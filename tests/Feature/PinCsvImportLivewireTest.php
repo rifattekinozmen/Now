@@ -1,9 +1,6 @@
 <?php
 
 use App\Models\DeliveryNumber;
-use Tests\TestCase;
-
-uses(TestCase::class);
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;

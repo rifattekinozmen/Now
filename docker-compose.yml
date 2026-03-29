@@ -30,7 +30,7 @@ services:
       REDIS_PORT: 6379
       CACHE_STORE: ${CACHE_STORE:-redis}
       QUEUE_CONNECTION: ${QUEUE_CONNECTION:-redis}
-      SESSION_DRIVER: ${SESSION_DRIVER:-database}
+      SESSION_DRIVER: ${SESSION_DRIVER:-redis}
     depends_on:
       mysql:
         condition: service_healthy
@@ -42,7 +42,7 @@ services:
   mysql:
     image: mysql:8.0
     ports:
-      - '${DOCKER_MYSQL_PORT:-33060}:3306'
+      - '${DOCKER_MYSQL_PORT:-33061}:3306'
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-now}
       MYSQL_USER: ${DB_USERNAME:-now}

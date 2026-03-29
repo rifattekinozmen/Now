@@ -1,9 +1,6 @@
 <?php
 
 use App\Enums\ShipmentStatus;
-use Tests\TestCase;
-
-uses(TestCase::class);
 use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Shipment;

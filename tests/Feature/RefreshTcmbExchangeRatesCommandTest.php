@@ -1,9 +1,6 @@
 <?php
 
 use App\Services\Logistics\TcmbExchangeRateService;
-use Tests\TestCase;
-
-uses(TestCase::class);
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 

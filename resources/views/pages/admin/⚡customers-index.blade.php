@@ -1,16 +1,24 @@
 <?php
 
+use App\Authorization\LogisticsPermission;
+use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Customer;
 use App\Services\Logistics\ExcelImportService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
+use Livewire\WithPagination;
 
 new #[Title('Customers')] class extends Component
 {
+    use RequiresLogisticsAdmin;
     use WithFileUploads;
+    use WithPagination;
 
     public string $legal_name = '';
 
@@ -20,21 +28,158 @@ new #[Title('Customers')] class extends Component
 
     public $importFile = null;
 
+    public string $filterSearch = '';
+
+    public string $sortColumn = 'id';
+
+    public string $sortDirection = 'desc';
+
+    public bool $filtersOpen = false;
+
+    /** @var list<int|string> */
+    public array $selectedIds = [];
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Customer::class);
     }
 
-    /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Customer>
-     */
-    public function customerList()
+    public function updatedFilterSearch(): void
     {
-        return Customer::query()->orderByDesc('id')->limit(100)->get();
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedPage(): void
+    {
+        $this->selectedIds = [];
+    }
+
+    #[Computed]
+    public function statTotal(): int
+    {
+        return Customer::query()->count();
+    }
+
+    #[Computed]
+    public function statNewThisMonth(): int
+    {
+        return Customer::query()->where('created_at', '>=', now()->startOfMonth())->count();
+    }
+
+    #[Computed]
+    public function statWithTaxId(): int
+    {
+        return Customer::query()->whereNotNull('tax_id')->where('tax_id', '!=', '')->count();
+    }
+
+    #[Computed]
+    public function statAvgPaymentTerm(): int
+    {
+        $avg = Customer::query()->avg('payment_term_days');
+
+        return (int) round((float) ($avg ?? 0));
+    }
+
+    /**
+     * @return Builder<Customer>
+     */
+    private function customersQuery(): Builder
+    {
+        $q = Customer::query();
+
+        if ($this->filterSearch !== '') {
+            $term = '%'.addcslashes($this->filterSearch, '%_\\').'%';
+            $q->where(function (Builder $qq) use ($term): void {
+                $qq->where('legal_name', 'like', $term)
+                    ->orWhere('trade_name', 'like', $term)
+                    ->orWhere('tax_id', 'like', $term);
+            });
+        }
+
+        $allowed = ['id', 'legal_name', 'tax_id', 'trade_name', 'payment_term_days', 'created_at'];
+        $column = in_array($this->sortColumn, $allowed, true) ? $this->sortColumn : 'id';
+        $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+
+        return $q->orderBy($column, $direction);
+    }
+
+    public function paginatedCustomers(): LengthAwarePaginator
+    {
+        return $this->customersQuery()->paginate(15);
+    }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['id', 'legal_name', 'tax_id', 'trade_name', 'payment_term_days', 'created_at'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedCustomers()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($pageIds === []) {
+            return false;
+        }
+
+        $selected = array_map('intval', $this->selectedIds);
+
+        return count(array_diff($pageIds, $selected)) === 0;
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedCustomers()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $selected = array_map('intval', $this->selectedIds);
+        $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
+
+        if ($allSelected) {
+            $this->selectedIds = array_values(array_diff($selected, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
+        }
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        $this->ensureLogisticsAdmin();
+
+        if ($this->selectedIds === []) {
+            return;
+        }
+
+        $ids = array_map('intval', $this->selectedIds);
+        $customers = Customer::query()->whereIn('id', $ids)->get();
+        $deleted = 0;
+
+        foreach ($customers as $customer) {
+            Gate::authorize('delete', $customer);
+            $customer->delete();
+            $deleted++;
+        }
+
+        $this->selectedIds = [];
+        $this->resetPage();
+
+        session()->flash('bulk_deleted', $deleted);
     }
 
     public function saveCustomer(): void
     {
+        $this->ensureLogisticsWrite(LogisticsPermission::CUSTOMERS_WRITE);
+
         Gate::authorize('create', Customer::class);
 
         $validated = $this->validate([
@@ -55,6 +200,8 @@ new #[Title('Customers')] class extends Component
 
     public function importCustomers(ExcelImportService $excelImport): void
     {
+        $this->ensureLogisticsWrite(LogisticsPermission::CUSTOMERS_WRITE);
+
         Gate::authorize('create', Customer::class);
 
         $this->validate([
@@ -80,29 +227,66 @@ new #[Title('Customers')] class extends Component
     }
 }; ?>
 
-<x-layouts::app :title="__('Customers')">
-    <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
+    @php
+        $authUser = auth()->user();
+        $canWriteCustomers =
+            $authUser instanceof \App\Models\User
+            && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::CUSTOMERS_WRITE);
+    @endphp
+    <div class="flex flex-wrap items-center justify-between gap-4">
         <flux:heading size="xl">{{ __('Customers') }}</flux:heading>
+        <div class="flex flex-wrap gap-2">
+            <flux:button :href="route('admin.customers.export.csv')" variant="outline">{{ __('Export CSV') }}</flux:button>
+            <flux:button :href="route('admin.customers.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
+        </div>
+    </div>
 
-        @if (session()->has('import_created'))
-            <flux:callout variant="success" icon="check-circle">
-                {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
-            </flux:callout>
-        @endif
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Deleted :count records.', ['count' => session('bulk_deleted')]) }}
+        </flux:callout>
+    @endif
 
-        @if (session()->has('import_errors') && count(session('import_errors')) > 0)
-            <flux:callout variant="danger" icon="exclamation-triangle">
-                <flux:callout.heading>{{ __('Import errors') }}</flux:callout.heading>
-                <flux:callout.text>
-                    <ul class="list-inside list-disc text-sm">
-                        @foreach (session('import_errors') as $err)
-                            <li>{{ __('Row :row: :message', ['row' => $err['row'], 'message' => $err['message']]) }}</li>
-                        @endforeach
-                    </ul>
-                </flux:callout.text>
-            </flux:callout>
-        @endif
+    @if (session()->has('import_created'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
+        </flux:callout>
+    @endif
 
+    @if (session()->has('import_errors') && count(session('import_errors')) > 0)
+        <flux:callout variant="danger" icon="exclamation-triangle">
+            <flux:callout.heading>{{ __('Import errors') }}</flux:callout.heading>
+            <flux:callout.text>
+                <ul class="list-inside list-disc text-sm">
+                    @foreach (session('import_errors') as $err)
+                        <li>{{ __('Row :row: :message', ['row' => $err['row'], 'message' => $err['message']]) }}</li>
+                    @endforeach
+                </ul>
+            </flux:callout.text>
+        </flux:callout>
+    @endif
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total customers') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('New this month') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statNewThisMonth }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With tax ID') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statWithTaxId }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Avg. payment term') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statAvgPaymentTerm }}</flux:heading>
+        </flux:card>
+    </div>
+
+    @if ($canWriteCustomers)
         <div class="grid gap-6 lg:grid-cols-2">
             <flux:card>
                 <flux:heading size="lg" class="mb-4">{{ __('New customer') }}</flux:heading>
@@ -125,31 +309,130 @@ new #[Title('Customers')] class extends Component
                 </div>
             </flux:card>
         </div>
+    @endif
 
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Recent customers') }}</flux:heading>
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('Legal name') }}</flux:table.column>
-                    <flux:table.column>{{ __('Tax ID') }}</flux:table.column>
-                    <flux:table.column>{{ __('Trade name') }}</flux:table.column>
-                    <flux:table.column>{{ __('Payment term (days)') }}</flux:table.column>
-                </flux:table.columns>
-                <flux:table.rows>
-                    @forelse ($this->customerList() as $customer)
-                        <flux:table.row :key="$customer->id">
-                            <flux:table.cell>{{ $customer->legal_name }}</flux:table.cell>
-                            <flux:table.cell>{{ $customer->tax_id ?? '—' }}</flux:table.cell>
-                            <flux:table.cell>{{ $customer->trade_name ?? '—' }}</flux:table.cell>
-                            <flux:table.cell>{{ $customer->payment_term_days }}</flux:table.cell>
-                        </flux:table.row>
-                    @empty
-                        <flux:table.row>
-                            <flux:table.cell colspan="4">{{ __('No customers yet.') }}</flux:table.cell>
-                        </flux:table.row>
-                    @endforelse
-                </flux:table.rows>
-            </flux:table>
-        </flux:card>
+    <div class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:card class="!p-4">
+                <flux:input
+                    wire:model.live.debounce.400ms="filterSearch"
+                    :label="__('Search (name, tax ID, trade name)')"
+                />
+            </flux:card>
+        @endif
     </div>
-</x-layouts::app>
+
+    @if ($canWriteCustomers)
+        @if (count($selectedIds) > 0)
+            <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+                <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+                <flux:button
+                    type="button"
+                    variant="danger"
+                    wire:click="bulkDeleteSelected"
+                    wire:confirm="{{ __('Delete selected customers? This also removes their orders and shipments.') }}"
+                >
+                    {{ __('Delete selected') }}
+                </flux:button>
+            </div>
+        @endif
+    @endif
+
+    <flux:card>
+        <flux:heading size="lg" class="mb-4">{{ __('Recent customers') }}</flux:heading>
+        <flux:table>
+            <flux:table.columns>
+                @if ($canWriteCustomers)
+                    <flux:table.column class="w-12">
+                        <span class="sr-only">{{ __('Select page') }}</span>
+                        <input
+                            type="checkbox"
+                            class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
+                            @checked($this->isPageFullySelected())
+                            wire:click="toggleSelectPage"
+                            wire:key="select-page-customers"
+                        />
+                    </flux:table.column>
+                @endif
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('ID') }}
+                        @if ($sortColumn === 'id')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('legal_name')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('Legal name') }}
+                        @if ($sortColumn === 'legal_name')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('tax_id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('Tax ID') }}
+                        @if ($sortColumn === 'tax_id')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('trade_name')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('Trade name') }}
+                        @if ($sortColumn === 'trade_name')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('payment_term_days')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('Payment term (days)') }}
+                        @if ($sortColumn === 'payment_term_days')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('created_at')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('Created at') }}
+                        @if ($sortColumn === 'created_at')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse ($this->paginatedCustomers() as $customer)
+                    <flux:table.row :key="$customer->id">
+                        @if ($canWriteCustomers)
+                            <flux:table.cell>
+                                <flux:checkbox wire:model.live="selectedIds" value="{{ $customer->id }}" />
+                            </flux:table.cell>
+                        @endif
+                        <flux:table.cell>{{ $customer->id }}</flux:table.cell>
+                        <flux:table.cell>{{ $customer->legal_name }}</flux:table.cell>
+                        <flux:table.cell>{{ $customer->tax_id ?? '—' }}</flux:table.cell>
+                        <flux:table.cell>{{ $customer->trade_name ?? '—' }}</flux:table.cell>
+                        <flux:table.cell>{{ $customer->payment_term_days }}</flux:table.cell>
+                        <flux:table.cell>{{ $customer->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="{{ $canWriteCustomers ? 7 : 6 }}">{{ __('No customers yet.') }}</flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+        <div class="mt-4">
+            {{ $this->paginatedCustomers()->links() }}
+        </div>
+    </flux:card>
+</div>

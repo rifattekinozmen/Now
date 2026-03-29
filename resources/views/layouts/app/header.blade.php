@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
@@ -57,21 +57,26 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="users" :href="route('admin.customers.index')" :current="request()->routeIs('admin.customers.*')" wire:navigate>
-                        {{ __('Customers') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" :current="request()->routeIs('admin.vehicles.*')" wire:navigate>
-                        {{ __('Vehicles') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
-                        {{ __('Orders') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="cube" :href="route('admin.shipments.index')" :current="request()->routeIs('admin.shipments.*')" wire:navigate>
-                        {{ __('Shipments') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" :current="request()->routeIs('admin.delivery-numbers.*')" wire:navigate>
-                        {{ __('PIN pool') }}
-                    </flux:sidebar.item>
+                    @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                        <flux:sidebar.item icon="users" :href="route('admin.customers.index')" :current="request()->routeIs('admin.customers.*')" wire:navigate>
+                            {{ __('Customers') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" :current="request()->routeIs('admin.vehicles.*')" wire:navigate>
+                            {{ __('Vehicles') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
+                            {{ __('Orders') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="cube" :href="route('admin.shipments.index')" :current="request()->routeIs('admin.shipments.*')" wire:navigate>
+                            {{ __('Shipments') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" :current="request()->routeIs('admin.delivery-numbers.*')" wire:navigate>
+                            {{ __('PIN pool') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" :current="request()->routeIs('admin.finance.*')" wire:navigate>
+                            {{ __('Finance summary') }}
+                        </flux:sidebar.item>
+                    @endcanany
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

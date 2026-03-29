@@ -1,0 +1,73 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Authorization\LogisticsPermission;
+use App\Models\User;
+use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+
+class RolesAndPermissionsSeeder extends Seeder
+{
+    public const ROLE_TENANT_USER = 'tenant-user';
+
+    /** Sadece `logistics.view` — operasyon yazamaz. */
+    public const ROLE_LOGISTICS_VIEWER = 'logistics-viewer';
+
+    /** Örnek kısıtlı rol: sadece sipariş yazımı + görüntüleme (ince izin testleri). */
+    public const ROLE_LOGISTICS_ORDER_CLERK = 'logistics-order-clerk';
+
+    public function run(): void
+    {
+        self::ensureDefaults();
+    }
+
+    /**
+     * Rol ve izinleri idempotent oluşturur (kayıt, seeder, test).
+     */
+    public static function ensureDefaults(): void
+    {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $permAdmin = Permission::findOrCreate(LogisticsPermission::ADMIN, 'web');
+        $permView = Permission::findOrCreate(LogisticsPermission::VIEW, 'web');
+        foreach ([
+            LogisticsPermission::CUSTOMERS_WRITE,
+            LogisticsPermission::ORDERS_WRITE,
+            LogisticsPermission::SHIPMENTS_WRITE,
+            LogisticsPermission::VEHICLES_WRITE,
+            LogisticsPermission::PINS_WRITE,
+        ] as $writePermission) {
+            Permission::findOrCreate($writePermission, 'web');
+        }
+
+        $permOrdersWrite = Permission::findOrCreate(LogisticsPermission::ORDERS_WRITE, 'web');
+
+        $roleTenant = Role::findOrCreate(self::ROLE_TENANT_USER, 'web');
+        $roleTenant->syncPermissions([$permAdmin]);
+
+        $roleViewer = Role::findOrCreate(self::ROLE_LOGISTICS_VIEWER, 'web');
+        $roleViewer->syncPermissions([$permView]);
+
+        $roleOrderClerk = Role::findOrCreate(self::ROLE_LOGISTICS_ORDER_CLERK, 'web');
+        $roleOrderClerk->syncPermissions([$permView, $permOrdersWrite]);
+    }
+
+    /**
+     * Kiracılı kullanıcılara varsayılan lojistik rolünü atar (mevcut veritabanları için).
+     */
+    public static function assignDefaultRoleToTenantUsers(): void
+    {
+        self::ensureDefaults();
+
+        foreach (User::query()->whereNotNull('tenant_id')->cursor() as $user) {
+            if (! $user->hasRole(self::ROLE_TENANT_USER)) {
+                $user->assignRole(self::ROLE_TENANT_USER);
+            }
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+}

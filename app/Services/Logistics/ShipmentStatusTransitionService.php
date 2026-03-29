@@ -3,6 +3,7 @@
 namespace App\Services\Logistics;
 
 use App\Enums\ShipmentStatus;
+use App\Events\Logistics\ShipmentDispatched;
 use App\Models\Shipment;
 
 /**
@@ -20,6 +21,8 @@ final class ShipmentStatusTransitionService
             'status' => ShipmentStatus::Dispatched,
             'dispatched_at' => now(),
         ]);
+
+        ShipmentDispatched::dispatch($shipment->fresh());
     }
 
     public function markDelivered(Shipment $shipment): void

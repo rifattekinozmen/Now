@@ -2,6 +2,13 @@
 
 namespace App\Providers;
 
+use App\Contracts\Operations\OperationalNotifier;
+use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
+use App\Services\Operations\CompositeOperationalNotifier;
+use App\Services\Operations\FreightEscalationEvaluator;
+use App\Services\Operations\FreightEscalationRule;
+use App\Services\Operations\LogOperationalNotifier;
+use App\Services\Operations\SlackOperationalNotifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +22,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(OperationalNotifier::class, fn (): OperationalNotifier => new CompositeOperationalNotifier([
+            new LogOperationalNotifier,
+            new SlackOperationalNotifier,
+        ]));
+
+        $this->app->singleton(FreightEscalationEvaluator::class);
+        $this->app->bind(FreightEscalationRule::class);
+
+        $this->app->singleton(
+            TotalEnergiesFuelQuoteService::class,
+            fn (): TotalEnergiesFuelQuoteService => TotalEnergiesFuelQuoteService::fromConfig(),
+        );
     }
 
     /**

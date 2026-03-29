@@ -1,9 +1,6 @@
 <?php
 
 use App\Enums\DeliveryNumberStatus;
-use Tests\TestCase;
-
-uses(TestCase::class);
 use App\Models\Customer;
 use App\Models\DeliveryNumber;
 use App\Models\Order;

@@ -1,19 +1,25 @@
 <?php
 
+use App\Authorization\LogisticsPermission;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Laravel\Fortify\Features;
+use Tests\TestCase;
 
 beforeEach(function () {
+    /** @var TestCase $this */
     $this->skipUnlessFortifyHas(Features::registration());
 });
 
 test('registration screen can be rendered', function () {
+    /** @var TestCase $this */
     $response = $this->get(route('register'));
 
     $response->assertOk();
 });
 
 test('new users can register', function () {
+    /** @var TestCase $this */
     $response = $this->post(route('register.store'), [
         'name' => 'John Doe',
         'email' => 'test@example.com',
@@ -28,7 +34,9 @@ test('new users can register', function () {
 
     $user = User::query()->where('email', 'test@example.com')->first();
     expect($user)->not->toBeNull()
-        ->and($user->tenant_id)->not->toBeNull();
+        ->and($user->tenant_id)->not->toBeNull()
+        ->and($user->hasRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER))->toBeTrue()
+        ->and($user->can(LogisticsPermission::ADMIN))->toBeTrue();
 
     $this->assertDatabaseHas('tenants', [
         'id' => $user->tenant_id,

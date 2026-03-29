@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(vendor/bin/pint --dirty --format agent)"
+      "Bash(vendor/bin/pint --dirty --format agent)",
+      "Bash(php artisan:*)",
+      "Bash(composer show:*)",
+      "Bash(composer install:*)",
+      "mcp__laravel-boost__last-error",
+      "mcp__laravel-boost__read-log-entries",
+      "Bash(docker compose:*)",
+      "mcp__laravel-boost__database-schema"
     ]
   }
 }

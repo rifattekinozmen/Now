@@ -1,19 +1,27 @@
 <?php
 
+use App\Authorization\LogisticsPermission;
 use App\Enums\DeliveryNumberStatus;
+use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\DeliveryNumber;
 use App\Models\Order;
 use App\Services\Logistics\ExcelImportService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 new #[Title('PIN pool')] class extends Component
 {
+    use RequiresLogisticsAdmin;
     use WithFileUploads;
+    use WithPagination;
 
     public string $pin_code = '';
 
@@ -25,9 +33,177 @@ new #[Title('PIN pool')] class extends Component
 
     public mixed $pinImportFile = null;
 
+    public string $filterSearch = '';
+
+    public string $filterStatus = '';
+
+    public string $sortColumn = 'id';
+
+    public string $sortDirection = 'desc';
+
+    public bool $filtersOpen = false;
+
+    /** @var list<int|string> */
+    public array $selectedIds = [];
+
     public function mount(): void
     {
         Gate::authorize('viewAny', DeliveryNumber::class);
+    }
+
+    public function updatedFilterSearch(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedPage(): void
+    {
+        $this->selectedIds = [];
+    }
+
+    #[Computed]
+    public function statTotal(): int
+    {
+        return DeliveryNumber::query()->count();
+    }
+
+    #[Computed]
+    public function statAvailable(): int
+    {
+        return DeliveryNumber::query()->where('status', DeliveryNumberStatus::Available)->count();
+    }
+
+    #[Computed]
+    public function statAssigned(): int
+    {
+        return DeliveryNumber::query()->where('status', DeliveryNumberStatus::Assigned)->count();
+    }
+
+    #[Computed]
+    public function statUsed(): int
+    {
+        return DeliveryNumber::query()->where('status', DeliveryNumberStatus::Used)->count();
+    }
+
+    public function pinStatusLabel(DeliveryNumberStatus $status): string
+    {
+        return match ($status) {
+            DeliveryNumberStatus::Available => __('PIN available'),
+            DeliveryNumberStatus::Assigned => __('PIN assigned'),
+            DeliveryNumberStatus::Used => __('PIN used'),
+        };
+    }
+
+    /**
+     * @return Builder<DeliveryNumber>
+     */
+    private function deliveryNumbersQuery(): Builder
+    {
+        $q = DeliveryNumber::query()->with(['order.customer']);
+
+        if ($this->filterStatus !== '') {
+            $q->where('status', $this->filterStatus);
+        }
+
+        if ($this->filterSearch !== '') {
+            $term = '%'.addcslashes($this->filterSearch, '%_\\').'%';
+            $q->where(function (Builder $qq) use ($term): void {
+                $qq->where('pin_code', 'like', $term)
+                    ->orWhere('sas_no', 'like', $term);
+            });
+        }
+
+        $allowed = ['id', 'pin_code', 'sas_no', 'status', 'created_at'];
+        $column = in_array($this->sortColumn, $allowed, true) ? $this->sortColumn : 'id';
+        $direction = $this->sortDirection === 'asc' ? 'asc' : 'desc';
+
+        return $q->orderBy($column, $direction);
+    }
+
+    public function paginatedPins(): LengthAwarePaginator
+    {
+        return $this->deliveryNumbersQuery()->paginate(15);
+    }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['id', 'pin_code', 'sas_no', 'status', 'created_at'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedPins()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($pageIds === []) {
+            return false;
+        }
+
+        $selected = array_map('intval', $this->selectedIds);
+
+        return count(array_diff($pageIds, $selected)) === 0;
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedPins()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $selected = array_map('intval', $this->selectedIds);
+        $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
+
+        if ($allSelected) {
+            $this->selectedIds = array_values(array_diff($selected, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
+        }
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::PINS_WRITE);
+
+        if ($this->selectedIds === []) {
+            return;
+        }
+
+        $ids = array_map('intval', $this->selectedIds);
+        $pins = DeliveryNumber::query()->whereIn('id', $ids)->get();
+        $deleted = 0;
+
+        foreach ($pins as $dn) {
+            if ($dn->status !== DeliveryNumberStatus::Available) {
+                continue;
+            }
+            Gate::authorize('delete', $dn);
+            $dn->delete();
+            $deleted++;
+        }
+
+        $this->selectedIds = [];
+        $this->resetPage();
+
+        if ($deleted > 0) {
+            session()->flash('bulk_deleted', $deleted);
+        } else {
+            session()->flash('error', __('No deletable PINs in selection (only available PINs can be deleted).'));
+        }
     }
 
     /**
@@ -38,16 +214,10 @@ new #[Title('PIN pool')] class extends Component
         return Order::query()->with('customer')->orderByDesc('id')->limit(200)->get();
     }
 
-    /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, DeliveryNumber>
-     */
-    public function deliveryNumberList()
-    {
-        return DeliveryNumber::query()->with(['order.customer'])->orderByDesc('id')->limit(200)->get();
-    }
-
     public function addPin(): void
     {
+        $this->ensureLogisticsWrite(LogisticsPermission::PINS_WRITE);
+
         Gate::authorize('create', DeliveryNumber::class);
 
         $tenantId = auth()->user()->tenant_id;
@@ -76,6 +246,8 @@ new #[Title('PIN pool')] class extends Component
 
     public function assignPinToOrder(): void
     {
+        $this->ensureLogisticsWrite(LogisticsPermission::PINS_WRITE);
+
         $tenantId = auth()->user()->tenant_id;
         if ($tenantId === null) {
             abort(403);
@@ -126,6 +298,8 @@ new #[Title('PIN pool')] class extends Component
 
     public function deleteAvailable(int $id): void
     {
+        $this->ensureLogisticsWrite(LogisticsPermission::PINS_WRITE);
+
         $dn = DeliveryNumber::query()->findOrFail($id);
         Gate::authorize('delete', $dn);
 
@@ -138,6 +312,8 @@ new #[Title('PIN pool')] class extends Component
 
     public function importPinsCsv(ExcelImportService $excel): void
     {
+        $this->ensureLogisticsWrite(LogisticsPermission::PINS_WRITE);
+
         Gate::authorize('create', DeliveryNumber::class);
 
         $tenantId = auth()->user()->tenant_id;
@@ -162,38 +338,72 @@ new #[Title('PIN pool')] class extends Component
     }
 }; ?>
 
-<x-layouts::app :title="__('PIN pool')">
-    <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-        <flux:heading size="xl">{{ __('PIN pool') }}</flux:heading>
+<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
+    @php
+        $authUser = auth()->user();
+        $canWritePins =
+            $authUser instanceof \App\Models\User
+            && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::PINS_WRITE);
+    @endphp
+    <flux:heading size="xl">{{ __('PIN pool') }}</flux:heading>
 
-        @if (session()->has('pin_import_result'))
-            @php($r = session('pin_import_result'))
-            <flux:callout variant="success" icon="check-circle" class="mb-2">
-                {{ __('Imported: :c, skipped (already in pool): :s', ['c' => $r['created'], 's' => $r['skipped']]) }}
+    @if (session()->has('pin_import_result'))
+        @php($r = session('pin_import_result'))
+        <flux:callout variant="success" icon="check-circle" class="mb-2">
+            {{ __('Imported: :c, skipped (already in pool): :s', ['c' => $r['created'], 's' => $r['skipped']]) }}
+        </flux:callout>
+        @if ($r['errors'] !== [])
+            <flux:callout variant="danger" icon="exclamation-triangle">
+                <flux:callout.heading>{{ __('Import row errors') }}</flux:callout.heading>
+                <flux:callout.text>
+                    <ul class="list-inside list-disc text-sm">
+                        @foreach (array_slice($r['errors'], 0, 15) as $err)
+                            <li>{{ __('Row :row: :msg', ['row' => $err['row'], 'msg' => $err['message']]) }}</li>
+                        @endforeach
+                    </ul>
+                </flux:callout.text>
             </flux:callout>
-            @if ($r['errors'] !== [])
-                <flux:callout variant="danger" icon="exclamation-triangle">
-                    <flux:callout.heading>{{ __('Import row errors') }}</flux:callout.heading>
-                    <flux:callout.text>
-                        <ul class="list-inside list-disc text-sm">
-                            @foreach (array_slice($r['errors'], 0, 15) as $err)
-                                <li>{{ __('Row :row: :msg', ['row' => $err['row'], 'msg' => $err['message']]) }}</li>
-                            @endforeach
-                        </ul>
-                    </flux:callout.text>
-                </flux:callout>
-            @endif
         @endif
-        @if (session()->has('error'))
-            <flux:callout variant="danger" icon="exclamation-triangle">{{ session('error') }}</flux:callout>
-        @endif
+    @endif
+    @if (session()->has('error'))
+        <flux:callout variant="danger" icon="exclamation-triangle">{{ session('error') }}</flux:callout>
+    @endif
 
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Bulk import (CSV)') }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('First row: headers') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">pin_code</code> {{ __('or') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">PIN Kodu</code>;
-                {{ __('optional') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">sas_no</code> / <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">SAS</code>.
-            </flux:text>
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Deleted :count records.', ['count' => session('bulk_deleted')]) }}
+        </flux:callout>
+    @endif
+
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total PINs') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Available PINs') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statAvailable }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Assigned PINs') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statAssigned }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Used PINs') }}</flux:text>
+            <flux:heading size="xl">{{ $this->statUsed }}</flux:heading>
+        </flux:card>
+    </div>
+
+    <flux:card>
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <flux:heading size="lg">{{ __('Bulk import (CSV)') }}</flux:heading>
+            <flux:button :href="route('admin.delivery-numbers.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
+        </div>
+        <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+            {{ __('First row: headers') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">pin_code</code> {{ __('or') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">PIN Kodu</code>;
+            {{ __('optional') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">sas_no</code> / <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">SAS</code>.
+        </flux:text>
+        @if ($canWritePins)
             <div class="flex max-w-xl flex-col gap-4">
                 <flux:field :label="__('CSV file')">
                     <input
@@ -207,81 +417,177 @@ new #[Title('PIN pool')] class extends Component
                     {{ __('Import CSV') }}
                 </flux:button>
             </div>
-        </flux:card>
+        @endif
+    </flux:card>
 
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Add PIN') }}</flux:heading>
-            <form wire:submit="addPin" class="flex max-w-xl flex-col gap-4">
-                <flux:field :label="__('PIN code')">
-                    <flux:input wire:model="pin_code" required maxlength="64" />
-                </flux:field>
-                <flux:field :label="__('SAS no. (optional)')">
-                    <flux:input wire:model="sas_no" maxlength="64" />
-                </flux:field>
-                <flux:button type="submit" variant="primary">{{ __('Save PIN') }}</flux:button>
-            </form>
-        </flux:card>
-
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Assign PIN to order') }}</flux:heading>
-            <form wire:submit="assignPinToOrder" class="flex max-w-xl flex-col gap-4">
-                <flux:field :label="__('PIN code')">
-                    <flux:input wire:model="assign_pin_code" required maxlength="64" />
-                </flux:field>
-                <div>
-                    <flux:field :label="__('Order')">
-                        <select
-                            wire:model="assign_order_id"
-                            required
-                            class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
-                        >
-                            <option value="">{{ __('Select…') }}</option>
-                            @foreach ($this->orderOptions() as $o)
-                                <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
-                            @endforeach
-                        </select>
+    @if ($canWritePins)
+        <div class="grid gap-6 lg:grid-cols-2">
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('Add PIN') }}</flux:heading>
+                <form wire:submit="addPin" class="flex flex-col gap-4">
+                    <flux:field :label="__('PIN code')">
+                        <flux:input wire:model="pin_code" required maxlength="64" />
                     </flux:field>
-                </div>
-                <flux:button type="submit" variant="filled">{{ __('Assign') }}</flux:button>
-            </form>
-        </flux:card>
+                    <flux:field :label="__('SAS no. (optional)')">
+                        <flux:input wire:model="sas_no" maxlength="64" />
+                    </flux:field>
+                    <flux:button type="submit" variant="primary">{{ __('Save PIN') }}</flux:button>
+                </form>
+            </flux:card>
 
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Recent PINs') }}</flux:heading>
-            <flux:table>
-                <flux:table.columns>
-                    <flux:table.column>{{ __('PIN') }}</flux:table.column>
-                    <flux:table.column>{{ __('SAS') }}</flux:table.column>
-                    <flux:table.column>{{ __('Status') }}</flux:table.column>
-                    <flux:table.column>{{ __('Order') }}</flux:table.column>
-                    <flux:table.column></flux:table.column>
-                </flux:table.columns>
-                <flux:table.rows>
-                    @forelse ($this->deliveryNumberList() as $row)
-                        <flux:table.row :key="$row->id">
-                            <flux:table.cell>{{ $row->pin_code }}</flux:table.cell>
-                            <flux:table.cell>{{ $row->sas_no ?? '—' }}</flux:table.cell>
-                            <flux:table.cell>{{ $row->status->value }}</flux:table.cell>
-                            <flux:table.cell>{{ $row->order?->order_number ?? '—' }}</flux:table.cell>
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('Assign PIN to order') }}</flux:heading>
+                <form wire:submit="assignPinToOrder" class="flex flex-col gap-4">
+                    <flux:field :label="__('PIN code')">
+                        <flux:input wire:model="assign_pin_code" required maxlength="64" />
+                    </flux:field>
+                    <div>
+                        <flux:field :label="__('Order')">
+                            <select
+                                wire:model="assign_order_id"
+                                required
+                                class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                            >
+                                <option value="">{{ __('Select…') }}</option>
+                                @foreach ($this->orderOptions() as $o)
+                                    <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
+                                @endforeach
+                            </select>
+                        </flux:field>
+                    </div>
+                    <flux:button type="submit" variant="filled">{{ __('Assign') }}</flux:button>
+                </form>
+            </flux:card>
+        </div>
+    @endif
+
+    <div class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:card class="!p-4 flex flex-col gap-4">
+                <flux:input
+                    wire:model.live.debounce.400ms="filterSearch"
+                    :label="__('Search (PIN, SAS)')"
+                />
+                <flux:field :label="__('Filter by PIN status')">
+                    <select
+                        wire:model.live="filterStatus"
+                        class="w-full max-w-md rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                    >
+                        <option value="">{{ __('All statuses') }}</option>
+                        @foreach (\App\Enums\DeliveryNumberStatus::cases() as $case)
+                            <option value="{{ $case->value }}">{{ $this->pinStatusLabel($case) }}</option>
+                        @endforeach
+                    </select>
+                </flux:field>
+            </flux:card>
+        @endif
+    </div>
+
+    @if ($canWritePins)
+        @if (count($selectedIds) > 0)
+            <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+                <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+                <flux:button
+                    type="button"
+                    variant="danger"
+                    wire:click="bulkDeleteSelected"
+                    wire:confirm="{{ __('Delete selected available PINs only; assigned/used rows are skipped.') }}"
+                >
+                    {{ __('Delete selected') }}
+                </flux:button>
+            </div>
+        @endif
+    @endif
+
+    <flux:card>
+        <flux:heading size="lg" class="mb-4">{{ __('Recent PINs') }}</flux:heading>
+        <flux:table>
+            <flux:table.columns>
+                @if ($canWritePins)
+                    <flux:table.column class="w-12">
+                        <span class="sr-only">{{ __('Select page') }}</span>
+                        <input
+                            type="checkbox"
+                            class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
+                            @checked($this->isPageFullySelected())
+                            wire:click="toggleSelectPage"
+                            wire:key="select-page-pins"
+                        />
+                    </flux:table.column>
+                @endif
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('ID') }}
+                        @if ($sortColumn === 'id')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('pin_code')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('PIN') }}
+                        @if ($sortColumn === 'pin_code')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('sas_no')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('SAS') }}
+                        @if ($sortColumn === 'sas_no')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>
+                    <button type="button" wire:click="sortBy('status')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
+                        {{ __('Status') }}
+                        @if ($sortColumn === 'status')
+                            <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                        @endif
+                    </button>
+                </flux:table.column>
+                <flux:table.column>{{ __('Order') }}</flux:table.column>
+                <flux:table.column></flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse ($this->paginatedPins() as $row)
+                    <flux:table.row :key="$row->id">
+                        @if ($canWritePins)
                             <flux:table.cell>
+                                <flux:checkbox wire:model.live="selectedIds" value="{{ $row->id }}" />
+                            </flux:table.cell>
+                        @endif
+                        <flux:table.cell>{{ $row->id }}</flux:table.cell>
+                        <flux:table.cell>{{ $row->pin_code }}</flux:table.cell>
+                        <flux:table.cell>{{ $row->sas_no ?? '—' }}</flux:table.cell>
+                        <flux:table.cell>{{ $this->pinStatusLabel($row->status) }}</flux:table.cell>
+                        <flux:table.cell>{{ $row->order?->order_number ?? '—' }}</flux:table.cell>
+                        <flux:table.cell>
+                            @if ($canWritePins)
                                 @if ($row->status === \App\Enums\DeliveryNumberStatus::Available)
                                     <flux:button type="button" size="sm" variant="ghost" wire:click="deleteAvailable({{ $row->id }})" wire:confirm="{{ __('Delete this PIN?') }}">
                                         {{ __('Delete') }}
                                     </flux:button>
                                 @endif
-                            </flux:table.cell>
-                        </flux:table.row>
-                    @empty
-                        <flux:table.row>
-                            <flux:table.cell>{{ __('No PINs yet.') }}</flux:table.cell>
-                            <flux:table.cell></flux:table.cell>
-                            <flux:table.cell></flux:table.cell>
-                            <flux:table.cell></flux:table.cell>
-                            <flux:table.cell></flux:table.cell>
-                        </flux:table.row>
-                    @endforelse
-                </flux:table.rows>
-            </flux:table>
-        </flux:card>
-    </div>
-</x-layouts::app>
+                            @endif
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="{{ $canWritePins ? 7 : 6 }}">{{ __('No PINs yet.') }}</flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+        <div class="mt-4">
+            {{ $this->paginatedPins()->links() }}
+        </div>
+    </flux:card>
+</div>

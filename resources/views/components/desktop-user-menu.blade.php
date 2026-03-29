@@ -18,6 +18,16 @@
             </div>
         </div>
         <flux:menu.separator />
+        <flux:menu.heading>{{ __('Language') }}</flux:menu.heading>
+        <flux:menu.radio.group>
+            <flux:menu.item :href="route('locale.switch', ['locale' => 'tr'])" icon="language" wire:navigate>
+                Türkçe
+            </flux:menu.item>
+            <flux:menu.item :href="route('locale.switch', ['locale' => 'en'])" icon="language" wire:navigate>
+                English
+            </flux:menu.item>
+        </flux:menu.radio.group>
+        <flux:menu.separator />
         <flux:menu.radio.group>
             <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
                 {{ __('Settings') }}

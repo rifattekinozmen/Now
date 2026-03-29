@@ -6,6 +6,7 @@ use App\Concerns\PasswordValidationRules;
 use App\Concerns\ProfileValidationRules;
 use App\Models\Tenant;
 use App\Models\User;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -38,11 +39,16 @@ class CreateNewUser implements CreatesNewUsers
             'slug' => $slug,
         ]);
 
-        return User::create([
+        $user = User::create([
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
             'tenant_id' => $tenant->id,
         ]);
+
+        RolesAndPermissionsSeeder::ensureDefaults();
+        $user->assignRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER);
+
+        return $user;
     }
 }
