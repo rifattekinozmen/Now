@@ -32,6 +32,14 @@ test('import capabilities expose csv and scanned pdf limitation', function () {
         ->and($caps['scanned_pdf_user_message'])->toBe($svc->unsupportedScannedPdfUserMessage());
 });
 
+test('production ocr integration blueprint points to scanned pdf adapter contract', function () {
+    $svc = new BankStatementOcrService;
+    $blueprint = $svc->productionOcrIntegrationBlueprint();
+
+    expect($blueprint['contract'])->toBe(ScannedPdfOcrAdapter::class)
+        ->and($blueprint['register_in'])->toContain('AppServiceProvider');
+});
+
 test('plain text line parsing extracts date amount description', function () {
     $svc = new BankStatementOcrService;
     $text = "2026-03-01 Alıcı firma ödemesi 1.500,00\n";

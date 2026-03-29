@@ -32,6 +32,42 @@ final class TotalEnergiesFuelQuoteService
     }
 
     /**
+     * Operatör / smoke test için istek özeti (API anahtarı maskelenir).
+     *
+     * @return array{
+     *     http_method: string,
+     *     url: string,
+     *     query_params: array<string, scalar>,
+     *     json_body: array<string, scalar>,
+     *     headers: array<string, string>,
+     *     schema_version_expected: int
+     * }
+     */
+    public function describeQuoteRequest(): array
+    {
+        $base = rtrim(trim($this->baseUrl), '/');
+        $path = str_starts_with($this->quotePath, '/') ? $this->quotePath : '/'.$this->quotePath;
+        $method = strtolower((string) config('totalenergies.quote_http_method', 'get'));
+        $query = $this->quoteQueryParams();
+        $jsonBody = $method === 'post' ? $this->quotePostJsonBody() : [];
+        $url = $base !== '' ? $base.$path : '';
+
+        $apiKeyDisplay = ($this->apiKey !== null && $this->apiKey !== '') ? '***' : '(missing)';
+
+        return [
+            'http_method' => $method === 'post' ? 'POST' : 'GET',
+            'url' => $url,
+            'query_params' => $query,
+            'json_body' => $jsonBody,
+            'headers' => [
+                'Accept' => 'application/json',
+                'X-API-Key' => $apiKeyDisplay,
+            ],
+            'schema_version_expected' => TotalEnergiesResponseParser::configuredSchemaVersion(),
+        ];
+    }
+
+    /**
      * @return array{
      *     ok: bool,
      *     message: string,
@@ -39,6 +75,9 @@ final class TotalEnergiesFuelQuoteService
      *     currency?: string|null,
      *     location_label?: string|null,
      *     schema_version?: int,
+     *     contract_valid?: bool,
+     *     contract_issues?: list<string>,
+     *     response_schema_match?: bool|null,
      *     raw?: mixed
      * }
      */
@@ -110,6 +149,10 @@ final class TotalEnergiesFuelQuoteService
         }
 
         if ($price === null) {
+            $contract = is_array($json)
+                ? TotalEnergiesQuoteContractValidator::validate($json, null)
+                : TotalEnergiesQuoteContractValidator::validate([], null);
+
             return [
                 'ok' => false,
                 'message' => __('Unexpected TotalEnergies response shape.'),
@@ -117,6 +160,9 @@ final class TotalEnergiesFuelQuoteService
                 'currency' => null,
                 'location_label' => null,
                 'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
+                'contract_valid' => false,
+                'contract_issues' => $contract['issues'],
+                'response_schema_match' => $contract['schema_match'],
                 'raw' => $json,
             ];
         }
@@ -126,6 +172,10 @@ final class TotalEnergiesFuelQuoteService
             $currency = is_string($default) && $default !== '' ? strtoupper($default) : 'EUR';
         }
 
+        $contract = is_array($json)
+            ? TotalEnergiesQuoteContractValidator::validate($json, (float) $price)
+            : TotalEnergiesQuoteContractValidator::validate([], (float) $price);
+
         return [
             'ok' => true,
             'message' => __('Quote retrieved.'),
@@ -133,6 +183,9 @@ final class TotalEnergiesFuelQuoteService
             'currency' => $currency,
             'location_label' => $locationLabel,
             'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
+            'contract_valid' => $contract['contract_valid'],
+            'contract_issues' => $contract['issues'],
+            'response_schema_match' => $contract['schema_match'],
             'raw' => $json,
         ];
     }

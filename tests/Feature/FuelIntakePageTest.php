@@ -5,6 +5,17 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Livewire\Livewire;
 
+test('vehicles from other tenants are not visible for fuel intake save path', function () {
+    $userA = User::factory()->create();
+    $vehicleB = Vehicle::factory()->create();
+
+    expect($vehicleB->tenant_id)->not->toBe($userA->tenant_id);
+
+    $this->actingAs($userA);
+
+    expect(Vehicle::query()->whereKey($vehicleB->id)->first())->toBeNull();
+});
+
 test('guest cannot access fuel intakes', function () {
     $this->get(route('admin.fuel-intakes.index'))->assertRedirect(route('login'));
 });

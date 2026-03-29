@@ -54,6 +54,20 @@ return [
             'times' => max(1, (int) env('CUSTOMER_ENGAGEMENT_HTTP_RETRY_TIMES', 2)),
             'sleep_ms' => max(0, (int) env('CUSTOMER_ENGAGEMENT_HTTP_RETRY_SLEEP_MS', 100)),
         ],
+        /*
+        | JSON gövdesinin SHA-256 özeti ile `X-Idempotency-Key` (sağlayıcı tekrar denemeleri için).
+        */
+        'idempotency_header' => (bool) env('CUSTOMER_ENGAGEMENT_IDEMPOTENCY', true),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Kuyruk (NotifyShipmentDispatched zaten ShouldQueue)
+    |--------------------------------------------------------------------------
+    |
+    | Müşteri kanalı HTTP çağrıları dinleyici job içinde çalışır; ek `dispatch` gerekmez.
+    | Rate limit / güvenlik için `customer_engagement.http` idempotency ve imza kullanın.
+    |
+    */
 
 ];

@@ -225,15 +225,14 @@ new #[Title('Fuel intakes')] class extends Component
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::VEHICLES_WRITE);
     @endphp
 
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <flux:heading size="xl">{{ __('Fuel intakes') }}</flux:heading>
-            <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Fleet fuel records for audit and anomaly checks.') }}
-            </flux:text>
-        </div>
-        <flux:button :href="route('admin.vehicles.index')" variant="ghost" wire:navigate>{{ __('Vehicles') }}</flux:button>
-    </div>
+    <x-admin.page-header
+        :heading="__('Fuel intakes')"
+        :description="__('Fleet fuel records for audit and anomaly checks. Import CSV/XLSX or add rows manually.')"
+    >
+        <x-slot name="actions">
+            <flux:button :href="route('admin.vehicles.index')" variant="ghost" wire:navigate>{{ __('Vehicles') }}</flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     <div class="grid gap-3 sm:grid-cols-2">
         <flux:card class="p-4">

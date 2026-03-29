@@ -56,6 +56,19 @@ class BankStatementOcrService
     }
 
     /**
+     * Taranmış PDF için üretimde bağlanacak arayüz: {@see ScannedPdfOcrAdapter}.
+     *
+     * @return array{contract: class-string, register_in: string}
+     */
+    public function productionOcrIntegrationBlueprint(): array
+    {
+        return [
+            'contract' => ScannedPdfOcrAdapter::class,
+            'register_in' => 'AppServiceProvider::register()',
+        ];
+    }
+
+    /**
      * Görüntü-only / taranmış PDF için kullanıcıya gösterilecek açıklama (empty_text ile aynı metin).
      */
     public function unsupportedScannedPdfUserMessage(): string

@@ -82,10 +82,15 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
         $times = is_array($retry) && isset($retry['times']) ? (int) $retry['times'] : 2;
         $sleepMs = is_array($retry) && isset($retry['sleep_ms']) ? (int) $retry['sleep_ms'] : 100;
 
+        $headers = $this->headersForWebhookPayload($json);
+        if ($this->idempotencyHeaderEnabled()) {
+            $headers['X-Idempotency-Key'] = hash('sha256', $json);
+        }
+
         $pending = Http::timeout($timeout)
             ->retry(max(1, $times), max(0, $sleepMs))
             ->acceptJson()
-            ->withHeaders($this->headersForWebhookPayload($json));
+            ->withHeaders($headers);
 
         if ($bearerToken !== null) {
             $pending = $pending->withToken($bearerToken);
@@ -113,5 +118,10 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
         return [
             'X-Webhook-Signature' => 'sha256='.$hash,
         ];
+    }
+
+    private function idempotencyHeaderEnabled(): bool
+    {
+        return (bool) config('customer_engagement.http.idempotency_header', true);
     }
 }

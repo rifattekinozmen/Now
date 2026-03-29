@@ -165,6 +165,70 @@ test('placeholder base url skips http and returns not ok', function () {
     Http::assertNothingSent();
 });
 
+test('successful quote includes contract_valid when response omits api schema_version', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'k',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/q',
+        'totalenergies.timeout_seconds' => 10,
+    ]);
+
+    Http::fake([
+        'https://fuel.example.com/q*' => Http::response(['price_try_per_liter' => 40], 200),
+    ]);
+
+    $result = TotalEnergiesFuelQuoteService::fromConfig()->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['contract_valid'] ?? null)->toBeTrue()
+        ->and($result['response_schema_match'] ?? null)->toBeNull();
+});
+
+test('contract_valid false when response schema_version mismatches', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'k',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/q',
+        'totalenergies.timeout_seconds' => 10,
+        'totalenergies.schema_version' => 1,
+    ]);
+
+    Http::fake([
+        'https://fuel.example.com/q*' => Http::response([
+            'price_try_per_liter' => 40,
+            'schema_version' => 99,
+        ], 200),
+    ]);
+
+    $result = TotalEnergiesFuelQuoteService::fromConfig()->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['contract_valid'] ?? null)->toBeFalse()
+        ->and($result['response_schema_match'] ?? null)->toBeFalse();
+});
+
+test('describeQuoteRequest exposes post body merge without calling api', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'secret',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/api/v2/quote',
+        'totalenergies.quote_http_method' => 'post',
+        'totalenergies.default_region' => 'TR',
+        'totalenergies.quote_query' => ['product' => 'diesel'],
+        'totalenergies.quote_json_body' => ['fuel_grade' => 'motorin'],
+    ]);
+
+    $desc = TotalEnergiesFuelQuoteService::fromConfig()->describeQuoteRequest();
+
+    expect($desc['http_method'])->toBe('POST')
+        ->and($desc['url'])->toBe('https://fuel.example.com/api/v2/quote')
+        ->and($desc['json_body']['region'] ?? null)->toBe('TR')
+        ->and($desc['headers']['X-API-Key'])->toBe('***');
+});
+
 test('get quote merges extra headers from config', function () {
     config([
         'totalenergies.enabled' => true,

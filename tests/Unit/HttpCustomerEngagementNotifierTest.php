@@ -17,10 +17,31 @@ test('http customer engagement notifier posts json payload when endpoint set', f
     $notifier->send('sms', 'shipment_update', ['shipment_id' => 9]);
 
     Http::assertSent(function ($request): bool {
+        $body = $request->body();
+
         return $request->url() === 'https://hooks.example.test/engage'
             && $request['channel'] === 'sms'
             && $request['template'] === 'shipment_update'
-            && $request['context']['shipment_id'] === 9;
+            && $request['context']['shipment_id'] === 9
+            && $request->hasHeader('X-Idempotency-Key', hash('sha256', $body));
+    });
+});
+
+test('http customer engagement notifier omits idempotency header when disabled', function () {
+    config([
+        'customer_engagement.http.endpoint' => 'https://hooks.example.test/engage',
+        'customer_engagement.http.timeout_seconds' => 5,
+        'customer_engagement.http.idempotency_header' => false,
+    ]);
+
+    Http::fake([
+        'https://hooks.example.test/engage' => Http::response(['ok' => true], 200),
+    ]);
+
+    (new HttpCustomerEngagementNotifier)->send('sms', 'shipment_update', ['shipment_id' => 9]);
+
+    Http::assertSent(function ($request): bool {
+        return ! $request->hasHeader('X-Idempotency-Key');
     });
 });
 

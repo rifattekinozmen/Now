@@ -330,7 +330,10 @@ new #[Title('Customers')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::CUSTOMERS_WRITE);
     @endphp
-    <x-admin.page-header :heading="__('Customers')">
+    <x-admin.page-header
+        :heading="__('Customers')"
+        :description="__('Legal names, payment terms, and CSV/XLSX import — scoped to your tenant.')"
+    >
         <x-slot name="breadcrumb">
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Customers') }}</span>
         </x-slot>

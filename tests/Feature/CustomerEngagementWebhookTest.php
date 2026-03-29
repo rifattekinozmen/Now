@@ -33,8 +33,11 @@ test('http webhook sends bearer and hmac signature when configured', function ()
         }
         $body = $request->body();
         $expected = 'sha256='.hash_hmac('sha256', $body, 'signing-secret');
+        if ($sig !== $expected) {
+            return false;
+        }
 
-        return $sig === $expected;
+        return $request->hasHeader('X-Idempotency-Key', hash('sha256', $body));
     });
 });
 

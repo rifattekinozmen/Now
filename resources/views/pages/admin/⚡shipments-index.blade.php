@@ -321,7 +321,10 @@ new #[Title('Shipments')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::SHIPMENTS_WRITE);
     @endphp
-    <x-admin.page-header :heading="__('Shipments')">
+    <x-admin.page-header
+        :heading="__('Shipments')"
+        :description="__('Dispatch, POD, QR tracking, and status transitions for operations.')"
+    >
         <x-slot name="breadcrumb">
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Shipments') }}</span>
         </x-slot>

@@ -448,7 +448,10 @@ new #[Title('Orders')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::ORDERS_WRITE);
     @endphp
-    <x-admin.page-header :heading="__('Orders')">
+    <x-admin.page-header
+        :heading="__('Orders')"
+        :description="__('Freight, SAS, incoterms, and links to shipments and finance export.')"
+    >
         <x-slot name="breadcrumb">
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Orders') }}</span>
         </x-slot>
