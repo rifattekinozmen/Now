@@ -1,6 +1,6 @@
 # docs/views → Now: sıralı port kontrol listesi
 
-Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles` + `vehicles.template.xlsx`, `employees` + `employees.template.xlsx`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `finance`, `finance/reports`, `finance/payment-due-calendar`, `finance/bank-statement-csv`, `finance/chart-of-accounts`, `finance/journal-entries`, `finance/trial-balance`, `orders.export.finance.csv`, `orders.export.logo.xml` + `track.shipment` kamu rotası).
+Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles` + `vehicles.template.xlsx`, `employees` + `employees.template.xlsx`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `warehouse`, `finance`, `finance/reports`, `finance/payment-due-calendar`, `finance/bank-statement-csv`, `finance/chart-of-accounts`, `finance/journal-entries`, `finance/trial-balance`, `orders.export.finance.csv`, `orders.export.logo.xml` + `track.shipment` kamu rotası).
 
 **Durum kodları:** `VAR` tam veya işlevsel karşılık · `KISMI` iskelet / tek tip CRUD / placeholder · `YOK` karşılık yok.
 
@@ -128,7 +128,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `warehouses` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.warehouse-index` — depolar + stok kartları + depo bakiyeleri (tek sayfa MVP) | KISMI _(ayrı show yok; 2026-03-29)_ |
 
 ### admin/inventory
 

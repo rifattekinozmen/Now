@@ -88,6 +88,7 @@
         @endpersist
 
         <div class="flex min-h-0 min-w-0 flex-1 flex-col">
+        <livewire:global-search />
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />

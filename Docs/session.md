@@ -4,6 +4,8 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
+- Depo: `pages::admin.warehouse-index` — **depolar**, **stok kartları**, **depo bazlı bakiyeler** (`warehouses`, `inventory_items`, `inventory_stocks`); `logistics.warehouse.write`.
+- UX: `App\Livewire\GlobalSearch` — `Ctrl+K` ve üst çubuk **Search**; müşteri, sipariş, sevkiyat, araç, depo, personel.
 - Finans: `pages::admin.finance-index` — üstte **yakıt alımı uyarı özeti** (`AuditAiEvaluationService::summarizeFuelIntakeAnomalies`, `fuel_intakes` tablosu); navlun medyan sapması ile birlikte.
 - Operasyon: `config/logistics.php` — `LOGISTICS_IPOD_STRICT`, `PodDeliveryComplianceGate`; `DriverSafetyService` + sevkiyat gönderim kapısında yorgunluk; siparişlerde **kantar/rutubet** alanları ve CSV import genişlemesi (`ExcelImportService`).
 - Entegrasyon: `TotalEnergiesFuelQuoteService` — `TOTALENERGIES_PROVINCE` / `DISTRICT`; `HttpCustomerEngagementNotifier` — SMS/WhatsApp ayrı Bearer (`CUSTOMER_ENGAGEMENT_SMS_BEARER`, `WHATSAPP_BEARER`); `LogoErpExportService` — `OrderRecordId`, kantar alanları + `MaterialCode`/`PlantCode`/`StorageLocation` (config `logo_export`).
@@ -26,7 +28,8 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 - Banka ekstresi: görüntü-only PDF için harici OCR (şu an yalnızca metin katmanı; `BankStatementOcrService` sınıf yorumu).
 - Logo XML: canlı Logo Connect dokümantasyonuna göre ek alanlar / şema doğrulaması.
 - Resmi yasal bilanço / denetim çıktısı (TFRS, dönem kapanış; operasyonel açılış birleştirmesi UI tamamlandı).
-- Yakıt: `fuel_intakes` için admin CRUD veya içe aktarma; POD sıkı modda foto yükleme (şu an `photo_storage_path` yolu beklenir).
+
+**Tamamlanmış / güncel (senkron):** `admin.fuel-intakes` — liste, oluşturma/düzenleme, XLSX şablon + içe aktarma (`FuelIntakePageTest`, `ExcelImportService::importFuelIntakesFromPath`). POD: `admin.shipments.show` üzerinde foto yükleme + `photo_storage_path` (`ShipmentPodDeliveryTest`, sıkı mod `PodDeliveryComplianceGate`).
 
 ## Son teslim (plan — 2026-03-29)
 
@@ -61,4 +64,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-29 (Lojistik ERP devam planı: sevkiyat uyumluluk kapısı, banka/Logo genişlemesi, admin ortak başlık/filtre, sipariş-sevkiyat sekmeleri, TotalEnergies entegrasyon testi.)*
+*Son güncelleme: 2026-03-29 (session/roadmap senkronu: yakıt içe aktarma ve POD foto durumu kod ile hizalandı; WMS/Omnibar planı roadmap’e işlendi.)*
