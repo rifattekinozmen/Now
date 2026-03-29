@@ -4,7 +4,7 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
-- Faz C devam: finans özeti sayfası + dashboard sevkiyat dağılımı tamam; sonraki: grafik kütüphanesi / Faz B TotalEnergies & stepper / rol ayrımı (`logistics.view`).
+- Faz 1 tamamlanmış sayılanlar: `Employee` + `logistics.employees.write` + `logistics-hr` rolü, belge vade tarama (`logistics:scan-document-expiry`). Sonraki: QR/mobil POD, TotalEnergies gerçek API, tam sipariş stepper.
 
 ## Pending Work
 
@@ -37,5 +37,5 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ---
 
-*Son güncelleme: 2026-03-28 (Faz C: finans özeti, dashboard sevkiyat dağılımı)*
+*Son güncelleme: 2026-03-29 (Employee, belge vade prototipi, HR izinleri)*
 

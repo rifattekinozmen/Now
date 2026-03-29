@@ -25,6 +25,8 @@ final class LogisticsPermission
 
     public const PINS_WRITE = 'logistics.pins.write';
 
+    public const EMPLOYEES_WRITE = 'logistics.employees.write';
+
     public static function canWrite(User $user, string $writePermission): bool
     {
         return $user->can(self::ADMIN) || $user->can($writePermission);

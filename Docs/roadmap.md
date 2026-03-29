@@ -42,7 +42,8 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] Spatie Permission + `logistics.admin`, `tenant-user` rolü, admin middleware _(tamamlandı: 2026-03-28)_
 - [x] Rol ayrımı: `logistics.view` + `logistics-viewer` rolü (salt okunur panel); yazma/toplu işlem `logistics.admin` _(tamamlandı: 2026-03-28)_
 - [x] Müşteri toplu içe aktarma **XLSX şablonu** (`admin.customers.template.xlsx`, `CustomerImportTemplateExport`) _(tamamlandı: 2026-03-28)_
-- [x] Ek ince izinler: `logistics.customers.write`, `logistics.orders.write`, `logistics.shipments.write`, `logistics.vehicles.write`, `logistics.pins.write`; `logistics-order-clerk` örnek rolü _(tamamlandı: 2026-03-28)_
+- [x] Ek ince izinler: `logistics.customers.write`, `logistics.orders.write`, `logistics.shipments.write`, `logistics.vehicles.write`, `logistics.pins.write`, `logistics.employees.write`; `logistics-order-clerk` ve `logistics-hr` örnek rolleri _(genişletildi: 2026-03-29)_
+- [x] `Employee` (personel/şoför belge tarihleri) + admin `employees` sayfası; `logistics:scan-document-expiry` + günlük zamanlama _(tamamlandı: 2026-03-29)_
 
 ## Faz B — ilerleme (tamamlanan / kısmi)
 

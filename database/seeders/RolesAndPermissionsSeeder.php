@@ -19,6 +19,9 @@ class RolesAndPermissionsSeeder extends Seeder
     /** Örnek kısıtlı rol: sadece sipariş yazımı + görüntüleme (ince izin testleri). */
     public const ROLE_LOGISTICS_ORDER_CLERK = 'logistics-order-clerk';
 
+    /** İK / personel kayıtları: görüntüleme + çalışan yazımı. */
+    public const ROLE_LOGISTICS_HR = 'logistics-hr';
+
     public function run(): void
     {
         self::ensureDefaults();
@@ -39,11 +42,13 @@ class RolesAndPermissionsSeeder extends Seeder
             LogisticsPermission::SHIPMENTS_WRITE,
             LogisticsPermission::VEHICLES_WRITE,
             LogisticsPermission::PINS_WRITE,
+            LogisticsPermission::EMPLOYEES_WRITE,
         ] as $writePermission) {
             Permission::findOrCreate($writePermission, 'web');
         }
 
         $permOrdersWrite = Permission::findOrCreate(LogisticsPermission::ORDERS_WRITE, 'web');
+        $permEmployeesWrite = Permission::findOrCreate(LogisticsPermission::EMPLOYEES_WRITE, 'web');
 
         $roleTenant = Role::findOrCreate(self::ROLE_TENANT_USER, 'web');
         $roleTenant->syncPermissions([$permAdmin]);
@@ -53,6 +58,9 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $roleOrderClerk = Role::findOrCreate(self::ROLE_LOGISTICS_ORDER_CLERK, 'web');
         $roleOrderClerk->syncPermissions([$permView, $permOrdersWrite]);
+
+        $roleHr = Role::findOrCreate(self::ROLE_LOGISTICS_HR, 'web');
+        $roleHr->syncPermissions([$permView, $permEmployeesWrite]);
     }
 
     /**

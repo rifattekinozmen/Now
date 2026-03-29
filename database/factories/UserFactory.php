@@ -106,6 +106,23 @@ class UserFactory extends Factory
         });
     }
 
+    /**
+     * `logistics.view` + `logistics.employees.write` — İK / personel listesi senaryoları için.
+     */
+    public function logisticsHr(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            $user->syncRoles([]);
+            RolesAndPermissionsSeeder::ensureDefaults();
+            $role = Role::query()->where('name', RolesAndPermissionsSeeder::ROLE_LOGISTICS_HR)->first();
+            if ($role === null) {
+                return;
+            }
+            $user->assignRole($role);
+            $user->forgetCachedPermissions();
+        });
+    }
+
     public function configure(): static
     {
         return $this->afterCreating(function (User $user): void {
@@ -114,6 +131,10 @@ class UserFactory extends Factory
             }
 
             if ($user->hasRole(RolesAndPermissionsSeeder::ROLE_LOGISTICS_ORDER_CLERK)) {
+                return;
+            }
+
+            if ($user->hasRole(RolesAndPermissionsSeeder::ROLE_LOGISTICS_HR)) {
                 return;
             }
 

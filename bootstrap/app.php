@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('logistics:refresh-tcmb-rates')
             ->dailyAt('09:10')
             ->withoutOverlapping(30);
+
+        $schedule->command('logistics:scan-document-expiry')
+            ->dailyAt('08:05')
+            ->withoutOverlapping(15);
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [

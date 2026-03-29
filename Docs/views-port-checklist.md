@@ -162,7 +162,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2 + `config/l
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `employees` | KISMI |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.employees-index` | KISMI _(liste + form; import yok)_ _(2026-03-29)_ |
 
 ### admin/personnel
 
@@ -359,6 +359,6 @@ Her faz bitince: ilgili modül için **Pest** (`assertSuccessful`, mümkünse ç
 
 ---
 
-*Son güncelleme: 2026-03-30 — Sevkiyat lifecycle, PIN CSV import, TCMB zamanlama/komut.*
+*Son güncelleme: 2026-03-29 — Personel (`employees-index`), belge vade komutu/zamanlama.*
 
 *Dosya yolu: `Docs/views-port-checklist.md`.*
