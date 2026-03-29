@@ -4,8 +4,10 @@ use App\Authorization\LogisticsPermission;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Customer;
 use App\Services\Logistics\ExcelImportService;
+use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
@@ -55,30 +57,41 @@ new #[Title('Customers')] class extends Component
         $this->selectedIds = [];
     }
 
+    /**
+     * @return array{total: int, new_this_month: int, with_tax_id: int, avg_payment_term: int}
+     */
     #[Computed]
-    public function statTotal(): int
+    public function customerStats(): array
     {
-        return Customer::query()->count();
-    }
+        $monthStart = now()->startOfMonth()->toDateTimeString();
+        $tenantId = TenantContext::id();
 
-    #[Computed]
-    public function statNewThisMonth(): int
-    {
-        return Customer::query()->where('created_at', '>=', now()->startOfMonth())->count();
-    }
+        if ($tenantId !== null) {
+            $row = DB::selectOne(
+                'SELECT
+                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ?) AS total,
+                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ? AND created_at >= ?) AS new_this_month,
+                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ? AND tax_id IS NOT NULL AND tax_id != ?) AS with_tax_id,
+                    (SELECT ROUND(AVG(payment_term_days)) FROM customers WHERE tenant_id = ?) AS avg_payment_term',
+                [$tenantId, $tenantId, $monthStart, $tenantId, '', $tenantId]
+            );
+        } else {
+            $row = DB::selectOne(
+                'SELECT
+                    (SELECT COUNT(*) FROM customers) AS total,
+                    (SELECT COUNT(*) FROM customers WHERE created_at >= ?) AS new_this_month,
+                    (SELECT COUNT(*) FROM customers WHERE tax_id IS NOT NULL AND tax_id != ?) AS with_tax_id,
+                    (SELECT ROUND(AVG(payment_term_days)) FROM customers) AS avg_payment_term',
+                [$monthStart, '']
+            );
+        }
 
-    #[Computed]
-    public function statWithTaxId(): int
-    {
-        return Customer::query()->whereNotNull('tax_id')->where('tax_id', '!=', '')->count();
-    }
-
-    #[Computed]
-    public function statAvgPaymentTerm(): int
-    {
-        $avg = Customer::query()->avg('payment_term_days');
-
-        return (int) round((float) ($avg ?? 0));
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'new_this_month' => (int) ($row->new_this_month ?? 0),
+            'with_tax_id' => (int) ($row->with_tax_id ?? 0),
+            'avg_payment_term' => (int) ($row->avg_payment_term ?? 0),
+        ];
     }
 
     /**
@@ -104,6 +117,7 @@ new #[Title('Customers')] class extends Component
         return $q->orderBy($column, $direction);
     }
 
+    #[Computed]
     public function paginatedCustomers(): LengthAwarePaginator
     {
         return $this->customersQuery()->paginate(15);
@@ -129,7 +143,7 @@ new #[Title('Customers')] class extends Component
 
     public function isPageFullySelected(): bool
     {
-        $pageIds = $this->paginatedCustomers()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedCustomers->pluck('id')->map(fn ($id) => (int) $id)->all();
         if ($pageIds === []) {
             return false;
         }
@@ -141,7 +155,7 @@ new #[Title('Customers')] class extends Component
 
     public function toggleSelectPage(): void
     {
-        $pageIds = $this->paginatedCustomers()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedCustomers->pluck('id')->map(fn ($id) => (int) $id)->all();
         $selected = array_map('intval', $this->selectedIds);
         $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
 
@@ -270,19 +284,19 @@ new #[Title('Customers')] class extends Component
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total customers') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+            <flux:heading size="xl">{{ $this->customerStats['total'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('New this month') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statNewThisMonth }}</flux:heading>
+            <flux:heading size="xl">{{ $this->customerStats['new_this_month'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With tax ID') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statWithTaxId }}</flux:heading>
+            <flux:heading size="xl">{{ $this->customerStats['with_tax_id'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Avg. payment term') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statAvgPaymentTerm }}</flux:heading>
+            <flux:heading size="xl">{{ $this->customerStats['avg_payment_term'] }}</flux:heading>
         </flux:card>
     </div>
 
@@ -410,7 +424,7 @@ new #[Title('Customers')] class extends Component
                 </flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
-                @forelse ($this->paginatedCustomers() as $customer)
+                @forelse ($this->paginatedCustomers as $customer)
                     <flux:table.row :key="$customer->id">
                         @if ($canWriteCustomers)
                             <flux:table.cell>
@@ -432,7 +446,7 @@ new #[Title('Customers')] class extends Component
             </flux:table.rows>
         </flux:table>
         <div class="mt-4">
-            {{ $this->paginatedCustomers()->links() }}
+            {{ $this->paginatedCustomers->links() }}
         </div>
     </flux:card>
 </div>

@@ -1,7 +1,12 @@
-import Chart from 'chart.js/auto';
+async function initDashboardShipmentCharts() {
+    const roots = document.querySelectorAll('[data-shipment-chart]');
+    if (roots.length === 0) {
+        return;
+    }
 
-function initDashboardShipmentCharts() {
-    document.querySelectorAll('[data-shipment-chart]').forEach((root) => {
+    const { default: Chart } = await import('chart.js/auto');
+
+    roots.forEach((root) => {
         const raw = root.getAttribute('data-shipment-chart');
         if (!raw) {
             return;

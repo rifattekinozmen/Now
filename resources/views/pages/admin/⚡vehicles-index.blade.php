@@ -51,34 +51,32 @@ new #[Title('Vehicles')] class extends Component
         $this->selectedIds = [];
     }
 
+    /**
+     * @return array{total: int, inspection_soon: int, with_brand: int, with_model: int}
+     */
     #[Computed]
-    public function statTotal(): int
-    {
-        return Vehicle::query()->count();
-    }
-
-    #[Computed]
-    public function statInspectionSoon(): int
+    public function vehicleIndexStats(): array
     {
         $until = now()->addDays(30)->toDateString();
+        $today = now()->toDateString();
 
-        return Vehicle::query()
-            ->whereNotNull('inspection_valid_until')
-            ->where('inspection_valid_until', '<=', $until)
-            ->where('inspection_valid_until', '>=', now()->toDateString())
-            ->count();
-    }
+        $row = Vehicle::query()
+            ->toBase()
+            ->selectRaw(
+                'COUNT(*) as total, '.
+                'SUM(CASE WHEN inspection_valid_until IS NOT NULL AND inspection_valid_until <= ? AND inspection_valid_until >= ? THEN 1 ELSE 0 END) as inspection_soon, '.
+                'SUM(CASE WHEN brand IS NOT NULL AND brand != ? THEN 1 ELSE 0 END) as with_brand, '.
+                'SUM(CASE WHEN model IS NOT NULL AND model != ? THEN 1 ELSE 0 END) as with_model',
+                [$until, $today, '', '']
+            )
+            ->first();
 
-    #[Computed]
-    public function statWithBrand(): int
-    {
-        return Vehicle::query()->whereNotNull('brand')->where('brand', '!=', '')->count();
-    }
-
-    #[Computed]
-    public function statWithModel(): int
-    {
-        return Vehicle::query()->whereNotNull('model')->where('model', '!=', '')->count();
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'inspection_soon' => (int) ($row->inspection_soon ?? 0),
+            'with_brand' => (int) ($row->with_brand ?? 0),
+            'with_model' => (int) ($row->with_model ?? 0),
+        ];
     }
 
     /**
@@ -104,6 +102,7 @@ new #[Title('Vehicles')] class extends Component
         return $q->orderBy($column, $direction);
     }
 
+    #[Computed]
     public function paginatedVehicles(): LengthAwarePaginator
     {
         return $this->vehiclesQuery()->paginate(15);
@@ -129,7 +128,7 @@ new #[Title('Vehicles')] class extends Component
 
     public function isPageFullySelected(): bool
     {
-        $pageIds = $this->paginatedVehicles()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedVehicles->pluck('id')->map(fn ($id) => (int) $id)->all();
         if ($pageIds === []) {
             return false;
         }
@@ -141,7 +140,7 @@ new #[Title('Vehicles')] class extends Component
 
     public function toggleSelectPage(): void
     {
-        $pageIds = $this->paginatedVehicles()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedVehicles->pluck('id')->map(fn ($id) => (int) $id)->all();
         $selected = array_map('intval', $this->selectedIds);
         $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
 
@@ -218,19 +217,19 @@ new #[Title('Vehicles')] class extends Component
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total vehicles') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+            <flux:heading size="xl">{{ $this->vehicleIndexStats['total'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Inspection within 30 days') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statInspectionSoon }}</flux:heading>
+            <flux:heading size="xl">{{ $this->vehicleIndexStats['inspection_soon'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With brand set') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statWithBrand }}</flux:heading>
+            <flux:heading size="xl">{{ $this->vehicleIndexStats['with_brand'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With model set') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statWithModel }}</flux:heading>
+            <flux:heading size="xl">{{ $this->vehicleIndexStats['with_model'] }}</flux:heading>
         </flux:card>
     </div>
 
@@ -338,7 +337,7 @@ new #[Title('Vehicles')] class extends Component
                 </flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
-                @forelse ($this->paginatedVehicles() as $vehicle)
+                @forelse ($this->paginatedVehicles as $vehicle)
                     <flux:table.row :key="$vehicle->id">
                         @can(\App\Authorization\LogisticsPermission::ADMIN)
                             <flux:table.cell>
@@ -361,7 +360,7 @@ new #[Title('Vehicles')] class extends Component
             </flux:table.rows>
         </flux:table>
         <div class="mt-4">
-            {{ $this->paginatedVehicles()->links() }}
+            {{ $this->paginatedVehicles->links() }}
         </div>
     </flux:card>
 </div>

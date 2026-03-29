@@ -55,40 +55,33 @@ new #[Title('Finance summary')] class extends Component
         }
     }
 
+    /**
+     * @return array{total_orders: int, try_freight_sum: string, open_pipeline: int, currency_kinds: int}
+     */
     #[Computed]
-    public function statTotalOrders(): int
+    public function financeIndexKpis(): array
     {
-        return $this->ordersScoped()->count();
-    }
+        $draft = OrderStatus::Draft->value;
+        $confirmed = OrderStatus::Confirmed->value;
+        $inTransit = OrderStatus::InTransit->value;
 
-    #[Computed]
-    public function statTryFreightSum(): string
-    {
-        $sum = $this->ordersScoped()
-            ->where('currency_code', 'TRY')
-            ->whereNotNull('freight_amount')
-            ->sum('freight_amount');
+        $q = Order::query();
+        $this->applyOrderedAtRange($q);
 
-        return number_format((float) $sum, 2, '.', ',');
-    }
+        $row = $q->toBase()->selectRaw(
+            'COUNT(*) as total_orders, '.
+            'COALESCE(SUM(CASE WHEN currency_code = ? AND freight_amount IS NOT NULL THEN freight_amount ELSE 0 END), 0) as try_freight_sum, '.
+            'SUM(CASE WHEN status IN (?, ?, ?) THEN 1 ELSE 0 END) as open_pipeline, '.
+            'COUNT(DISTINCT CASE WHEN currency_code IS NOT NULL AND currency_code != ? THEN currency_code END) as currency_kinds',
+            ['TRY', $draft, $confirmed, $inTransit, '']
+        )->first();
 
-    #[Computed]
-    public function statOpenPipeline(): int
-    {
-        return $this->ordersScoped()->whereIn('status', [
-            OrderStatus::Draft,
-            OrderStatus::Confirmed,
-            OrderStatus::InTransit,
-        ])->count();
-    }
-
-    #[Computed]
-    public function statCurrencyKinds(): int
-    {
-        return (int) $this->ordersScoped()
-            ->whereNotNull('currency_code')
-            ->selectRaw('count(distinct currency_code) as c')
-            ->value('c');
+        return [
+            'total_orders' => (int) ($row->total_orders ?? 0),
+            'try_freight_sum' => number_format((float) ($row->try_freight_sum ?? 0), 2, '.', ','),
+            'open_pipeline' => (int) ($row->open_pipeline ?? 0),
+            'currency_kinds' => (int) ($row->currency_kinds ?? 0),
+        ];
     }
 
     /**
@@ -171,19 +164,19 @@ new #[Title('Finance summary')] class extends Component
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <flux:card class="!p-4">
                 <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total orders') }}</flux:text>
-                <flux:heading size="xl">{{ $this->statTotalOrders }}</flux:heading>
+                <flux:heading size="xl">{{ $this->financeIndexKpis['total_orders'] }}</flux:heading>
             </flux:card>
             <flux:card class="!p-4">
                 <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('TRY freight sum') }}</flux:text>
-                <flux:heading size="lg">{{ $this->statTryFreightSum }}</flux:heading>
+                <flux:heading size="lg">{{ $this->financeIndexKpis['try_freight_sum'] }}</flux:heading>
             </flux:card>
             <flux:card class="!p-4">
                 <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Open pipeline') }}</flux:text>
-                <flux:heading size="xl">{{ $this->statOpenPipeline }}</flux:heading>
+                <flux:heading size="xl">{{ $this->financeIndexKpis['open_pipeline'] }}</flux:heading>
             </flux:card>
             <flux:card class="!p-4">
                 <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Recorded currencies') }}</flux:text>
-                <flux:heading size="xl">{{ $this->statCurrencyKinds }}</flux:heading>
+                <flux:heading size="xl">{{ $this->financeIndexKpis['currency_kinds'] }}</flux:heading>
             </flux:card>
         </div>
 

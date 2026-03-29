@@ -16,10 +16,17 @@ abstract class TestCase extends BaseTestCase
      */
     public function createApplication(): Application
     {
-        $cachedConfig = dirname(__DIR__).'/bootstrap/cache/config.php';
+        $cacheDir = dirname(__DIR__).'/bootstrap/cache';
+        $cachedConfig = $cacheDir.'/config.php';
 
         if (is_file($cachedConfig)) {
             @unlink($cachedConfig);
+        }
+
+        foreach (glob($cacheDir.'/routes-*.php') ?: [] as $cachedRoutes) {
+            if (is_file($cachedRoutes)) {
+                @unlink($cachedRoutes);
+            }
         }
 
         return parent::createApplication();

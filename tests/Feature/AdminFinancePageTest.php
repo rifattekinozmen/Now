@@ -55,6 +55,6 @@ test('finance summary date filter limits order counts on page', function () {
         ->set('filterDateTo', $to)
         ->assertSet('filterDateFrom', $from)
         ->tap(function ($component) {
-            expect($component->instance()->statTotalOrders)->toBe(1);
+            expect($component->instance()->financeIndexKpis['total_orders'])->toBe(1);
         });
 });

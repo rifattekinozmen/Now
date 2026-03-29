@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\Operations\OperationalNotifier;
+use App\Livewire\DockerFriendlyCacheManager;
 use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
 use App\Services\Operations\CompositeOperationalNotifier;
 use App\Services\Operations\FreightEscalationEvaluator;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Compiler\Compiler;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,6 +36,12 @@ class AppServiceProvider extends ServiceProvider
             TotalEnergiesFuelQuoteService::class,
             fn (): TotalEnergiesFuelQuoteService => TotalEnergiesFuelQuoteService::fromConfig(),
         );
+
+        $this->app->extend('livewire.compiler', function (Compiler $compiler): Compiler {
+            return new Compiler(
+                new DockerFriendlyCacheManager($compiler->cacheManager->cacheDirectory)
+            );
+        });
     }
 
     /**

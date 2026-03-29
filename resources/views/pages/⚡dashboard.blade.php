@@ -3,12 +3,11 @@
 use App\Authorization\LogisticsPermission;
 use App\Enums\ShipmentStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
-use App\Models\Customer;
-use App\Models\DeliveryNumber;
-use App\Models\Order;
+use App\Enums\DeliveryNumberStatus;
 use App\Models\Shipment;
-use App\Models\Vehicle;
 use App\Services\Logistics\TcmbExchangeRateService;
+use App\Support\TenantContext;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -44,36 +43,56 @@ new #[Title('Dashboard')] class extends Component
         ];
     }
 
+    /**
+     * @return array{customers: int, vehicles: int, orders: int, open_shipments: int, available_pins: int}
+     */
     #[Computed]
-    public function countCustomers(): int
+    public function dashboardKpis(): array
     {
-        return Customer::query()->count();
-    }
+        $tenantId = TenantContext::id();
 
-    #[Computed]
-    public function countVehicles(): int
-    {
-        return Vehicle::query()->count();
-    }
+        if ($tenantId !== null) {
+            $row = DB::selectOne(
+                'SELECT
+                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ?) AS customers,
+                    (SELECT COUNT(*) FROM vehicles WHERE tenant_id = ?) AS vehicles,
+                    (SELECT COUNT(*) FROM orders WHERE tenant_id = ?) AS orders,
+                    (SELECT COUNT(*) FROM shipments WHERE tenant_id = ? AND status NOT IN (?, ?)) AS open_shipments,
+                    (SELECT COUNT(*) FROM delivery_numbers WHERE tenant_id = ? AND status = ?) AS available_pins',
+                [
+                    $tenantId,
+                    $tenantId,
+                    $tenantId,
+                    $tenantId,
+                    ShipmentStatus::Delivered->value,
+                    ShipmentStatus::Cancelled->value,
+                    $tenantId,
+                    DeliveryNumberStatus::Available->value,
+                ]
+            );
+        } else {
+            $row = DB::selectOne(
+                'SELECT
+                    (SELECT COUNT(*) FROM customers) AS customers,
+                    (SELECT COUNT(*) FROM vehicles) AS vehicles,
+                    (SELECT COUNT(*) FROM orders) AS orders,
+                    (SELECT COUNT(*) FROM shipments WHERE status NOT IN (?, ?)) AS open_shipments,
+                    (SELECT COUNT(*) FROM delivery_numbers WHERE status = ?) AS available_pins',
+                [
+                    ShipmentStatus::Delivered->value,
+                    ShipmentStatus::Cancelled->value,
+                    DeliveryNumberStatus::Available->value,
+                ]
+            );
+        }
 
-    #[Computed]
-    public function countOrders(): int
-    {
-        return Order::query()->count();
-    }
-
-    #[Computed]
-    public function countOpenShipments(): int
-    {
-        return Shipment::query()->whereNotIn('status', [\App\Enums\ShipmentStatus::Delivered, \App\Enums\ShipmentStatus::Cancelled])->count();
-    }
-
-    #[Computed]
-    public function countAvailablePins(): int
-    {
-        return DeliveryNumber::query()
-            ->where('status', \App\Enums\DeliveryNumberStatus::Available)
-            ->count();
+        return [
+            'customers' => (int) ($row->customers ?? 0),
+            'vehicles' => (int) ($row->vehicles ?? 0),
+            'orders' => (int) ($row->orders ?? 0),
+            'open_shipments' => (int) ($row->open_shipments ?? 0),
+            'available_pins' => (int) ($row->available_pins ?? 0),
+        ];
     }
 
     /**
@@ -235,23 +254,23 @@ new #[Title('Dashboard')] class extends Component
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <flux:card class="flex flex-col gap-1">
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('Customers') }}</flux:text>
-                <flux:heading size="xl">{{ $this->countCustomers }}</flux:heading>
+                <flux:heading size="xl">{{ $this->dashboardKpis['customers'] }}</flux:heading>
             </flux:card>
             <flux:card class="flex flex-col gap-1">
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('Vehicles') }}</flux:text>
-                <flux:heading size="xl">{{ $this->countVehicles }}</flux:heading>
+                <flux:heading size="xl">{{ $this->dashboardKpis['vehicles'] }}</flux:heading>
             </flux:card>
             <flux:card class="flex flex-col gap-1">
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('Orders') }}</flux:text>
-                <flux:heading size="xl">{{ $this->countOrders }}</flux:heading>
+                <flux:heading size="xl">{{ $this->dashboardKpis['orders'] }}</flux:heading>
             </flux:card>
             <flux:card class="flex flex-col gap-1">
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('Open shipments') }}</flux:text>
-                <flux:heading size="xl">{{ $this->countOpenShipments }}</flux:heading>
+                <flux:heading size="xl">{{ $this->dashboardKpis['open_shipments'] }}</flux:heading>
             </flux:card>
             <flux:card class="flex flex-col gap-1">
                 <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('PINs available') }}</flux:text>
-                <flux:heading size="xl">{{ $this->countAvailablePins }}</flux:heading>
+                <flux:heading size="xl">{{ $this->dashboardKpis['available_pins'] }}</flux:heading>
             </flux:card>
         </div>
 

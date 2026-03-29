@@ -60,28 +60,33 @@ new #[Title('Shipments')] class extends Component
         $this->selectedIds = [];
     }
 
+    /**
+     * @return array{total: int, planned: int, dispatched: int, delivered: int}
+     */
     #[Computed]
-    public function statTotal(): int
+    public function shipmentIndexStats(): array
     {
-        return Shipment::query()->count();
-    }
+        $planned = ShipmentStatus::Planned->value;
+        $dispatched = ShipmentStatus::Dispatched->value;
+        $delivered = ShipmentStatus::Delivered->value;
 
-    #[Computed]
-    public function statPlanned(): int
-    {
-        return Shipment::query()->where('status', ShipmentStatus::Planned)->count();
-    }
+        $row = Shipment::query()
+            ->toBase()
+            ->selectRaw(
+                'COUNT(*) as total, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as planned, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as dispatched, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as delivered',
+                [$planned, $dispatched, $delivered]
+            )
+            ->first();
 
-    #[Computed]
-    public function statDispatched(): int
-    {
-        return Shipment::query()->where('status', ShipmentStatus::Dispatched)->count();
-    }
-
-    #[Computed]
-    public function statDelivered(): int
-    {
-        return Shipment::query()->where('status', ShipmentStatus::Delivered)->count();
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'planned' => (int) ($row->planned ?? 0),
+            'dispatched' => (int) ($row->dispatched ?? 0),
+            'delivered' => (int) ($row->delivered ?? 0),
+        ];
     }
 
     public function shipmentStatusLabel(ShipmentStatus $status): string
@@ -140,6 +145,7 @@ new #[Title('Shipments')] class extends Component
         return $q->orderBy('shipments.'.$column, $direction);
     }
 
+    #[Computed]
     public function paginatedShipments(): LengthAwarePaginator
     {
         return $this->shipmentsQuery()->paginate(15);
@@ -165,7 +171,7 @@ new #[Title('Shipments')] class extends Component
 
     public function isPageFullySelected(): bool
     {
-        $pageIds = $this->paginatedShipments()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedShipments->pluck('id')->map(fn ($id) => (int) $id)->all();
         if ($pageIds === []) {
             return false;
         }
@@ -177,7 +183,7 @@ new #[Title('Shipments')] class extends Component
 
     public function toggleSelectPage(): void
     {
-        $pageIds = $this->paginatedShipments()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedShipments->pluck('id')->map(fn ($id) => (int) $id)->all();
         $selected = array_map('intval', $this->selectedIds);
         $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
 
@@ -328,19 +334,19 @@ new #[Title('Shipments')] class extends Component
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total shipments') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+            <flux:heading size="xl">{{ $this->shipmentIndexStats['total'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Planned') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statPlanned }}</flux:heading>
+            <flux:heading size="xl">{{ $this->shipmentIndexStats['planned'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Dispatched') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statDispatched }}</flux:heading>
+            <flux:heading size="xl">{{ $this->shipmentIndexStats['dispatched'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Delivered') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statDelivered }}</flux:heading>
+            <flux:heading size="xl">{{ $this->shipmentIndexStats['delivered'] }}</flux:heading>
         </flux:card>
     </div>
 
@@ -478,7 +484,7 @@ new #[Title('Shipments')] class extends Component
                 <flux:table.column>{{ __('Lifecycle') }}</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
-                @forelse ($this->paginatedShipments() as $shipment)
+                @forelse ($this->paginatedShipments as $shipment)
                     <flux:table.row :key="$shipment->id">
                         @if ($canWriteShipments)
                             <flux:table.cell>
@@ -574,7 +580,7 @@ new #[Title('Shipments')] class extends Component
             </flux:table.rows>
         </flux:table>
         <div class="mt-4">
-            {{ $this->paginatedShipments()->links() }}
+            {{ $this->paginatedShipments->links() }}
         </div>
     </flux:card>
 </div>

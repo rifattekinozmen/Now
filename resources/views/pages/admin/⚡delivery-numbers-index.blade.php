@@ -68,28 +68,33 @@ new #[Title('PIN pool')] class extends Component
         $this->selectedIds = [];
     }
 
+    /**
+     * @return array{total: int, available: int, assigned: int, used: int}
+     */
     #[Computed]
-    public function statTotal(): int
+    public function pinIndexStats(): array
     {
-        return DeliveryNumber::query()->count();
-    }
+        $available = DeliveryNumberStatus::Available->value;
+        $assigned = DeliveryNumberStatus::Assigned->value;
+        $used = DeliveryNumberStatus::Used->value;
 
-    #[Computed]
-    public function statAvailable(): int
-    {
-        return DeliveryNumber::query()->where('status', DeliveryNumberStatus::Available)->count();
-    }
+        $row = DeliveryNumber::query()
+            ->toBase()
+            ->selectRaw(
+                'COUNT(*) as total, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as available, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as assigned, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as used',
+                [$available, $assigned, $used]
+            )
+            ->first();
 
-    #[Computed]
-    public function statAssigned(): int
-    {
-        return DeliveryNumber::query()->where('status', DeliveryNumberStatus::Assigned)->count();
-    }
-
-    #[Computed]
-    public function statUsed(): int
-    {
-        return DeliveryNumber::query()->where('status', DeliveryNumberStatus::Used)->count();
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'available' => (int) ($row->available ?? 0),
+            'assigned' => (int) ($row->assigned ?? 0),
+            'used' => (int) ($row->used ?? 0),
+        ];
     }
 
     public function pinStatusLabel(DeliveryNumberStatus $status): string
@@ -127,6 +132,7 @@ new #[Title('PIN pool')] class extends Component
         return $q->orderBy($column, $direction);
     }
 
+    #[Computed]
     public function paginatedPins(): LengthAwarePaginator
     {
         return $this->deliveryNumbersQuery()->paginate(15);
@@ -152,7 +158,7 @@ new #[Title('PIN pool')] class extends Component
 
     public function isPageFullySelected(): bool
     {
-        $pageIds = $this->paginatedPins()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedPins->pluck('id')->map(fn ($id) => (int) $id)->all();
         if ($pageIds === []) {
             return false;
         }
@@ -164,7 +170,7 @@ new #[Title('PIN pool')] class extends Component
 
     public function toggleSelectPage(): void
     {
-        $pageIds = $this->paginatedPins()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedPins->pluck('id')->map(fn ($id) => (int) $id)->all();
         $selected = array_map('intval', $this->selectedIds);
         $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
 
@@ -378,19 +384,19 @@ new #[Title('PIN pool')] class extends Component
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total PINs') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+            <flux:heading size="xl">{{ $this->pinIndexStats['total'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Available PINs') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statAvailable }}</flux:heading>
+            <flux:heading size="xl">{{ $this->pinIndexStats['available'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Assigned PINs') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statAssigned }}</flux:heading>
+            <flux:heading size="xl">{{ $this->pinIndexStats['assigned'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Used PINs') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statUsed }}</flux:heading>
+            <flux:heading size="xl">{{ $this->pinIndexStats['used'] }}</flux:heading>
         </flux:card>
     </div>
 
@@ -557,7 +563,7 @@ new #[Title('PIN pool')] class extends Component
                 <flux:table.column></flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
-                @forelse ($this->paginatedPins() as $row)
+                @forelse ($this->paginatedPins as $row)
                     <flux:table.row :key="$row->id">
                         @if ($canWritePins)
                             <flux:table.cell>
@@ -587,7 +593,7 @@ new #[Title('PIN pool')] class extends Component
             </flux:table.rows>
         </flux:table>
         <div class="mt-4">
-            {{ $this->paginatedPins()->links() }}
+            {{ $this->paginatedPins->links() }}
         </div>
     </flux:card>
 </div>

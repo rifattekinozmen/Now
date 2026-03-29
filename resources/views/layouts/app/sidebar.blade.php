@@ -6,6 +6,8 @@
     <body class="min-h-screen antialiased">
         {{-- Livewire 4 (debug): single element root under <body> for full-page components --}}
         <div class="flex min-h-screen w-full bg-white dark:bg-zinc-800">
+        {{-- @persist: navigasyonda sidebar DOM yeniden boyanmaz (daha hızlı). :current + wire:current.ignore menüyü kilitliyordu; bunun yerine wire:current ile Livewire yolu eşleştirir. --}}
+        @persist('app-sidebar')
         <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
@@ -14,26 +16,26 @@
 
             <flux:sidebar.nav>
                 <flux:sidebar.group :heading="__('Platform')" class="grid">
-                    <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
+                    <flux:sidebar.item icon="home" :href="route('dashboard')" wire:navigate wire:current.exact="font-medium">
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
                     @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-                        <flux:sidebar.item icon="users" :href="route('admin.customers.index')" :current="request()->routeIs('admin.customers.*')" wire:navigate>
+                        <flux:sidebar.item icon="users" :href="route('admin.customers.index')" wire:navigate wire:current="font-medium">
                             {{ __('Customers') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" :current="request()->routeIs('admin.vehicles.*')" wire:navigate>
+                        <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" wire:navigate wire:current="font-medium">
                             {{ __('Vehicles') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders.index')" :current="request()->routeIs('admin.orders.*')" wire:navigate>
+                        <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders.index')" wire:navigate wire:current="font-medium">
                             {{ __('Orders') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="cube" :href="route('admin.shipments.index')" :current="request()->routeIs('admin.shipments.*')" wire:navigate>
+                        <flux:sidebar.item icon="cube" :href="route('admin.shipments.index')" wire:navigate wire:current="font-medium">
                             {{ __('Shipments') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" :current="request()->routeIs('admin.delivery-numbers.*')" wire:navigate>
+                        <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" wire:navigate wire:current="font-medium">
                             {{ __('PIN pool') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" :current="request()->routeIs('admin.finance.*')" wire:navigate>
+                        <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current="font-medium">
                             {{ __('Finance summary') }}
                         </flux:sidebar.item>
                     @endcanany
@@ -54,6 +56,7 @@
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>
+        @endpersist
 
         <div class="flex min-h-0 min-w-0 flex-1 flex-col">
         <!-- Mobile User Menu -->

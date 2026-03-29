@@ -18,6 +18,7 @@
         "livewire/flux": "^2.12.0",
         "livewire/livewire": "^4.1",
         "maatwebsite/excel": "^3.1",
+        "predis/predis": "^2.3|^3.0",
         "spatie/laravel-permission": "^6.21"
     },
     "require-dev": {
@@ -55,6 +56,12 @@
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
+        ],
+        "docker:infra": [
+            "docker compose up mysql redis -d"
+        ],
+        "docker:infra:down": [
+            "docker compose stop mysql redis"
         ],
         "lint": [
             "pint --parallel"

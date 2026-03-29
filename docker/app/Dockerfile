@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/app/opcache.ini /usr/local/etc/php/conf.d/opcache.ini
+COPY docker/app/realpath.ini /usr/local/etc/php/conf.d/realpath.ini
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html

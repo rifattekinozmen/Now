@@ -76,31 +76,30 @@ new #[Title('Orders')] class extends Component
         $this->selectedIds = [];
     }
 
+    /**
+     * @return array{total: int, draft: int, with_freight: int, currencies: int}
+     */
     #[Computed]
-    public function statTotal(): int
+    public function orderIndexStats(): array
     {
-        return Order::query()->count();
-    }
+        $draft = OrderStatus::Draft->value;
+        $row = Order::query()
+            ->toBase()
+            ->selectRaw(
+                'COUNT(*) as total, '.
+                'SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as draft, '.
+                'SUM(CASE WHEN freight_amount IS NOT NULL THEN 1 ELSE 0 END) as with_freight, '.
+                'COUNT(DISTINCT CASE WHEN currency_code IS NOT NULL AND currency_code != ? THEN currency_code END) as currencies',
+                [$draft, '']
+            )
+            ->first();
 
-    #[Computed]
-    public function statDraft(): int
-    {
-        return Order::query()->where('status', OrderStatus::Draft)->count();
-    }
-
-    #[Computed]
-    public function statWithFreight(): int
-    {
-        return Order::query()->whereNotNull('freight_amount')->count();
-    }
-
-    #[Computed]
-    public function statCurrencies(): int
-    {
-        return (int) Order::query()
-            ->whereNotNull('currency_code')
-            ->selectRaw('count(distinct currency_code) as c')
-            ->value('c');
+        return [
+            'total' => (int) ($row->total ?? 0),
+            'draft' => (int) ($row->draft ?? 0),
+            'with_freight' => (int) ($row->with_freight ?? 0),
+            'currencies' => (int) ($row->currencies ?? 0),
+        ];
     }
 
     public function orderStatusLabel(OrderStatus $status): string
@@ -143,6 +142,7 @@ new #[Title('Orders')] class extends Component
         return $q->orderBy($column, $direction);
     }
 
+    #[Computed]
     public function paginatedOrders(): LengthAwarePaginator
     {
         return $this->ordersQuery()->paginate(15);
@@ -168,7 +168,7 @@ new #[Title('Orders')] class extends Component
 
     public function isPageFullySelected(): bool
     {
-        $pageIds = $this->paginatedOrders()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedOrders->pluck('id')->map(fn ($id) => (int) $id)->all();
         if ($pageIds === []) {
             return false;
         }
@@ -180,7 +180,7 @@ new #[Title('Orders')] class extends Component
 
     public function toggleSelectPage(): void
     {
-        $pageIds = $this->paginatedOrders()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = $this->paginatedOrders->pluck('id')->map(fn ($id) => (int) $id)->all();
         $selected = array_map('intval', $this->selectedIds);
         $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
 
@@ -218,6 +218,7 @@ new #[Title('Orders')] class extends Component
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, Customer>
      */
+    #[Computed]
     public function customerOptions()
     {
         return Customer::query()->orderBy('legal_name')->limit(500)->get();
@@ -338,19 +339,19 @@ new #[Title('Orders')] class extends Component
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total orders') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statTotal }}</flux:heading>
+            <flux:heading size="xl">{{ $this->orderIndexStats['total'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Draft orders') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statDraft }}</flux:heading>
+            <flux:heading size="xl">{{ $this->orderIndexStats['draft'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Freight orders') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statWithFreight }}</flux:heading>
+            <flux:heading size="xl">{{ $this->orderIndexStats['with_freight'] }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Recorded currencies') }}</flux:text>
-            <flux:heading size="xl">{{ $this->statCurrencies }}</flux:heading>
+            <flux:heading size="xl">{{ $this->orderIndexStats['currencies'] }}</flux:heading>
         </flux:card>
     </div>
 
@@ -366,7 +367,7 @@ new #[Title('Orders')] class extends Component
                             class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
                         >
                             <option value="">{{ __('Select…') }}</option>
-                            @foreach ($this->customerOptions() as $c)
+                            @foreach ($this->customerOptions as $c)
                                 <option value="{{ $c->id }}">{{ $c->legal_name }}</option>
                             @endforeach
                         </select>
@@ -536,7 +537,7 @@ new #[Title('Orders')] class extends Component
                 </flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
-                @forelse ($this->paginatedOrders() as $order)
+                @forelse ($this->paginatedOrders as $order)
                     <flux:table.row :key="$order->id">
                         @if ($canWriteOrders)
                             <flux:table.cell>
@@ -560,7 +561,7 @@ new #[Title('Orders')] class extends Component
             </flux:table.rows>
         </flux:table>
         <div class="mt-4">
-            {{ $this->paginatedOrders()->links() }}
+            {{ $this->paginatedOrders->links() }}
         </div>
     </flux:card>
 </div>
