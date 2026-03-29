@@ -28,6 +28,10 @@ new #[Title('Customers')] class extends Component
 
     public string $trade_name = '';
 
+    public int $payment_term_days = 30;
+
+    public ?int $editingCustomerId = null;
+
     public $importFile = null;
 
     public string $filterSearch = '';
@@ -50,11 +54,13 @@ new #[Title('Customers')] class extends Component
     {
         $this->resetPage();
         $this->selectedIds = [];
+        $this->cancelCustomerEdit();
     }
 
     public function updatedPage(): void
     {
         $this->selectedIds = [];
+        $this->cancelCustomerEdit();
     }
 
     /**
@@ -139,6 +145,7 @@ new #[Title('Customers')] class extends Component
 
         $this->resetPage();
         $this->selectedIds = [];
+        $this->cancelCustomerEdit();
     }
 
     public function isPageFullySelected(): bool
@@ -164,6 +171,8 @@ new #[Title('Customers')] class extends Component
         } else {
             $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
         }
+
+        $this->selectedIds = array_values(array_map('intval', $this->selectedIds));
     }
 
     public function bulkDeleteSelected(): void
@@ -200,16 +209,89 @@ new #[Title('Customers')] class extends Component
             'legal_name' => ['required', 'string', 'max:255'],
             'tax_id' => ['nullable', 'string', 'max:32'],
             'trade_name' => ['nullable', 'string', 'max:255'],
+            'payment_term_days' => ['required', 'integer', 'min:0', 'max:3650'],
         ]);
 
         Customer::query()->create([
             'legal_name' => $validated['legal_name'],
             'tax_id' => $validated['tax_id'] ?: null,
             'trade_name' => $validated['trade_name'] ?: null,
-            'payment_term_days' => 30,
+            'payment_term_days' => $validated['payment_term_days'],
         ]);
 
-        $this->reset('legal_name', 'tax_id', 'trade_name');
+        $this->reset('legal_name', 'tax_id', 'trade_name', 'payment_term_days');
+        $this->payment_term_days = 30;
+    }
+
+    public function startEditCustomer(int $customerId): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::CUSTOMERS_WRITE);
+
+        $customer = Customer::query()->findOrFail($customerId);
+        Gate::authorize('update', $customer);
+
+        $this->editingCustomerId = $customer->id;
+        $this->legal_name = $customer->legal_name;
+        $this->tax_id = $customer->tax_id ?? '';
+        $this->trade_name = $customer->trade_name ?? '';
+        $this->payment_term_days = $customer->payment_term_days;
+    }
+
+    public function cancelCustomerEdit(): void
+    {
+        $this->editingCustomerId = null;
+        $this->reset('legal_name', 'tax_id', 'trade_name', 'payment_term_days');
+        $this->payment_term_days = 30;
+    }
+
+    public function updateCustomer(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::CUSTOMERS_WRITE);
+
+        if ($this->editingCustomerId === null) {
+            return;
+        }
+
+        $customer = Customer::query()->findOrFail($this->editingCustomerId);
+        Gate::authorize('update', $customer);
+
+        $validated = $this->validate([
+            'legal_name' => ['required', 'string', 'max:255'],
+            'tax_id' => ['nullable', 'string', 'max:32'],
+            'trade_name' => ['nullable', 'string', 'max:255'],
+            'payment_term_days' => ['required', 'integer', 'min:0', 'max:3650'],
+        ]);
+
+        $customer->update([
+            'legal_name' => $validated['legal_name'],
+            'tax_id' => $validated['tax_id'] ?: null,
+            'trade_name' => $validated['trade_name'] ?: null,
+            'payment_term_days' => $validated['payment_term_days'],
+        ]);
+
+        $this->cancelCustomerEdit();
+
+        session()->flash('customer_updated', true);
+    }
+
+    public function deleteCustomer(int $customerId): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::CUSTOMERS_WRITE);
+
+        $customer = Customer::query()->findOrFail($customerId);
+        Gate::authorize('delete', $customer);
+        $customer->delete();
+
+        $this->selectedIds = array_values(array_diff(
+            array_map('intval', $this->selectedIds),
+            [(int) $customerId]
+        ));
+
+        if ($this->editingCustomerId === $customerId) {
+            $this->cancelCustomerEdit();
+        }
+
+        session()->flash('customer_deleted', true);
     }
 
     public function importCustomers(ExcelImportService $excelImport): void
@@ -264,6 +346,18 @@ new #[Title('Customers')] class extends Component
         </flux:callout>
     @endif
 
+    @if (session()->has('customer_updated'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Customer updated.') }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('customer_deleted'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Customer deleted.') }}
+        </flux:callout>
+    @endif
+
     @if (session()->has('import_created'))
         <flux:callout variant="success" icon="check-circle">
             {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
@@ -304,15 +398,32 @@ new #[Title('Customers')] class extends Component
 
     @if ($canWriteCustomers)
         <div class="grid gap-6 lg:grid-cols-2">
-            <flux:card>
-                <flux:heading size="lg" class="mb-4">{{ __('New customer') }}</flux:heading>
-                <form wire:submit="saveCustomer" class="flex flex-col gap-4">
-                    <flux:input wire:model="legal_name" :label="__('Legal name')" required />
-                    <flux:input wire:model="tax_id" :label="__('Tax ID')" />
-                    <flux:input wire:model="trade_name" :label="__('Trade name')" />
-                    <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                </form>
-            </flux:card>
+            @if ($editingCustomerId !== null)
+                <flux:card>
+                    <flux:heading size="lg" class="mb-4">{{ __('Edit customer') }}</flux:heading>
+                    <form wire:submit="updateCustomer" class="flex flex-col gap-4">
+                        <flux:input wire:model="legal_name" :label="__('Legal name')" required />
+                        <flux:input wire:model="tax_id" :label="__('Tax ID')" />
+                        <flux:input wire:model="trade_name" :label="__('Trade name')" />
+                        <flux:input wire:model="payment_term_days" type="number" min="0" max="3650" :label="__('Payment term (days)')" />
+                        <div class="flex flex-wrap gap-2">
+                            <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                            <flux:button type="button" variant="ghost" wire:click="cancelCustomerEdit">{{ __('Cancel') }}</flux:button>
+                        </div>
+                    </form>
+                </flux:card>
+            @else
+                <flux:card>
+                    <flux:heading size="lg" class="mb-4">{{ __('New customer') }}</flux:heading>
+                    <form wire:submit="saveCustomer" class="flex flex-col gap-4">
+                        <flux:input wire:model="legal_name" :label="__('Legal name')" required />
+                        <flux:input wire:model="tax_id" :label="__('Tax ID')" />
+                        <flux:input wire:model="trade_name" :label="__('Trade name')" />
+                        <flux:input wire:model="payment_term_days" type="number" min="0" max="3650" :label="__('Payment term (days)')" />
+                        <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                    </form>
+                </flux:card>
+            @endif
 
             <flux:card>
                 <flux:heading size="lg" class="mb-4">{{ __('Import Excel') }}</flux:heading>
@@ -368,7 +479,7 @@ new #[Title('Customers')] class extends Component
                             type="checkbox"
                             class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
                             @checked($this->isPageFullySelected())
-                            wire:click="toggleSelectPage"
+                            wire:click.prevent="toggleSelectPage"
                             wire:key="select-page-customers"
                         />
                     </flux:table.column>
@@ -421,14 +532,18 @@ new #[Title('Customers')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
-                <flux:table.column>{{ __('Profile') }}</flux:table.column>
+                <flux:table.column>{{ __('Actions') }}</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @forelse ($this->paginatedCustomers as $customer)
                     <flux:table.row :key="$customer->id">
                         @if ($canWriteCustomers)
                             <flux:table.cell>
-                                <flux:checkbox wire:model.live="selectedIds" value="{{ $customer->id }}" />
+                                <flux:checkbox
+                                    wire:key="customer-select-{{ $customer->id }}"
+                                    wire:model.live="selectedIds"
+                                    :value="(int) $customer->id"
+                                />
                             </flux:table.cell>
                         @endif
                         <flux:table.cell>{{ $customer->id }}</flux:table.cell>
@@ -438,9 +553,25 @@ new #[Title('Customers')] class extends Component
                         <flux:table.cell>{{ $customer->payment_term_days }}</flux:table.cell>
                         <flux:table.cell>{{ $customer->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</flux:table.cell>
                         <flux:table.cell>
-                            <flux:link :href="route('admin.customers.show', $customer)" wire:navigate>
-                                {{ __('View') }}
-                            </flux:link>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <flux:link :href="route('admin.customers.show', $customer)" wire:navigate>
+                                    {{ __('View') }}
+                                </flux:link>
+                                @if ($canWriteCustomers)
+                                    <flux:button type="button" size="sm" variant="ghost" wire:click="startEditCustomer({{ $customer->id }})">
+                                        {{ __('Edit') }}
+                                    </flux:button>
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="danger"
+                                        wire:click="deleteCustomer({{ $customer->id }})"
+                                        wire:confirm="{{ __('Delete this customer? This also removes their orders and shipments.') }}"
+                                    >
+                                        {{ __('Delete') }}
+                                    </flux:button>
+                                @endif
+                            </div>
                         </flux:table.cell>
                     </flux:table.row>
                 @empty

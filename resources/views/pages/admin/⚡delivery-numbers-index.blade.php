@@ -179,6 +179,8 @@ new #[Title('PIN pool')] class extends Component
         } else {
             $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
         }
+
+        $this->selectedIds = array_values(array_map('intval', $this->selectedIds));
     }
 
     public function bulkDeleteSelected(): void
@@ -525,7 +527,7 @@ new #[Title('PIN pool')] class extends Component
                             type="checkbox"
                             class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
                             @checked($this->isPageFullySelected())
-                            wire:click="toggleSelectPage"
+                            wire:click.prevent="toggleSelectPage"
                             wire:key="select-page-pins"
                         />
                     </flux:table.column>
@@ -570,7 +572,11 @@ new #[Title('PIN pool')] class extends Component
                     <flux:table.row :key="$row->id">
                         @if ($canWritePins)
                             <flux:table.cell>
-                                <flux:checkbox wire:model.live="selectedIds" value="{{ $row->id }}" />
+                                <flux:checkbox
+                                    wire:key="pin-select-{{ $row->id }}"
+                                    wire:model.live="selectedIds"
+                                    :value="(int) $row->id"
+                                />
                             </flux:table.cell>
                         @endif
                         <flux:table.cell>{{ $row->id }}</flux:table.cell>

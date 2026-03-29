@@ -192,6 +192,8 @@ new #[Title('Shipments')] class extends Component
         } else {
             $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
         }
+
+        $this->selectedIds = array_values(array_map('intval', $this->selectedIds));
     }
 
     public function bulkDeleteSelected(): void
@@ -491,7 +493,11 @@ new #[Title('Shipments')] class extends Component
                     <flux:table.row :key="$shipment->id">
                         @if ($canWriteShipments)
                             <flux:table.cell>
-                                <flux:checkbox wire:model.live="selectedIds" value="{{ $shipment->id }}" />
+                                <flux:checkbox
+                                    wire:key="shipment-select-{{ $shipment->id }}"
+                                    wire:model.live="selectedIds"
+                                    :value="(int) $shipment->id"
+                                />
                             </flux:table.cell>
                         @endif
                         <flux:table.cell>

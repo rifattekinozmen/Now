@@ -19,7 +19,10 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" wire:navigate wire:current.exact="font-medium">
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
-                    @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                </flux:sidebar.group>
+
+                @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                    <flux:sidebar.group :heading="__('Operations')" class="grid">
                         <flux:sidebar.item icon="users" :href="route('admin.customers.index')" wire:navigate wire:current="font-medium">
                             {{ __('Customers') }}
                         </flux:sidebar.item>
@@ -38,6 +41,9 @@
                         <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" wire:navigate wire:current="font-medium">
                             {{ __('PIN pool') }}
                         </flux:sidebar.item>
+                    </flux:sidebar.group>
+
+                    <flux:sidebar.group :heading="__('Finance')" class="grid">
                         <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Finance summary') }}
                         </flux:sidebar.item>
@@ -65,8 +71,8 @@
                         <flux:sidebar.item icon="calendar" :href="route('admin.finance.fiscal-opening-balances.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Fiscal opening balances') }}
                         </flux:sidebar.item>
-                    @endcanany
-                </flux:sidebar.group>
+                    </flux:sidebar.group>
+                @endcanany
             </flux:sidebar.nav>
 
             <flux:spacer />
@@ -120,10 +126,10 @@
                     <flux:menu.heading>{{ __('Language') }}</flux:menu.heading>
                     <flux:menu.radio.group>
                         <flux:menu.item :href="route('locale.switch', ['locale' => 'tr'])" icon="language" wire:navigate>
-                            Türkçe
+                            {{ __('Turkish') }}
                         </flux:menu.item>
                         <flux:menu.item :href="route('locale.switch', ['locale' => 'en'])" icon="language" wire:navigate>
-                            English
+                            {{ __('English') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>
 

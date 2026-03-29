@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('opening_credit', 15, 2)->default('0.00');
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'chart_account_id', 'fiscal_year']);
+            $table->unique(['tenant_id', 'chart_account_id', 'fiscal_year'], 'fob_tenant_acct_year_uq');
         });
     }
 

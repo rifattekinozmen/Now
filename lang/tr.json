@@ -320,5 +320,19 @@
     "Breadcrumb": "İçerik yolu",
     "POD files and scanned waybills will be listed here in a later iteration.": "POD dosyaları ve taranmış irsaliyeler sonraki iterasyonda burada listelenecek.",
     "Operations": "Operasyon",
-    "Shipment overview": "Sevkiyat özeti"
+    "Finance": "Finans",
+    "Finance reports": "Finans raporları",
+    "Chart of accounts": "Hesap planı",
+    "Journal entries": "Yevmiye kayıtları",
+    "Trial balance": "Mizan",
+    "Edit customer": "Müşteriyi düzenle",
+    "Save changes": "Değişiklikleri kaydet",
+    "Customer updated.": "Müşteri güncellendi.",
+    "Customer deleted.": "Müşteri silindi.",
+    "Delete this customer? This also removes their orders and shipments.": "Bu müşteri silinsin mi? Bağlı sipariş ve sevkiyatlar da silinir.",
+    "Edit": "Düzenle",
+    "Turkish": "Türkçe",
+    "English": "İngilizce",
+    "View": "Görüntüle",
+    "Edit vehicle": "Aracı düzenle"
 }

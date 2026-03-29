@@ -157,6 +157,8 @@ new #[Title('Vehicles')] class extends Component
         } else {
             $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
         }
+
+        $this->selectedIds = array_values(array_map('intval', $this->selectedIds));
     }
 
     public function bulkDeleteSelected(): void
@@ -418,7 +420,7 @@ new #[Title('Vehicles')] class extends Component
                             type="checkbox"
                             class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
                             @checked($this->isPageFullySelected())
-                            wire:click="toggleSelectPage"
+                            wire:click.prevent="toggleSelectPage"
                             wire:key="select-page-vehicles"
                         />
                     </flux:table.column>
@@ -472,7 +474,11 @@ new #[Title('Vehicles')] class extends Component
                     <flux:table.row :key="$vehicle->id">
                         @if ($canWriteVehicles)
                             <flux:table.cell>
-                                <flux:checkbox wire:model.live="selectedIds" value="{{ $vehicle->id }}" />
+                                <flux:checkbox
+                                    wire:key="vehicle-select-{{ $vehicle->id }}"
+                                    wire:model.live="selectedIds"
+                                    :value="(int) $vehicle->id"
+                                />
                             </flux:table.cell>
                         @endif
                         @if ($canWriteVehicles)
