@@ -21,6 +21,7 @@ test('finance summary shows freight total for tenant scoped orders', function ()
 
     $response = $this->get(route('admin.finance.index'));
     $response->assertSuccessful();
+    $response->assertSee(__('Cash flow projection (next :days days)', ['days' => 30]), false);
     $response->assertSee(__('Freight totals by currency'), false);
     $response->assertSee('TRY', false);
     $response->assertSee('1,500.50', false);

@@ -98,7 +98,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `pages::admin.shipments-index` + `pages::admin.shipment-show` | KISMI _(durum geçişleri; POD iskeleti; admin QR SVG `admin.shipments.qr.svg`; kamu izleme `track.shipment`)_ _(2026-03-29)_ |
+| `index`, `create`, `edit`, `show` | `pages::admin.shipments-index` + `pages::admin.shipment-show` | KISMI _(durum geçişleri; POD + canvas imza PNG, `admin.shipments.pod.signature` / `admin.shipments.pod.print`; QR SVG; `track.shipment`)_ _(2026-03-29)_ |
 
 ### Kamu — sevkiyat izleme (QR hedef URL)
 

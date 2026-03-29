@@ -19,6 +19,9 @@ new #[Title('Shipment detail')] class extends Component
 
     public string $pod_received_by = '';
 
+    /** @var string data:image/png;base64,... from canvas (optional) */
+    public string $pod_signature_data = '';
+
     public function mount(Shipment $shipment): void
     {
         Gate::authorize('view', $shipment);
@@ -57,13 +60,22 @@ new #[Title('Shipment detail')] class extends Component
     {
         $this->ensureLogisticsWrite(LogisticsPermission::SHIPMENTS_WRITE);
 
+        $this->validate([
+            'pod_note' => ['nullable', 'string', 'max:2000'],
+            'pod_received_by' => ['nullable', 'string', 'max:255'],
+            'pod_signature_data' => ['nullable', 'string', 'max:786432'],
+        ]);
+
         $s = Shipment::query()->findOrFail($this->shipment->id);
         Gate::authorize('update', $s);
+
+        $sig = trim($this->pod_signature_data);
 
         try {
             $transitions->markDelivered($s, [
                 'note' => $this->pod_note,
                 'received_by' => $this->pod_received_by,
+                'signature_data_url' => $sig !== '' ? $sig : null,
             ]);
         } catch (\InvalidArgumentException $e) {
             session()->flash('error', $e->getMessage());
@@ -71,7 +83,7 @@ new #[Title('Shipment detail')] class extends Component
             return;
         }
 
-        $this->reset('pod_note', 'pod_received_by');
+        $this->reset('pod_note', 'pod_received_by', 'pod_signature_data');
         $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
     }
 
@@ -154,6 +166,16 @@ new #[Title('Shipment detail')] class extends Component
     @if ($s->status === \App\Enums\ShipmentStatus::Delivered && is_array($s->pod_payload) && $s->pod_payload !== [])
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('Proof of delivery (POD)') }}</flux:heading>
+            <div class="mb-4 flex flex-wrap gap-2">
+                <flux:button :href="route('admin.shipments.pod.print', $s)" variant="outline" target="_blank">
+                    {{ __('Print POD') }}
+                </flux:button>
+                @if (! empty($s->pod_payload['signature_storage_path']))
+                    <flux:button :href="route('admin.shipments.pod.signature', $s)" variant="ghost" download>
+                        {{ __('Download signature (PNG)') }}
+                    </flux:button>
+                @endif
+            </div>
             <dl class="grid gap-2 text-sm sm:grid-cols-2">
                 <div class="sm:col-span-2">
                     <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Received by') }}</dt>
@@ -163,7 +185,23 @@ new #[Title('Shipment detail')] class extends Component
                     <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Note') }}</dt>
                     <dd class="whitespace-pre-wrap font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['note'] ?? '—' }}</dd>
                 </div>
+                @if (! empty($s->pod_payload['signed_at']))
+                    <div class="sm:col-span-2">
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Signed at') }}</dt>
+                        <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['signed_at'] }}</dd>
+                    </div>
+                @endif
             </dl>
+            @if (! empty($s->pod_payload['signature_storage_path']))
+                <div class="mt-4">
+                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Signature') }}</flux:text>
+                    <img
+                        src="{{ route('admin.shipments.pod.signature', $s) }}"
+                        alt="{{ __('Signature') }}"
+                        class="mt-2 max-h-48 max-w-full rounded border border-zinc-200 dark:border-zinc-600"
+                    />
+                </div>
+            @endif
         </flux:card>
     @endif
 
@@ -256,10 +294,87 @@ new #[Title('Shipment detail')] class extends Component
                         {{ __('Cancel') }}
                     </flux:button>
                 @elseif ($s->status === \App\Enums\ShipmentStatus::Dispatched)
-                    <div class="flex w-full min-w-0 flex-col gap-4 sm:max-w-md">
+                    <div
+                        class="flex w-full min-w-0 flex-col gap-4 sm:max-w-md"
+                        x-data="{
+                            drawing: false,
+                            dirty: false,
+                            bindCanvas() {
+                                const c = this.$refs.pad
+                                if (!c) return
+                                const ctx = c.getContext('2d')
+                                ctx.lineWidth = 2
+                                ctx.strokeStyle = document.documentElement.classList.contains('dark') ? '#f4f4f5' : '#18181b'
+                                ctx.lineCap = 'round'
+                                const pos = (ev) => {
+                                    const r = c.getBoundingClientRect()
+                                    return { x: ev.clientX - r.left, y: ev.clientY - r.top }
+                                }
+                                c.addEventListener('pointerdown', (e) => {
+                                    e.preventDefault()
+                                    this.drawing = true
+                                    this.dirty = true
+                                    try {
+                                        c.setPointerCapture(e.pointerId)
+                                    } catch (_) {}
+                                    const p = pos(e)
+                                    ctx.beginPath()
+                                    ctx.moveTo(p.x, p.y)
+                                })
+                                c.addEventListener('pointermove', (e) => {
+                                    if (!this.drawing) return
+                                    const p = pos(e)
+                                    ctx.lineTo(p.x, p.y)
+                                    ctx.stroke()
+                                })
+                                const end = () => {
+                                    this.drawing = false
+                                }
+                                c.addEventListener('pointerup', end)
+                                c.addEventListener('pointercancel', end)
+                            },
+                            clearPad() {
+                                const c = this.$refs.pad
+                                if (!c) return
+                                c.getContext('2d').clearRect(0, 0, c.width, c.height)
+                                this.dirty = false
+                                $wire.set('pod_signature_data', '')
+                            },
+                            submitPod() {
+                                const c = this.$refs.pad
+                                if (!this.dirty || !c) {
+                                    $wire.set('pod_signature_data', '')
+                                } else {
+                                    $wire.set('pod_signature_data', c.toDataURL('image/png'))
+                                }
+                                $wire.markDelivered()
+                            },
+                        }"
+                        x-init="bindCanvas()"
+                    >
                         <flux:input wire:model="pod_received_by" :label="__('Received by (optional)')" />
                         <flux:textarea wire:model="pod_note" :label="__('POD note (optional)')" rows="2" />
-                        <flux:button type="button" variant="primary" wire:click="markDelivered">
+                        <div class="flex flex-col gap-2">
+                            <flux:text class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('Signature (optional)') }}</flux:text>
+                            <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
+                                {{ __('Draw with mouse or finger, then mark delivered.') }}
+                            </flux:text>
+                            <div
+                                wire:ignore
+                                class="rounded-lg border border-zinc-200 bg-white dark:border-zinc-600 dark:bg-zinc-900"
+                            >
+                                <canvas
+                                    x-ref="pad"
+                                    width="400"
+                                    height="160"
+                                    class="block max-w-full touch-none cursor-crosshair"
+                                ></canvas>
+                            </div>
+                            <flux:button type="button" variant="ghost" size="sm" x-on:click="clearPad()">
+                                {{ __('Clear signature') }}
+                            </flux:button>
+                        </div>
+                        <flux:button type="button" variant="primary" x-on:click="submitPod()">
                             {{ __('Mark delivered') }}
                         </flux:button>
                     </div>

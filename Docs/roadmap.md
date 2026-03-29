@@ -63,9 +63,9 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] Sevkiyat **detay sayfası** + dikey lifecycle timeline (`admin.shipments.show`, `pages::admin.shipment-show`) _(tamamlandı: 2026-03-28)_
 - [x] Sipariş **detay + lifecycle stepper** (`admin.orders.show`, `OrderLifecyclePresentation`) + sevkiyat özeti _(tamamlandı: 2026-03-29)_
 - [x] **QR + kamu izleme:** `public_reference_token`, `admin.shipments.qr.svg`, `track.shipment` _(tamamlandı: 2026-03-29)_
-- [x] **POD iskeleti:** `pod_payload` + teslim notu/alıcı; imza/PDF sonraki adım _(tamamlandı: 2026-03-29)_
+- [x] **POD:** `pod_payload` (not, alıcı, `signature_storage_path`, `signed_at`); canvas imza → `PodSignatureStorage` (PNG); `admin.shipments.pod.signature`, `admin.shipments.pod.print` (tarayıcıdan PDF) _(2026-03-29)_
 - [x] Sipariş / araç / personel **içe aktarma** + sipariş/araç/personel **düzenleme** (admin index sayfaları) _(tamamlandı: 2026-03-29)_
-- [ ] TotalEnergies alan/yanıt şeması müşteri sözleşmesine göre kesinleştirme; dijital imza/PDF POD — sonraki iterasyon
+- [ ] TotalEnergies alan/yanıt şeması müşteri sözleşmesine göre kesinleştirme — sonraki iterasyon
 
 ## Faz C — ilerleme (tamamlanan / kısmi)
 
@@ -93,7 +93,7 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 _Kayıt: uygulama sözleşmesi için boş veya no-op sınıflar; üretim akışı ayrı onay._
 
 - [ ] `App\Services\Finance\BankStatementOcrService` — banka ekstresi OCR _(iskelet sınıf: 2026-03-29)_
-- [ ] `App\Services\Finance\CashFlowProjectionService` — nakit/vade projeksiyonu _(iskelet: 2026-03-29)_
+- [x] `App\Services\Finance\CashFlowProjectionService` — sipariş tarihi + müşteri vade günü; finans özeti tablosu _(2026-03-29)_
 - [ ] `App\Services\Integrations\Logo\LogoErpExportService` — Logo ERP _(iskelet: 2026-03-29)_
 - [ ] `App\Services\Logistics\AuditAiEvaluationService` — denetim/AI değerlendirme _(iskelet: 2026-03-29)_
 

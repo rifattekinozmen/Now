@@ -9,6 +9,7 @@ use App\Models\Shipment;
 use App\Models\User;
 use App\Services\Logistics\ShipmentStatusTransitionService;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Storage;
 
 afterEach(fn () => Mockery::close());
 
@@ -31,6 +32,25 @@ test('planned shipment can be dispatched then delivered', function () {
         ->and($shipment->delivered_at)->not->toBeNull()
         ->and($shipment->pod_payload)->toBeNull();
 });
+
+test('mark delivered rejects invalid signature data url', function () {
+    Storage::fake('local');
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+    $order = Order::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'customer_id' => $customer->id,
+    ]);
+    $shipment = Shipment::factory()->create([
+        'order_id' => $order->id,
+        'status' => ShipmentStatus::Dispatched,
+    ]);
+    $svc = new ShipmentStatusTransitionService;
+
+    $svc->markDelivered($shipment, ['signature_data_url' => 'data:text/plain;base64,QQ==']);
+})->throws(InvalidArgumentException::class);
 
 test('mark delivered stores pod when user authenticated', function () {
     $user = User::factory()->create();

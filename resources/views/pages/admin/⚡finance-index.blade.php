@@ -2,6 +2,7 @@
 
 use App\Enums\OrderStatus;
 use App\Models\Order;
+use App\Services\Finance\CashFlowProjectionService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -138,6 +139,26 @@ new #[Title('Finance summary')] class extends Component
 
         return $rows;
     }
+
+    /**
+     * @return list<array{order_id: int, order_number: string, due_date: string, amount: string|null, currency_code: string|null, customer_name: string|null}>
+     */
+    #[Computed]
+    public function cashFlowProjectionRows(): array
+    {
+        $user = auth()->user();
+        if ($user === null || $user->tenant_id === null) {
+            return [];
+        }
+
+        $svc = app(CashFlowProjectionService::class);
+
+        return $svc->projectForTenant(
+            (int) $user->tenant_id,
+            Carbon::now()->startOfDay(),
+            Carbon::now()->addDays(30)->endOfDay()
+        );
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
@@ -186,6 +207,41 @@ new #[Title('Finance summary')] class extends Component
                 {{ __('Totals are not tax, legal, or accounting advice. Use your own controls for compliance.') }}
             </flux:callout.text>
         </flux:callout>
+
+        <flux:card>
+            <flux:heading size="lg" class="mb-2">{{ __('Cash flow projection (next :days days)', ['days' => 30]) }}</flux:heading>
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Based on order date plus customer payment term (days).') }}
+            </flux:text>
+            @if (count($this->cashFlowProjectionRows) === 0)
+                <flux:text class="text-sm text-zinc-500">{{ __('No projected inflows in this window.') }}</flux:text>
+            @else
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Order') }}</flux:table.column>
+                        <flux:table.column>{{ __('Customer') }}</flux:table.column>
+                        <flux:table.column>{{ __('Expected collection date') }}</flux:table.column>
+                        <flux:table.column>{{ __('Amount') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($this->cashFlowProjectionRows as $row)
+                            <flux:table.row :key="$row['order_id']">
+                                <flux:table.cell>{{ $row['order_number'] }}</flux:table.cell>
+                                <flux:table.cell>{{ $row['customer_name'] ?? '—' }}</flux:table.cell>
+                                <flux:table.cell>{{ $row['due_date'] }}</flux:table.cell>
+                                <flux:table.cell>
+                                    @if ($row['amount'] !== null)
+                                        {{ $row['amount'] }} {{ $row['currency_code'] ?? '' }}
+                                    @else
+                                        —
+                                    @endif
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            @endif
+        </flux:card>
 
         <div class="grid gap-6 lg:grid-cols-2">
             <flux:card>

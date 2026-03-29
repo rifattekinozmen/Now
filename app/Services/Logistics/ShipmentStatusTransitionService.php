@@ -27,7 +27,7 @@ final class ShipmentStatusTransitionService
     }
 
     /**
-     * @param  array{note?: string, received_by?: string}|null  $pod
+     * @param  array{note?: string, received_by?: string, signature_data_url?: string}|null  $pod
      */
     public function markDelivered(Shipment $shipment, ?array $pod = null): void
     {
@@ -40,13 +40,31 @@ final class ShipmentStatusTransitionService
             'delivered_at' => now(),
         ];
 
-        if (is_array($pod) && (($pod['note'] ?? '') !== '' || ($pod['received_by'] ?? '') !== '')) {
-            $attributes['pod_payload'] = [
-                'note' => isset($pod['note']) ? trim((string) $pod['note']) : null,
-                'received_by' => isset($pod['received_by']) ? trim((string) $pod['received_by']) : null,
+        $note = isset($pod['note']) ? trim((string) $pod['note']) : '';
+        $receivedBy = isset($pod['received_by']) ? trim((string) $pod['received_by']) : '';
+        $signatureUrl = isset($pod['signature_data_url']) ? trim((string) $pod['signature_data_url']) : '';
+
+        $signaturePath = null;
+        $signedAt = null;
+        if ($signatureUrl !== '') {
+            $signaturePath = app(PodSignatureStorage::class)->storePngFromDataUrl($shipment, $signatureUrl);
+            $signedAt = now()->toIso8601String();
+        }
+
+        $hasPodPayload = $note !== '' || $receivedBy !== '' || $signaturePath !== null;
+
+        if ($hasPodPayload) {
+            $payload = [
+                'note' => $note !== '' ? $note : null,
+                'received_by' => $receivedBy !== '' ? $receivedBy : null,
                 'recorded_at' => now()->toIso8601String(),
                 'recorded_by_user_id' => Auth::id(),
             ];
+            if ($signaturePath !== null) {
+                $payload['signature_storage_path'] = $signaturePath;
+                $payload['signed_at'] = $signedAt;
+            }
+            $attributes['pod_payload'] = $payload;
         }
 
         $shipment->update($attributes);
