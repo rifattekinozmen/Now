@@ -122,3 +122,26 @@ test('totalenergies uses default currency when response omits it', function () {
     expect($result['ok'])->toBeTrue()
         ->and($result['currency'])->toBe('TRY');
 });
+
+test('totalenergies reads location from configured path', function () {
+    Http::fake([
+        'https://api.test/diesel-quote*' => Http::response([
+            'price_try_per_liter' => 48.1,
+            'currency' => 'TRY',
+            'location' => ['province' => 'Mersin'],
+        ], 200),
+    ]);
+
+    config([
+        'totalenergies.response_price_paths' => ['price_try_per_liter'],
+        'totalenergies.response_currency_paths' => ['currency'],
+        'totalenergies.response_location_paths' => ['location.province'],
+    ]);
+
+    $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.test', '/diesel-quote');
+
+    $result = $svc->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['location_label'])->toBe('Mersin');
+});

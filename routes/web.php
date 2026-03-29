@@ -44,6 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('customers', 'pages::admin.customers-index')->name('customers.index');
             Route::get('customers/export.csv', ExportCustomerCsvController::class)->name('customers.export.csv');
             Route::get('customers/template.xlsx', DownloadCustomerImportTemplateController::class)->name('customers.template.xlsx');
+            Route::livewire('customers/{customer}', 'pages::admin.customer-show')->name('customers.show');
             Route::livewire('vehicles', 'pages::admin.vehicles-index')->name('vehicles.index');
             Route::get('vehicles/template.xlsx', DownloadVehicleImportTemplateController::class)->name('vehicles.template.xlsx');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');

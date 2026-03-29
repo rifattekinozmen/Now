@@ -11,6 +11,7 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.customers.index'))->assertRedirect(route('login'));
     $this->get(route('admin.customers.export.csv'))->assertRedirect(route('login'));
     $this->get(route('admin.customers.template.xlsx'))->assertRedirect(route('login'));
+    $this->get(route('admin.customers.show', 1))->assertRedirect(route('login'));
     $this->get(route('admin.vehicles.index'))->assertRedirect(route('login'));
     $this->get(route('admin.vehicles.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.employees.index'))->assertRedirect(route('login'));
@@ -52,12 +53,13 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.customers.index'))->assertSuccessful();
     $this->get(route('admin.customers.export.csv'))->assertSuccessful();
     $this->get(route('admin.customers.template.xlsx'))->assertSuccessful();
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+    $this->get(route('admin.customers.show', $customer))->assertSuccessful();
     $this->get(route('admin.vehicles.index'))->assertSuccessful();
     $this->get(route('admin.vehicles.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.employees.index'))->assertSuccessful();
     $this->get(route('admin.employees.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.orders.index'))->assertSuccessful();
-    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
     $order = Order::factory()->create([
         'tenant_id' => $user->tenant_id,
         'customer_id' => $customer->id,

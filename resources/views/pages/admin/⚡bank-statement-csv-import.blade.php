@@ -3,6 +3,7 @@
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\BankStatementCsvImport;
 use App\Services\Finance\BankStatementOcrService;
+use App\Services\Finance\BankStatementRowMatcher;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -17,7 +18,7 @@ new #[Title('Bank statement CSV import')] class extends Component
 
     public mixed $pdfFile = null;
 
-    /** @var list<array{booked_at: string|null, amount: string|null, description: string|null}> */
+    /** @var list<array{booked_at: string|null, amount: string|null, description: string|null, match_candidates?: list<array{customer_id: int, label: string, reason: string, score: int}>}> */
     public array $previewRows = [];
 
     public ?int $savedImportId = null;
@@ -28,7 +29,7 @@ new #[Title('Bank statement CSV import')] class extends Component
         Gate::authorize('create', BankStatementCsvImport::class);
     }
 
-    public function importCsv(BankStatementOcrService $parser): void
+    public function importCsv(BankStatementOcrService $parser, BankStatementRowMatcher $matcher): void
     {
         $this->ensureLogisticsAdmin();
         Gate::authorize('create', BankStatementCsvImport::class);
@@ -43,7 +44,10 @@ new #[Title('Bank statement CSV import')] class extends Component
         }
 
         $rows = $parser->extractRowsFromCsvContent($content);
-        $this->previewRows = $rows;
+        $tenantId = auth()->user()?->tenant_id;
+        $this->previewRows = is_int($tenantId)
+            ? $matcher->enrichRowsForTenant($tenantId, $rows)
+            : $rows;
         $this->savedImportId = null;
 
         $user = auth()->user();
@@ -54,15 +58,15 @@ new #[Title('Bank statement CSV import')] class extends Component
         $import = BankStatementCsvImport::query()->create([
             'user_id' => $user->id,
             'original_filename' => $this->csvFile->getClientOriginalName(),
-            'row_count' => count($rows),
-            'rows' => $rows,
+            'row_count' => count($this->previewRows),
+            'rows' => $this->previewRows,
         ]);
 
         $this->savedImportId = $import->id;
         $this->reset('csvFile');
     }
 
-    public function importPdf(BankStatementOcrService $parser): void
+    public function importPdf(BankStatementOcrService $parser, BankStatementRowMatcher $matcher): void
     {
         $this->ensureLogisticsAdmin();
         Gate::authorize('create', BankStatementCsvImport::class);
@@ -79,8 +83,8 @@ new #[Title('Bank statement CSV import')] class extends Component
         }
 
         $parsed = $parser->extractRowsFromPdfWithDiagnostics($path);
-        $rows = $parsed['rows'];
-        if ($rows === []) {
+        $rawRows = $parsed['rows'];
+        if ($rawRows === []) {
             $this->previewRows = [];
             $this->savedImportId = null;
             $message = match ($parsed['diagnostic']) {
@@ -95,6 +99,10 @@ new #[Title('Bank statement CSV import')] class extends Component
             return;
         }
 
+        $tenantId = auth()->user()?->tenant_id;
+        $rows = is_int($tenantId)
+            ? $matcher->enrichRowsForTenant($tenantId, $rawRows)
+            : $rawRows;
         $this->previewRows = $rows;
         $this->savedImportId = null;
 
@@ -172,6 +180,7 @@ new #[Title('Bank statement CSV import')] class extends Component
                     <flux:table.column>{{ __('Date') }}</flux:table.column>
                     <flux:table.column>{{ __('Amount') }}</flux:table.column>
                     <flux:table.column>{{ __('Description') }}</flux:table.column>
+                    <flux:table.column>{{ __('Suggested matches') }}</flux:table.column>
                 </flux:table.columns>
                 <flux:table.rows>
                     @foreach ($previewRows as $idx => $row)
@@ -179,6 +188,21 @@ new #[Title('Bank statement CSV import')] class extends Component
                             <flux:table.cell>{{ $row['booked_at'] ?? '—' }}</flux:table.cell>
                             <flux:table.cell>{{ $row['amount'] ?? '—' }}</flux:table.cell>
                             <flux:table.cell>{{ $row['description'] ?? '—' }}</flux:table.cell>
+                            <flux:table.cell class="max-w-md text-sm">
+                                @if (! empty($row['match_candidates']))
+                                    <ul class="list-inside list-disc space-y-1">
+                                        @foreach ($row['match_candidates'] as $c)
+                                            <li>
+                                                #{{ $c['customer_id'] }}
+                                                {{ $c['label'] }}
+                                                ({{ $c['reason'] }}, {{ $c['score'] }})
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    —
+                                @endif
+                            </flux:table.cell>
                         </flux:table.row>
                     @endforeach
                 </flux:table.rows>

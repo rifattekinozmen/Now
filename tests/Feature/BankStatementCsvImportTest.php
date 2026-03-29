@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BankStatementCsvImport;
+use App\Models\Customer;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Finance\BankStatementOcrService;
@@ -37,6 +38,32 @@ test('logistics viewer cannot access bank csv import page', function () {
     $this->actingAs($user);
 
     $this->get(route('admin.finance.bank-statement-csv'))->assertForbidden();
+});
+
+test('bank csv import enriches rows with customer match candidates by tax id', function () {
+    /** @var TestCase $this */
+    $user = User::factory()->create();
+    Customer::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'tax_id' => '1234567890',
+        'legal_name' => 'Acme Lojistik A.Ş.',
+    ]);
+
+    $csv = "Date,Amount,Description\n2026-03-20,99.00,Havale 1234567890 ödeme\n";
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::admin.bank-statement-csv-import')
+        ->set('csvFile', UploadedFile::fake()->createWithContent('stmt.csv', $csv))
+        ->call('importCsv')
+        ->assertHasNoErrors();
+
+    $import = BankStatementCsvImport::query()->first();
+    expect($import)->not->toBeNull()
+        ->and($import->rows[0])->toHaveKey('match_candidates')
+        ->and($import->rows[0]['match_candidates'])->toHaveCount(1)
+        ->and($import->rows[0]['match_candidates'][0]['reason'])->toBe('tax_id')
+        ->and($import->rows[0]['match_candidates'][0]['score'])->toBe(100);
 });
 
 test('other tenant cannot see bank import records', function () {

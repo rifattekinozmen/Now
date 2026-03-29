@@ -422,6 +422,7 @@ new #[Title('Customers')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
+                <flux:table.column>{{ __('Profile') }}</flux:table.column>
             </flux:table.columns>
             <flux:table.rows>
                 @forelse ($this->paginatedCustomers as $customer)
@@ -437,10 +438,15 @@ new #[Title('Customers')] class extends Component
                         <flux:table.cell>{{ $customer->trade_name ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $customer->payment_term_days }}</flux:table.cell>
                         <flux:table.cell>{{ $customer->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</flux:table.cell>
+                        <flux:table.cell>
+                            <flux:link :href="route('admin.customers.show', $customer)" wire:navigate>
+                                {{ __('View') }}
+                            </flux:link>
+                        </flux:table.cell>
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteCustomers ? 7 : 6 }}">{{ __('No customers yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteCustomers ? 8 : 7 }}">{{ __('No customers yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

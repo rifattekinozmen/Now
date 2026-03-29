@@ -35,13 +35,20 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(CustomerEngagementNotifier::class, function (): CustomerEngagementNotifier {
             $httpEndpoint = config('customer_engagement.http.endpoint');
-            if (is_string($httpEndpoint) && $httpEndpoint !== '') {
+            $smsOn = (bool) config('customer_engagement.sms.enabled', false);
+            $smsEndpoint = config('customer_engagement.sms.endpoint');
+            $whatsappOn = (bool) config('customer_engagement.whatsapp.enabled', false);
+            $whatsappEndpoint = config('customer_engagement.whatsapp.endpoint');
+
+            $hasSmsHttp = $smsOn && is_string($smsEndpoint) && $smsEndpoint !== '';
+            $hasWaHttp = $whatsappOn && is_string($whatsappEndpoint) && $whatsappEndpoint !== '';
+            $hasGenericHttp = is_string($httpEndpoint) && $httpEndpoint !== '';
+
+            if ($hasGenericHttp || $hasSmsHttp || $hasWaHttp) {
                 return new HttpCustomerEngagementNotifier;
             }
 
             $logExplicit = (bool) config('customer_engagement.enabled', false);
-            $smsOn = (bool) config('customer_engagement.sms.enabled', false);
-            $whatsappOn = (bool) config('customer_engagement.whatsapp.enabled', false);
 
             if ($logExplicit || $smsOn || $whatsappOn) {
                 return new LogCustomerEngagementNotifier;

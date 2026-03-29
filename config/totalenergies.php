@@ -4,13 +4,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | TotalEnergies API (iskele)
+    | JSON yanıt sözleşmesi (schema_version 1)
     |--------------------------------------------------------------------------
     |
-    | Gerçek uç nokta ve sözleşme netleşince `TotalEnergiesFuelQuoteService` içinde
-    | HTTP çağrısı eklenebilir. Şimdilik kapalı / stub davranış.
+    | GET `base_url` + `quote_path` → `Accept: application/json`, `X-API-Key`.
+    | Sorgu: `quote_query` + `region` (= default_region veya TOTALENERGIES_REGION).
+    |
+    | Örnek gövde (uyumluluk için — gerçek alan adları `response_*_paths` ile seçilir):
+    | { "price_try_per_liter": "49,85", "currency": "TRY", "location": { "province": "Adana" } }
+    |
+    | Çıktı: `fetchSampleDieselQuote()` içinde `price_eur_per_liter` anahtarı geçmiş uyumluluk
+    | adına birim başına sayısal fiyatı taşır (para birimi `currency` ile birlikte okunmalıdır).
     |
     */
+
+    'schema_version' => 1,
 
     'enabled' => (bool) env('TOTALENERGIES_ENABLED', false),
 
@@ -49,14 +57,15 @@ return [
     */
 
     'response_price_paths' => [
-        'price_eur_per_liter',
         'price_try_per_liter',
+        'result.fuel_price_try',
+        'data.fuel.diesel_try',
+        'price_eur_per_liter',
         'price',
         'data.price',
         'data.unit_price',
         'result.price',
         'result.fuel_price',
-        'result.fuel_price_try',
         'data.fuel.diesel',
         'data.items.0.price',
         'quotes.0.amount',
@@ -80,6 +89,20 @@ return [
         'meta.currency',
     ],
 
-    'default_currency' => env('TOTALENERGIES_DEFAULT_CURRENCY', 'EUR'),
+    /*
+    |--------------------------------------------------------------------------
+    | Konum / il metni (isteğe bağlı — Navlun il bazlı pompa notu)
+    |--------------------------------------------------------------------------
+    */
+
+    'response_location_paths' => [
+        'location.province',
+        'location.city',
+        'data.province',
+        'data.city',
+        'meta.province',
+    ],
+
+    'default_currency' => env('TOTALENERGIES_DEFAULT_CURRENCY', 'TRY'),
 
 ];

@@ -16,10 +16,23 @@ test('customer engagement resolves http notifier when endpoint is configured', f
     expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(HttpCustomerEngagementNotifier::class);
 });
 
-test('customer engagement resolves log notifier when sms flag enabled without http', function () {
+test('customer engagement resolves http notifier when sms enabled and sms endpoint set', function () {
     config([
         'customer_engagement.http.endpoint' => null,
         'customer_engagement.sms.enabled' => true,
+        'customer_engagement.sms.endpoint' => 'https://sms-bridge.example.test/hook',
+        'customer_engagement.whatsapp.enabled' => false,
+        'customer_engagement.enabled' => false,
+    ]);
+
+    expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(HttpCustomerEngagementNotifier::class);
+});
+
+test('customer engagement resolves log notifier when sms flag enabled without sms endpoint', function () {
+    config([
+        'customer_engagement.http.endpoint' => null,
+        'customer_engagement.sms.enabled' => true,
+        'customer_engagement.sms.endpoint' => null,
         'customer_engagement.whatsapp.enabled' => false,
         'customer_engagement.enabled' => false,
     ]);
@@ -27,11 +40,24 @@ test('customer engagement resolves log notifier when sms flag enabled without ht
     expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(LogCustomerEngagementNotifier::class);
 });
 
-test('customer engagement resolves log notifier when whatsapp flag enabled without http', function () {
+test('customer engagement resolves http notifier when whatsapp enabled and whatsapp endpoint set', function () {
     config([
         'customer_engagement.http.endpoint' => '',
         'customer_engagement.sms.enabled' => false,
         'customer_engagement.whatsapp.enabled' => true,
+        'customer_engagement.whatsapp.endpoint' => 'https://wa-bridge.example.test/hook',
+        'customer_engagement.enabled' => false,
+    ]);
+
+    expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(HttpCustomerEngagementNotifier::class);
+});
+
+test('customer engagement resolves log notifier when whatsapp flag enabled without whatsapp endpoint', function () {
+    config([
+        'customer_engagement.http.endpoint' => '',
+        'customer_engagement.sms.enabled' => false,
+        'customer_engagement.whatsapp.enabled' => true,
+        'customer_engagement.whatsapp.endpoint' => '',
         'customer_engagement.enabled' => false,
     ]);
 

@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Http;
 /**
  * TotalEnergies yakıt / fiyat entegrasyonu.
  *
- * Fiyat yolu `config('totalenergies.response_price_paths')` ile; ondalık string ("1,55")
+ * Sözleşme özeti: `config('totalenergies.schema_version')`, yollar `response_price_paths`,
+ * `response_currency_paths`, `response_location_paths`. Fiyat ondalık string ("1,55")
  * normalize edilir. `price_eur_per_liter` anahtarı geçmiş uyumluluk için birim başına
  * sayısal fiyatı taşır (para birimi `currency` ile birlikte değerlendirilmelidir).
  */
@@ -31,7 +32,14 @@ final class TotalEnergiesFuelQuoteService
     }
 
     /**
-     * @return array{ok: bool, message: string, price_eur_per_liter: float|null, currency?: string|null, raw?: mixed}
+     * @return array{
+     *     ok: bool,
+     *     message: string,
+     *     price_eur_per_liter: float|null,
+     *     currency?: string|null,
+     *     location_label?: string|null,
+     *     raw?: mixed
+     * }
      */
     public function fetchSampleDieselQuote(): array
     {
@@ -41,6 +49,7 @@ final class TotalEnergiesFuelQuoteService
                 'message' => __('TotalEnergies integration is disabled or API key is missing.'),
                 'price_eur_per_liter' => null,
                 'currency' => null,
+                'location_label' => null,
             ];
         }
 
@@ -54,6 +63,7 @@ final class TotalEnergiesFuelQuoteService
                 'message' => __('TotalEnergies base URL is not configured.'),
                 'price_eur_per_liter' => null,
                 'currency' => null,
+                'location_label' => null,
             ];
         }
 
@@ -70,6 +80,7 @@ final class TotalEnergiesFuelQuoteService
                 'message' => $e->getMessage(),
                 'price_eur_per_liter' => null,
                 'currency' => null,
+                'location_label' => null,
             ];
         }
 
@@ -79,12 +90,14 @@ final class TotalEnergiesFuelQuoteService
                 'message' => __('TotalEnergies request failed: :status', ['status' => $response->status()]),
                 'price_eur_per_liter' => null,
                 'currency' => null,
+                'location_label' => null,
             ];
         }
 
         $json = $response->json();
         $price = null;
         $currency = null;
+        $locationLabel = null;
         if (is_array($json)) {
             $paths = config('totalenergies.response_price_paths');
             if (! is_array($paths) || $paths === []) {
@@ -115,6 +128,20 @@ final class TotalEnergiesFuelQuoteService
                     }
                 }
             }
+
+            $locationPaths = config('totalenergies.response_location_paths');
+            if (is_array($locationPaths)) {
+                foreach ($locationPaths as $locPath) {
+                    if (! is_string($locPath) || $locPath === '') {
+                        continue;
+                    }
+                    $locVal = data_get($json, $locPath);
+                    if (is_string($locVal) && trim($locVal) !== '') {
+                        $locationLabel = trim($locVal);
+                        break;
+                    }
+                }
+            }
         }
 
         if ($price === null) {
@@ -123,6 +150,7 @@ final class TotalEnergiesFuelQuoteService
                 'message' => __('Unexpected TotalEnergies response shape.'),
                 'price_eur_per_liter' => null,
                 'currency' => null,
+                'location_label' => null,
                 'raw' => $json,
             ];
         }
@@ -137,6 +165,7 @@ final class TotalEnergiesFuelQuoteService
             'message' => __('Quote retrieved.'),
             'price_eur_per_liter' => (float) $price,
             'currency' => $currency,
+            'location_label' => $locationLabel,
             'raw' => $json,
         ];
     }
