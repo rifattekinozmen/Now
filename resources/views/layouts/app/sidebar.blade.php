@@ -29,6 +29,9 @@
                         <flux:sidebar.item icon="truck" :href="route('admin.vehicles.index')" wire:navigate wire:current="font-medium">
                             {{ __('Vehicles') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="bolt" :href="route('admin.fuel-intakes.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Fuel intakes') }}
+                        </flux:sidebar.item>
                         <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="font-medium">
                             {{ __('Employees') }}
                         </flux:sidebar.item>

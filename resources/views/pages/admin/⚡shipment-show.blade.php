@@ -4,14 +4,17 @@ use App\Authorization\LogisticsPermission;
 use App\Enums\ShipmentStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Shipment;
+use App\Services\Logistics\PodDeliveryPhotoStorage;
 use App\Services\Logistics\ShipmentStatusTransitionService;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
 
 new #[Title('Shipment detail')] class extends Component
 {
     use RequiresLogisticsAdmin;
+    use WithFileUploads;
 
     public Shipment $shipment;
 
@@ -23,6 +26,13 @@ new #[Title('Shipment detail')] class extends Component
 
     /** @var string data:image/png;base64,... from canvas (optional) */
     public string $pod_signature_data = '';
+
+    public string $pod_latitude = '';
+
+    public string $pod_longitude = '';
+
+    /** @var mixed */
+    public $pod_photo = null;
 
     public function mount(Shipment $shipment): void
     {
@@ -58,34 +68,61 @@ new #[Title('Shipment detail')] class extends Component
         $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
     }
 
-    public function markDelivered(ShipmentStatusTransitionService $transitions): void
+    public function markDelivered(ShipmentStatusTransitionService $transitions, PodDeliveryPhotoStorage $podPhotos): void
     {
         $this->ensureLogisticsWrite(LogisticsPermission::SHIPMENTS_WRITE);
 
-        $this->validate([
+        $strict = (bool) config('logistics.ipod.strict', false);
+
+        $rules = [
             'pod_note' => ['nullable', 'string', 'max:2000'],
             'pod_received_by' => ['nullable', 'string', 'max:255'],
             'pod_signature_data' => ['nullable', 'string', 'max:786432'],
-        ]);
+            'pod_latitude' => ['nullable', 'string', 'max:32'],
+            'pod_longitude' => ['nullable', 'string', 'max:32'],
+            'pod_photo' => ['nullable', 'file', 'image', 'max:2048'],
+        ];
+
+        if ($strict) {
+            $rules['pod_signature_data'] = ['required', 'string', 'max:786432'];
+            $rules['pod_latitude'] = ['required', 'numeric'];
+            $rules['pod_longitude'] = ['required', 'numeric'];
+            $rules['pod_photo'] = ['required', 'file', 'image', 'max:2048'];
+        }
+
+        $this->validate($rules);
 
         $s = Shipment::query()->findOrFail($this->shipment->id);
         Gate::authorize('update', $s);
 
         $sig = trim($this->pod_signature_data);
 
+        $pod = [
+            'note' => $this->pod_note,
+            'received_by' => $this->pod_received_by,
+            'signature_data_url' => $sig !== '' ? $sig : null,
+        ];
+
+        $lat = trim($this->pod_latitude);
+        $lng = trim($this->pod_longitude);
+        if ($lat !== '' && $lng !== '' && is_numeric($lat) && is_numeric($lng)) {
+            $pod['latitude'] = (float) $lat;
+            $pod['longitude'] = (float) $lng;
+        }
+
+        if ($this->pod_photo !== null) {
+            $pod['photo_storage_path'] = $podPhotos->storeFromUpload($s, $this->pod_photo);
+        }
+
         try {
-            $transitions->markDelivered($s, [
-                'note' => $this->pod_note,
-                'received_by' => $this->pod_received_by,
-                'signature_data_url' => $sig !== '' ? $sig : null,
-            ]);
+            $transitions->markDelivered($s, $pod);
         } catch (\InvalidArgumentException $e) {
             session()->flash('error', $e->getMessage());
 
             return;
         }
 
-        $this->reset('pod_note', 'pod_received_by', 'pod_signature_data');
+        $this->reset('pod_note', 'pod_received_by', 'pod_signature_data', 'pod_latitude', 'pod_longitude', 'pod_photo');
         $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
     }
 
@@ -283,6 +320,11 @@ new #[Title('Shipment detail')] class extends Component
                         {{ __('Download signature (PNG)') }}
                     </flux:button>
                 @endif
+                @if (! empty($s->pod_payload['photo_storage_path']))
+                    <flux:button :href="route('admin.shipments.pod.delivery-photo', $s)" variant="ghost" target="_blank">
+                        {{ __('Open delivery photo') }}
+                    </flux:button>
+                @endif
             </div>
             <dl class="grid gap-2 text-sm sm:grid-cols-2">
                 <div class="sm:col-span-2">
@@ -307,6 +349,16 @@ new #[Title('Shipment detail')] class extends Component
                         src="{{ route('admin.shipments.pod.signature', $s) }}"
                         alt="{{ __('Signature') }}"
                         class="mt-2 max-h-48 max-w-full rounded border border-zinc-200 dark:border-zinc-600"
+                    />
+                </div>
+            @endif
+            @if (! empty($s->pod_payload['photo_storage_path']))
+                <div class="mt-4">
+                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Delivery photo') }}</flux:text>
+                    <img
+                        src="{{ route('admin.shipments.pod.delivery-photo', $s) }}"
+                        alt="{{ __('Delivery photo') }}"
+                        class="mt-2 max-h-64 max-w-full rounded border border-zinc-200 dark:border-zinc-600"
                     />
                 </div>
             @endif
@@ -385,8 +437,45 @@ new #[Title('Shipment detail')] class extends Component
                     >
                         <flux:input wire:model="pod_received_by" :label="__('Received by (optional)')" />
                         <flux:textarea wire:model="pod_note" :label="__('POD note (optional)')" rows="2" />
+                        @if (config('logistics.ipod.strict'))
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <flux:input wire:model="pod_latitude" type="text" :label="__('Delivery latitude')" required />
+                                <flux:input wire:model="pod_longitude" type="text" :label="__('Delivery longitude')" required />
+                            </div>
+                            <div>
+                                <flux:text class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('Delivery photo') }}</flux:text>
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    class="block w-full text-sm text-zinc-600 file:me-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium dark:text-zinc-300 dark:file:bg-zinc-800"
+                                    wire:model="pod_photo"
+                                />
+                                @error('pod_photo')
+                                    <flux:text class="mt-1 text-sm text-red-600">{{ $message }}</flux:text>
+                                @enderror
+                            </div>
+                        @else
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <flux:input wire:model="pod_latitude" type="text" :label="__('Delivery latitude (optional)')" />
+                                <flux:input wire:model="pod_longitude" type="text" :label="__('Delivery longitude (optional)')" />
+                            </div>
+                            <div>
+                                <flux:text class="mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('Delivery photo (optional)') }}</flux:text>
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    class="block w-full text-sm text-zinc-600 file:me-3 file:rounded-md file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium dark:text-zinc-300 dark:file:bg-zinc-800"
+                                    wire:model="pod_photo"
+                                />
+                                @error('pod_photo')
+                                    <flux:text class="mt-1 text-sm text-red-600">{{ $message }}</flux:text>
+                                @enderror
+                            </div>
+                        @endif
                         <div class="flex flex-col gap-2">
-                            <flux:text class="text-sm font-medium text-zinc-700 dark:text-zinc-300">{{ __('Signature (optional)') }}</flux:text>
+                            <flux:text class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                {{ config('logistics.ipod.strict') ? __('Signature (required in strict POD mode)') : __('Signature (optional)') }}
+                            </flux:text>
                             <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">
                                 {{ __('Draw with mouse or finger, then mark delivered.') }}
                             </flux:text>

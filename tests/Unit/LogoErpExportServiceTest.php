@@ -23,7 +23,8 @@ test('builds xml with order record id', function () {
     $xml = $svc->buildOrdersConnectXml([$order]);
 
     expect($xml)->toContain('<OrderRecordId>')
-        ->and($xml)->toContain('4242');
+        ->and($xml)->toContain('4242')
+        ->and($xml)->toContain('schemaVersion="1"');
 });
 
 test('builds xml with order fields', function () {

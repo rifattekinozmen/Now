@@ -284,6 +284,7 @@ new #[Title('Dashboard')] class extends Component
                 <flux:button :href="route('admin.shipments.index')" variant="filled" wire:navigate>{{ __('Shipments') }}</flux:button>
                 <flux:button :href="route('admin.delivery-numbers.index')" variant="filled" wire:navigate>{{ __('PIN pool') }}</flux:button>
                 <flux:button :href="route('admin.finance.index')" variant="filled" wire:navigate>{{ __('Finance summary') }}</flux:button>
+                <flux:button :href="route('admin.fuel-intakes.index')" variant="outline" wire:navigate>{{ __('Fuel intakes') }}</flux:button>
             </div>
         @endcanany
     </div>

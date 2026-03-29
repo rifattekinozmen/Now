@@ -142,6 +142,23 @@ test('get quote merges province and district from config into query string', fun
     });
 });
 
+test('placeholder base url skips http and returns not ok', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'k',
+        'totalenergies.base_url' => 'https://api.totalenergies.example',
+        'totalenergies.quote_path' => '/diesel-quote',
+        'totalenergies.timeout_seconds' => 10,
+    ]);
+
+    $result = TotalEnergiesFuelQuoteService::fromConfig()->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeFalse()
+        ->and($result['price_eur_per_liter'])->toBeNull();
+
+    Http::assertNothingSent();
+});
+
 test('get quote merges extra headers from config', function () {
     config([
         'totalenergies.enabled' => true,

@@ -212,6 +212,23 @@ new #[Title('Bank statement CSV import')] class extends Component
         </flux:callout.text>
     </flux:callout>
 
+    @php
+        $caps = app(BankStatementOcrService::class)->importCapabilities();
+    @endphp
+    <flux:callout :variant="$caps['scanned_pdf_ocr'] ? 'success' : 'neutral'" icon="information-circle">
+        <flux:callout.heading>{{ __('Import capabilities') }}</flux:callout.heading>
+        <flux:callout.text>
+            {{ __('CSV: :csv · PDF text layer: :pdf · Scanned PDF OCR: :ocr', [
+                'csv' => $caps['csv'] ? __('yes') : __('no'),
+                'pdf' => $caps['pdf_text_layer'] ? __('yes') : __('no'),
+                'ocr' => $caps['scanned_pdf_ocr'] ? __('yes') : __('no'),
+            ]) }}
+            @if (! $caps['scanned_pdf_ocr'])
+                <span class="mt-2 block text-sm">{{ $caps['scanned_pdf_user_message'] }}</span>
+            @endif
+        </flux:callout.text>
+    </flux:callout>
+
     <flux:card class="!p-4">
         <flux:heading size="lg" class="mb-2">{{ __('Upload CSV') }}</flux:heading>
         <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">

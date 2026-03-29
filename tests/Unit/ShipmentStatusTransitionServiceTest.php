@@ -138,6 +138,37 @@ test('cannot cancel delivered shipment', function () {
     $svc->cancel($shipment);
 })->throws(InvalidArgumentException::class);
 
+test('mark delivered succeeds strict ipod with signature gps and photo path', function () {
+    Storage::fake('local');
+    config(['logistics.ipod.strict' => true]);
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+    $order = Order::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'customer_id' => $customer->id,
+    ]);
+    $shipment = Shipment::factory()->create([
+        'order_id' => $order->id,
+        'status' => ShipmentStatus::Dispatched,
+    ]);
+    $svc = app(ShipmentStatusTransitionService::class);
+
+    $svc->markDelivered($shipment, [
+        'signature_data_url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'latitude' => 36.9914,
+        'longitude' => 35.3308,
+        'photo_storage_path' => 'pod-delivery-photos/'.$user->tenant_id.'/'.$shipment->id.'.jpg',
+    ]);
+
+    $shipment->refresh();
+    expect($shipment->status)->toBe(ShipmentStatus::Delivered)
+        ->and($shipment->pod_payload['photo_storage_path'] ?? null)->not->toBeNull()
+        ->and($shipment->pod_payload['delivery_latitude'] ?? null)->toBe(36.9914);
+});
+
 test('mark delivered rejects strict ipod without gps and photo', function () {
     config(['logistics.ipod.strict' => true]);
 

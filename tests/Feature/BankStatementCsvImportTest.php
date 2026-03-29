@@ -135,6 +135,9 @@ test('logistics admin can upload bank pdf and persist import when parser returns
     $user = User::factory()->create();
 
     $this->mock(BankStatementOcrService::class, function ($mock): void {
+        $mock->shouldReceive('importCapabilities')
+            ->zeroOrMoreTimes()
+            ->andReturn((new BankStatementOcrService)->importCapabilities());
         $mock->shouldReceive('extractRowsFromPdfWithDiagnostics')
             ->once()
             ->andReturn([
@@ -163,6 +166,9 @@ test('logistics admin sees distinct message when pdf has no text layer', functio
     $user = User::factory()->create();
 
     $this->mock(BankStatementOcrService::class, function ($mock): void {
+        $mock->shouldReceive('importCapabilities')
+            ->zeroOrMoreTimes()
+            ->andReturn((new BankStatementOcrService)->importCapabilities());
         $mock->shouldReceive('extractRowsFromPdfWithDiagnostics')
             ->once()
             ->andReturn(['rows' => [], 'diagnostic' => 'empty_text']);

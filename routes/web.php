@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DownloadVehicleImportTemplateController;
 use App\Http\Controllers\Admin\ExportCustomerCsvController;
 use App\Http\Controllers\Admin\ExportFinanceOrdersCsvController;
 use App\Http\Controllers\Admin\ExportLogoOrdersXmlController;
+use App\Http\Controllers\Admin\ShipmentPodDeliveryPhotoController;
 use App\Http\Controllers\Admin\ShipmentPodPrintController;
 use App\Http\Controllers\Admin\ShipmentPodSignatureController;
 use App\Http\Controllers\Admin\ShipmentQrSvgController;
@@ -47,6 +48,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('customers/{customer}', 'pages::admin.customer-show')->name('customers.show');
             Route::livewire('vehicles', 'pages::admin.vehicles-index')->name('vehicles.index');
             Route::get('vehicles/template.xlsx', DownloadVehicleImportTemplateController::class)->name('vehicles.template.xlsx');
+            Route::livewire('fuel-intakes', 'pages::admin.fuel-intakes-index')->name('fuel-intakes.index');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
             Route::get('employees/template.xlsx', DownloadEmployeeImportTemplateController::class)->name('employees.template.xlsx');
             Route::livewire('orders', 'pages::admin.orders-index')->name('orders.index');
@@ -57,6 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('shipments/{shipment}', 'pages::admin.shipment-show')->name('shipments.show');
             Route::get('shipments/{shipment}/qr.svg', ShipmentQrSvgController::class)->name('shipments.qr.svg');
             Route::get('shipments/{shipment}/pod-signature.png', ShipmentPodSignatureController::class)->name('shipments.pod.signature');
+            Route::get('shipments/{shipment}/pod-delivery-photo', ShipmentPodDeliveryPhotoController::class)->name('shipments.pod.delivery-photo');
             Route::get('shipments/{shipment}/pod/print', ShipmentPodPrintController::class)->name('shipments.pod.print');
             Route::livewire('delivery-numbers', 'pages::admin.delivery-numbers-index')->name('delivery-numbers.index');
             Route::get('delivery-numbers/template.xlsx', DownloadPinImportTemplateController::class)->name('delivery-numbers.template.xlsx');

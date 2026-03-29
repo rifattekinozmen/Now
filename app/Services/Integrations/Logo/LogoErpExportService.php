@@ -23,6 +23,7 @@ final class LogoErpExportService
 
         $root = $dom->createElement('LogoConnectExport');
         $root->setAttribute('generatedAt', now()->toIso8601String());
+        $root->setAttribute('schemaVersion', '1');
         $dom->appendChild($root);
 
         foreach ($orders as $order) {
