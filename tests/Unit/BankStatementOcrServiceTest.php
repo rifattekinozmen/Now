@@ -51,6 +51,13 @@ test('pdf import diagnostic messages are non-empty for known codes', function ()
     }
 });
 
+test('pdf capability flags document text layer vs ocr', function () {
+    $svc = app(BankStatementOcrService::class);
+
+    expect($svc->pdfTextLayerExtractionSupported())->toBeTrue()
+        ->and($svc->scannedImageOcrSupported())->toBeFalse();
+});
+
 test('garbage file yields non-ok diagnostic from pdf extraction', function () {
     $path = tempnam(sys_get_temp_dir(), 'stmt');
     $path = $path !== false ? $path.'.pdf' : sys_get_temp_dir().'/stmt-test.pdf';

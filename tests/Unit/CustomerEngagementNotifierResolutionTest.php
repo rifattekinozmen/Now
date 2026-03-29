@@ -1,6 +1,7 @@
 <?php
 
 use App\Contracts\CustomerEngagementNotifier;
+use App\Services\Notifications\CompositeCustomerEngagementNotifier;
 use App\Services\Notifications\HttpCustomerEngagementNotifier;
 use App\Services\Notifications\LogCustomerEngagementNotifier;
 use App\Services\Notifications\NullCustomerEngagementNotifier;
@@ -94,6 +95,17 @@ test('customer engagement driver log forces log notifier', function () {
     ]);
 
     expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(LogCustomerEngagementNotifier::class);
+});
+
+test('customer engagement driver composite resolves composite notifier', function () {
+    config([
+        'customer_engagement.driver' => 'composite',
+        'customer_engagement.http.endpoint' => null,
+        'customer_engagement.sms.enabled' => false,
+        'customer_engagement.whatsapp.enabled' => false,
+    ]);
+
+    expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(CompositeCustomerEngagementNotifier::class);
 });
 
 test('customer engagement driver http forces http notifier', function () {

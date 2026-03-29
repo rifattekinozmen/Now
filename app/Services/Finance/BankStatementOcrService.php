@@ -13,6 +13,22 @@ use Throwable;
 class BankStatementOcrService
 {
     /**
+     * PDF içinde seçilebilir metin katmanı varsa satır çıkarımı yapılabilir.
+     */
+    public function pdfTextLayerExtractionSupported(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Taranmış görüntü / görüntü-only PDF için harici OCR entegrasyonu yoktur.
+     */
+    public function scannedImageOcrSupported(): bool
+    {
+        return false;
+    }
+
+    /**
      * PDF dosyasından metin çıkarır ve satır desenlerine göre ayrıştırır.
      *
      * @return list<array{booked_at: string|null, amount: string|null, description: string|null}>

@@ -37,6 +37,7 @@ final class TotalEnergiesFuelQuoteService
      *     price_eur_per_liter: float|null,
      *     currency?: string|null,
      *     location_label?: string|null,
+     *     schema_version?: int,
      *     raw?: mixed
      * }
      */
@@ -49,6 +50,7 @@ final class TotalEnergiesFuelQuoteService
                 'price_eur_per_liter' => null,
                 'currency' => null,
                 'location_label' => null,
+                'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
             ];
         }
 
@@ -63,6 +65,7 @@ final class TotalEnergiesFuelQuoteService
                 'price_eur_per_liter' => null,
                 'currency' => null,
                 'location_label' => null,
+                'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
             ];
         }
 
@@ -80,6 +83,7 @@ final class TotalEnergiesFuelQuoteService
                 'price_eur_per_liter' => null,
                 'currency' => null,
                 'location_label' => null,
+                'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
             ];
         }
 
@@ -90,6 +94,7 @@ final class TotalEnergiesFuelQuoteService
                 'price_eur_per_liter' => null,
                 'currency' => null,
                 'location_label' => null,
+                'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
             ];
         }
 
@@ -111,6 +116,7 @@ final class TotalEnergiesFuelQuoteService
                 'price_eur_per_liter' => null,
                 'currency' => null,
                 'location_label' => null,
+                'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
                 'raw' => $json,
             ];
         }
@@ -126,6 +132,7 @@ final class TotalEnergiesFuelQuoteService
             'price_eur_per_liter' => (float) $price,
             'currency' => $currency,
             'location_label' => $locationLabel,
+            'schema_version' => TotalEnergiesResponseParser::configuredSchemaVersion(),
             'raw' => $json,
         ];
     }

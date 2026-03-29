@@ -4,8 +4,9 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
-- Finans: `pages::admin.finance-index` — nakit akış projeksiyonu (**tahsilat tarih penceresi**), **vade takvimi** (`pages::admin.finance-payment-due-calendar`, `admin.finance.payment-due-calendar`), Logo XML, banka ekstresi CSV import.
-- GL çekirdek: `pages::admin.chart-accounts-index`, `pages::admin.journal-entries-index`, `JournalPostingService`, `BankStatementJournalPoster`; **mizan** `TrialBalanceService` + `pages::admin.finance-trial-balance` (`admin.finance.trial-balance`).
+- Finans: `pages::admin.finance-index` — nakit akış projeksiyonu (**tahsilat tarih penceresi**), **vade takvimi** (`pages::admin.finance-payment-due-calendar`, `admin.finance.payment-due-calendar`), Logo XML, banka ekstresi CSV import; PDF ekstre **metin katmanı** (`BankStatementOcrService` + Smalot; görüntü OCR yok).
+- GL çekirdek: `pages::admin.chart-accounts-index`, `pages::admin.journal-entries-index`, `JournalPostingService`, `BankStatementJournalPoster`; **mizan** `TrialBalanceService` + `pages::admin.finance-trial-balance`; **bilanço özeti** `BalanceSheetService` + `admin.finance.balance-sheet`; **yasal tablo temeli** `LegalFinancialStatementsService` + `fiscal_opening_balances`.
+- Entegrasyon: `TotalEnergiesFuelQuoteService` + `TotalEnergiesResponseParser` (`config/totalenergies.php` şema v1); müşteri bildirimi `CustomerEngagementNotifier` + `CompositeCustomerEngagementNotifier` (isteğe bağlı çoklu kanal).
 - Faz 3 servisleri: `BankStatementOcrService`, `LogoErpExportService`, `AuditAiEvaluationService` (admin finans özetinde navlun aykırılık özeti).
 
 ## Rol matrisi (özet)
@@ -21,11 +22,11 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ## Pending Work
 
-- TotalEnergies yanıt şeması müşteri API’sine göre netleştirme.
-- Gerçek SMS/WhatsApp sağlayıcısı (`CustomerEngagementNotifier` somut adaptör; yapılandırma ile no-op).
-- Banka ekstresi PDF metin çıkarımı / OCR ve otomatik cari eşleştirme (ileri iterasyon).
+- TotalEnergies canlı API gövdesi ile uçtan uca doğrulama (`config/totalenergies.php` yolları + `schema_version`).
+- Gerçek SMS/WhatsApp üretim uçları (HTTP endpoint’ler; `driver=composite` ile log + webhook birlikte).
+- Banka ekstresi otomatik cari eşleştirme; görüntü-only PDF için harici OCR (şu an yalnızca metin katmanı).
 - Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi.
-- Yasal bilanço / tam mali tablolar (doküman §7.3 kalan kısım; GL çekirdek ve dönem mizanı mevcut).
+- Tam yasal bilanço / denetim çıktısı (`LegalFinancialStatementsService` açılış birleştirmesi mevcut; TFRS ve dönem kapanış süreçleri ayrı).
 
 ## Safe Next Actions
 
@@ -52,4 +53,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-29 (GL: hesap planı / yevmiye / banka→yevmiye; trial balance; doküman Faz 3 senkronu.)*
+*Son güncelleme: 2026-03-30 (TotalEnergies schema_version; banka PDF metin sınırı; CompositeCustomerEngagementNotifier; fiscal_opening_balances + LegalFinancialStatementsService; Logistics Faz 3 doküman senkronu.)*

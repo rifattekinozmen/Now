@@ -36,6 +36,31 @@ test('schema v1 parses nested data.fuel.diesel path', function () {
         ->and($out['location'])->toBeNull();
 });
 
+test('schema v1 parses quotes zero amount path', function () {
+    config([
+        'totalenergies.response_price_paths' => ['quotes.0.amount'],
+        'totalenergies.response_currency_paths' => ['quotes.0.currency'],
+        'totalenergies.response_location_paths' => [],
+    ]);
+
+    $p = TotalEnergiesResponseParser::fromConfig();
+    $out = $p->parse([
+        'quotes' => [
+            ['amount' => '33,5', 'currency' => 'try'],
+        ],
+    ]);
+
+    expect($out['price'])->toBe(33.5)
+        ->and($out['currency'])->toBe('TRY')
+        ->and($out['location'])->toBeNull();
+});
+
+test('configured schema version reads config', function () {
+    config(['totalenergies.schema_version' => 1]);
+
+    expect(TotalEnergiesResponseParser::configuredSchemaVersion())->toBe(1);
+});
+
 test('schema v1 returns null price when no path matches', function () {
     config([
         'totalenergies.response_price_paths' => ['missing'],

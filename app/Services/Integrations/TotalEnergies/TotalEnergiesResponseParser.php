@@ -38,6 +38,16 @@ final class TotalEnergiesResponseParser
     }
 
     /**
+     * `config/totalenergies.php` içindeki JSON sözleşme sürümü (şu an 1).
+     */
+    public static function configuredSchemaVersion(): int
+    {
+        $v = config('totalenergies.schema_version', 1);
+
+        return is_numeric($v) ? (int) $v : 1;
+    }
+
+    /**
      * @return ParsedQuote
      */
     public function parse(array $json): array

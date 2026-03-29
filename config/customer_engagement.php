@@ -4,13 +4,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Bildirim çözümleyici: auto | http | log | null
+    | Bildirim çözümleyici: auto | http | log | null | composite
     |--------------------------------------------------------------------------
     |
     | auto: uç nokta / log bayraklarına göre mevcut mantık (varsayılan).
     | http: yalnızca HttpCustomerEngagementNotifier (endpoint boşsa istek gitmez).
     | log: LogCustomerEngagementNotifier.
     | null: NullCustomerEngagementNotifier (tam no-op).
+    | composite: Log + Http birlikte (CompositeCustomerEngagementNotifier).
     |
     */
 

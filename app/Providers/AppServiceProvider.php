@@ -6,6 +6,7 @@ use App\Contracts\CustomerEngagementNotifier;
 use App\Contracts\Operations\OperationalNotifier;
 use App\Livewire\DockerFriendlyCacheManager;
 use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
+use App\Services\Notifications\CompositeCustomerEngagementNotifier;
 use App\Services\Notifications\HttpCustomerEngagementNotifier;
 use App\Services\Notifications\LogCustomerEngagementNotifier;
 use App\Services\Notifications\NullCustomerEngagementNotifier;
@@ -49,6 +50,12 @@ class AppServiceProvider extends ServiceProvider
             }
             if ($driver === 'http') {
                 return new HttpCustomerEngagementNotifier;
+            }
+            if ($driver === 'composite') {
+                return new CompositeCustomerEngagementNotifier([
+                    new LogCustomerEngagementNotifier,
+                    new HttpCustomerEngagementNotifier,
+                ]);
             }
 
             $httpEndpoint = config('customer_engagement.http.endpoint');

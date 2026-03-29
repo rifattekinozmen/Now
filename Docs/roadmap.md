@@ -65,7 +65,7 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] **QR + kamu izleme:** `public_reference_token`, `admin.shipments.qr.svg`, `track.shipment` _(tamamlandı: 2026-03-29)_
 - [x] **POD:** `pod_payload` (not, alıcı, `signature_storage_path`, `signed_at`); canvas imza → `PodSignatureStorage` (PNG); `admin.shipments.pod.signature`, `admin.shipments.pod.print` (tarayıcıdan PDF) _(2026-03-29)_
 - [x] Sipariş / araç / personel **içe aktarma** + sipariş/araç/personel **düzenleme** (admin index sayfaları) _(tamamlandı: 2026-03-29)_
-- [ ] TotalEnergies alan/yanıt şeması müşteri sözleşmesine göre kesinleştirme — sonraki iterasyon
+- [ ] TotalEnergies canlı API gövdesi müşteri sözleşmesine göre uçtan uca doğrulama — sonraki iterasyon (config yolları + `schema_version` hazır)
 
 ## Faz C — ilerleme (tamamlanan / kısmi)
 
@@ -86,18 +86,20 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] Sevkiyat **gönderildi** olayı (`ShipmentDispatched`) + kuyruklu dinleyici (`NotifyShipmentDispatched` → operasyonel log) _(tamamlandı: 2026-03-28)_
 - [x] Navlun **eşik kuralı** (`FreightEscalationEvaluator` + `FreightEscalationRule` → `logistics.freight.threshold_exceeded`; `NavlunEskalasyonService` ile aynı oran mantığı) _(tamamlandı: 2026-03-28)_
 - [x] **Slack webhook** adaptörü (`SlackOperationalNotifier`) + `CompositeOperationalNotifier` (log + Slack birlikte) _(tamamlandı: 2026-03-28)_
-- [x] Müşteri kanalı **iskeleti:** `CustomerEngagementNotifier` + `config/customer_engagement.php` (varsayılan kapalı `NullCustomerEngagementNotifier`) _(iskelet: 2026-03-29)_
+- [x] Müşteri kanalı **iskeleti:** `CustomerEngagementNotifier` + `config/customer_engagement.php` (varsayılan kapalı `NullCustomerEngagementNotifier`); `driver=composite` → `CompositeCustomerEngagementNotifier` (log + HTTP) _(genişletildi: 2026-03-30)_
 - [ ] Stok / diğer domain kuralları, gerçek SMS/WhatsApp sağlayıcı adaptörü — sonraki iterasyon (Faz E ile hizalanır)
 
 ## Faz 3 — büyük entegrasyonlar (planlı / iskelet)
 
 _Kayıt: uygulama sözleşmesi için boş veya no-op sınıflar; üretim akışı ayrı onay._
 
-- [x] `App\Services\Finance\BankStatementOcrService` — CSV satır ayrıştırma + admin import + `bank_statement_csv_imports`; PDF OCR hâlâ boş _(2026-03-29)_
+- [x] `App\Services\Finance\BankStatementOcrService` — CSV + PDF **metin katmanı** (Smalot PdfParser); taranmış görüntü OCR yok (`scannedImageOcrSupported()` = false) _(2026-03-30)_
 - [x] `App\Services\Finance\CashFlowProjectionService` — sipariş tarihi + müşteri vade günü; finans özeti tablosu _(2026-03-29)_
 - [x] `App\Services\Integrations\Logo\LogoErpExportService` — siparişler için `LogoConnectExport` XML + `admin.orders.export.logo.xml` _(2026-03-29)_
 - [x] `App\Services\Logistics\AuditAiEvaluationService` — yakıt hacmi %15 / navlun %20 sapma; `skipped` _(2026-03-29)_
 - [x] Çift taraflı GL çekirdek: `JournalPostingService`, `ChartAccount`/`JournalEntry` admin, `BankStatementJournalPoster`; `TrialBalanceService` + `admin.finance.trial-balance` _(2026-03-29)_
+- [x] `LegalFinancialStatementsService` + `fiscal_opening_balances` — açılış bakiyeleri ile bilanço kalemlerinin (aktif/pasif/özkaynak) dönem özetiyle birleştirilmesi; yasal tablo iddiası yok _(kısmi: 2026-03-30)_
+- [x] TotalEnergies: `TotalEnergiesResponseParser::configuredSchemaVersion()` + teklif yanıtında `schema_version` _(2026-03-30)_
 
 ## Harici ERP deposu
 
