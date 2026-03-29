@@ -5,7 +5,7 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 ## Current Focus
 
 - Finans: `pages::admin.finance-index` — nakit akış projeksiyonu (**tahsilat tarih penceresi**), **vade takvimi** (`pages::admin.finance-payment-due-calendar`, `admin.finance.payment-due-calendar`), Logo XML, banka ekstresi CSV import; PDF ekstre **metin katmanı** (`BankStatementOcrService` + Smalot; görüntü OCR yok).
-- GL çekirdek: `pages::admin.chart-accounts-index`, `pages::admin.journal-entries-index`, `JournalPostingService`, `BankStatementJournalPoster`; **mizan** `TrialBalanceService` + `pages::admin.finance-trial-balance`; **bilanço özeti** `BalanceSheetService` + `admin.finance.balance-sheet`; **yasal tablo temeli** `LegalFinancialStatementsService` + `fiscal_opening_balances`.
+- GL çekirdek: `pages::admin.chart-accounts-index`, `pages::admin.journal-entries-index`, `JournalPostingService`, `BankStatementJournalPoster`; **mizan** `TrialBalanceService` + `pages::admin.finance-trial-balance`; **bilanço özeti** `BalanceSheetService` + `admin.finance.balance-sheet` (isteğe bağlı açılış birleşimi: `LegalFinancialStatementsService`); **mali yıl açılış bakiyeleri** `pages::admin.fiscal-opening-balances-index` + `FiscalOpeningBalancePolicy`.
 - Entegrasyon: `TotalEnergiesFuelQuoteService` + `TotalEnergiesResponseParser` (`config/totalenergies.php` şema v1); müşteri bildirimi `CustomerEngagementNotifier` + `CompositeCustomerEngagementNotifier` (isteğe bağlı çoklu kanal).
 - Faz 3 servisleri: `BankStatementOcrService`, `LogoErpExportService`, `AuditAiEvaluationService` (admin finans özetinde navlun aykırılık özeti).
 
@@ -26,7 +26,7 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 - Gerçek SMS/WhatsApp üretim uçları (HTTP endpoint’ler; `driver=composite` ile log + webhook birlikte).
 - Banka ekstresi otomatik cari eşleştirme; görüntü-only PDF için harici OCR (şu an yalnızca metin katmanı).
 - Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi.
-- Tam yasal bilanço / denetim çıktısı (`LegalFinancialStatementsService` açılış birleştirmesi mevcut; TFRS ve dönem kapanış süreçleri ayrı).
+- Resmi yasal bilanço / denetim çıktısı (TFRS, dönem kapanış; operasyonel açılış birleştirmesi UI tamamlandı).
 
 ## Safe Next Actions
 
@@ -53,4 +53,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-30 (TotalEnergies schema_version; banka PDF metin sınırı; CompositeCustomerEngagementNotifier; fiscal_opening_balances + LegalFinancialStatementsService; Logistics Faz 3 doküman senkronu.)*
+*Son güncelleme: 2026-03-30 (Fiscal opening admin UI + bilanço özeti açılış seçeneği; TotalEnergies schema_version; banka PDF metin sınırı; CompositeCustomerEngagementNotifier; Logistics Faz 3 doküman senkronu.)*

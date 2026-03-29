@@ -2,6 +2,7 @@
 
 use App\Models\ChartAccount;
 use App\Services\Finance\BalanceSheetService;
+use App\Services\Finance\LegalFinancialStatementsService;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -13,6 +14,10 @@ new #[Title('Balance sheet summary')] class extends Component
 
     public string $dateTo = '';
 
+    public bool $includeFiscalOpenings = false;
+
+    public int $fiscalYearForOpenings = 0;
+
     public function mount(): void
     {
         Gate::authorize('viewAny', ChartAccount::class);
@@ -21,6 +26,9 @@ new #[Title('Balance sheet summary')] class extends Component
         }
         if ($this->dateTo === '') {
             $this->dateTo = now()->toDateString();
+        }
+        if ($this->fiscalYearForOpenings === 0) {
+            $this->fiscalYearForOpenings = (int) substr($this->dateFrom, 0, 4);
         }
     }
 
@@ -35,9 +43,20 @@ new #[Title('Balance sheet summary')] class extends Component
             return null;
         }
 
+        $tenantId = (int) $user->tenant_id;
+
         try {
+            if ($this->includeFiscalOpenings) {
+                return app(LegalFinancialStatementsService::class)->periodStructuredSummaryWithFiscalOpenings(
+                    $tenantId,
+                    $this->dateFrom,
+                    $this->dateTo,
+                    $this->fiscalYearForOpenings,
+                );
+            }
+
             return app(BalanceSheetService::class)->periodStructuredSummary(
-                (int) $user->tenant_id,
+                $tenantId,
                 $this->dateFrom,
                 $this->dateTo,
             );
@@ -52,6 +71,7 @@ new #[Title('Balance sheet summary')] class extends Component
         <x-slot name="actions">
             <flux:button :href="route('admin.finance.index')" variant="ghost" wire:navigate>{{ __('Finance summary') }}</flux:button>
             <flux:button :href="route('admin.finance.trial-balance')" variant="ghost" wire:navigate>{{ __('Trial balance') }}</flux:button>
+            <flux:button :href="route('admin.finance.fiscal-opening-balances.index')" variant="ghost" wire:navigate>{{ __('Fiscal opening balances') }}</flux:button>
         </x-slot>
     </x-admin.page-toolbar>
 
@@ -68,6 +88,12 @@ new #[Title('Balance sheet summary')] class extends Component
             <flux:input wire:model.live="dateFrom" type="date" :label="__('From date')" />
             <flux:input wire:model.live="dateTo" type="date" :label="__('To date')" />
         </div>
+        <div class="mt-6 grid gap-4 border-t border-border pt-6 sm:max-w-xl">
+            <flux:checkbox wire:model.live="includeFiscalOpenings" :label="__('Include fiscal year opening balances')" />
+            @if ($this->includeFiscalOpenings)
+                <flux:input wire:model.live="fiscalYearForOpenings" type="number" min="2000" max="2100" :label="__('Fiscal year for openings')" />
+            @endif
+        </div>
     </flux:card>
 
     @if ($this->report === null)
@@ -79,6 +105,25 @@ new #[Title('Balance sheet summary')] class extends Component
         @php($bs = $r['balance_sheet'])
         @php($is = $r['income_statement'])
         @php($t = $r['totals'])
+        @php($openingsIncluded = $r['includes_fiscal_openings'] ?? false)
+
+        @if ($this->includeFiscalOpenings)
+            @if ($openingsIncluded)
+                <flux:callout variant="info" icon="information-circle">
+                    <flux:callout.heading>{{ __('Fiscal opening balances applied') }}</flux:callout.heading>
+                    <flux:callout.text>
+                        {{ __('Balance sheet sections include opening balances for fiscal year :year.', ['year' => $r['fiscal_year'] ?? $this->fiscalYearForOpenings]) }}
+                    </flux:callout.text>
+                </flux:callout>
+            @else
+                <flux:callout variant="neutral" icon="information-circle">
+                    <flux:callout.heading>{{ __('No opening balances for this fiscal year') }}</flux:callout.heading>
+                    <flux:callout.text>
+                        {{ __('Add rows under Fiscal opening balances or pick another year.') }}
+                    </flux:callout.text>
+                </flux:callout>
+            @endif
+        @endif
 
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('Balance sheet (by type)') }}</flux:heading>

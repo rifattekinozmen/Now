@@ -286,5 +286,22 @@
     "Revenue": "Gelir",
     "Expense": "Gider",
     "Period result (revenue + expense net)": "Dönem sonucu (gelir + gider net)",
-    "Unable to load report for this period.": "Bu dönem için rapor yüklenemedi."
+    "Unable to load report for this period.": "Bu dönem için rapor yüklenemedi.",
+    "Fiscal opening balances": "Mali yıl açılış bakiyeleri",
+    "Opening balances are merged into the balance sheet summary when enabled there. Not statutory reporting.": "Açılış bakiyeleri bilanço özetinde etkinleştirildiğinde birleştirilir. Yasal raporlama değildir.",
+    "Filter by fiscal year": "Mali yıla göre süz",
+    "New opening balance": "Yeni açılış bakiyesi",
+    "Edit opening balance": "Açılış bakiyesini düzenle",
+    "Debit (opening)": "Borç (açılış)",
+    "Credit (opening)": "Alacak (açılış)",
+    "Opening balances": "Açılış bakiyeleri",
+    "No fiscal opening balances for this year.": "Bu yıl için açılış bakiyesi yok.",
+    "Select account": "Hesap seçin",
+    "Delete this opening balance?": "Bu açılış bakiyesini silmek istiyor musunuz?",
+    "Include fiscal year opening balances": "Mali yıl açılış bakiyelerini dahil et",
+    "Fiscal year for openings": "Açılışlar için mali yıl",
+    "Fiscal opening balances applied": "Mali yıl açılış bakiyeleri uygulandı",
+    "Balance sheet sections include opening balances for fiscal year :year.": "Bilanço bölümleri :year mali yılı açılış bakiyelerini içerir.",
+    "No opening balances for this fiscal year": "Bu mali yıl için açılış bakiyesi yok",
+    "Add rows under Fiscal opening balances or pick another year.": "Mali yıl açılış bakiyeleri ekranından satır ekleyin veya başka bir yıl seçin."
 }

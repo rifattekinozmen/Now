@@ -62,6 +62,9 @@
                         <flux:sidebar.item icon="scale" :href="route('admin.finance.balance-sheet')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Balance sheet summary') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="calendar" :href="route('admin.finance.fiscal-opening-balances.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Fiscal opening balances') }}
+                        </flux:sidebar.item>
                     @endcanany
                 </flux:sidebar.group>
             </flux:sidebar.nav>

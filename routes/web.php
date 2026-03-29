@@ -68,6 +68,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/journal-entries', 'pages::admin.journal-entries-index')->name('finance.journal-entries.index');
             Route::livewire('finance/trial-balance', 'pages::admin.finance-trial-balance')->name('finance.trial-balance');
             Route::livewire('finance/balance-sheet', 'pages::admin.finance-balance-sheet')->name('finance.balance-sheet');
+            Route::livewire('finance/fiscal-opening-balances', 'pages::admin.fiscal-opening-balances-index')->name('finance.fiscal-opening-balances.index');
         });
     });
 });

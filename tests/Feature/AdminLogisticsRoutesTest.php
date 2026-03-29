@@ -33,6 +33,7 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.finance.journal-entries.index'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.trial-balance'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.balance-sheet'))->assertRedirect(route('login'));
+    $this->get(route('admin.finance.fiscal-opening-balances.index'))->assertRedirect(route('login'));
     $this->get(route('admin.orders.export.finance.csv'))->assertRedirect(route('login'));
     $this->get(route('admin.orders.export.logo.xml'))->assertRedirect(route('login'));
 });
@@ -84,6 +85,7 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.finance.journal-entries.index'))->assertSuccessful();
     $this->get(route('admin.finance.trial-balance'))->assertSuccessful();
     $this->get(route('admin.finance.balance-sheet'))->assertSuccessful();
+    $this->get(route('admin.finance.fiscal-opening-balances.index'))->assertSuccessful();
     $this->get(route('admin.orders.export.finance.csv'))->assertSuccessful();
     $this->get(route('admin.orders.export.logo.xml'))->assertSuccessful();
 });
