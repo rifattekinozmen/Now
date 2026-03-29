@@ -66,6 +66,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/bank-statement-csv', 'pages::admin.bank-statement-csv-import')->name('finance.bank-statement-csv');
             Route::livewire('finance/chart-of-accounts', 'pages::admin.chart-accounts-index')->name('finance.chart-accounts.index');
             Route::livewire('finance/journal-entries', 'pages::admin.journal-entries-index')->name('finance.journal-entries.index');
+            Route::livewire('finance/trial-balance', 'pages::admin.finance-trial-balance')->name('finance.trial-balance');
         });
     });
 });

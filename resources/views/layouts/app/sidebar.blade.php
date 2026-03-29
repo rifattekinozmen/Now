@@ -56,6 +56,9 @@
                         <flux:sidebar.item icon="document-duplicate" :href="route('admin.finance.journal-entries.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Journal entries') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="table-cells" :href="route('admin.finance.trial-balance')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Trial balance') }}
+                        </flux:sidebar.item>
                     @endcanany
                 </flux:sidebar.group>
             </flux:sidebar.nav>

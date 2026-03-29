@@ -5,6 +5,7 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 ## Current Focus
 
 - Finans: `pages::admin.finance-index` — nakit akış projeksiyonu (**tahsilat tarih penceresi**), **vade takvimi** (`pages::admin.finance-payment-due-calendar`, `admin.finance.payment-due-calendar`), Logo XML, banka ekstresi CSV import.
+- GL çekirdek: `pages::admin.chart-accounts-index`, `pages::admin.journal-entries-index`, `JournalPostingService`, `BankStatementJournalPoster`; **mizan** `TrialBalanceService` + `pages::admin.finance-trial-balance` (`admin.finance.trial-balance`).
 - Faz 3 servisleri: `BankStatementOcrService`, `LogoErpExportService`, `AuditAiEvaluationService` (admin finans özetinde navlun aykırılık özeti).
 
 ## Rol matrisi (özet)
@@ -24,7 +25,7 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 - Gerçek SMS/WhatsApp sağlayıcısı (`CustomerEngagementNotifier` somut adaptör; yapılandırma ile no-op).
 - Banka ekstresi PDF metin çıkarımı / OCR ve otomatik cari eşleştirme (ileri iterasyon).
 - Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi.
-- Tam muhasebe / çift taraflı kayıt (doküman vizyonu).
+- Yasal bilanço / tam mali tablolar (doküman §7.3 kalan kısım; GL çekirdek ve dönem mizanı mevcut).
 
 ## Safe Next Actions
 
@@ -51,4 +52,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-29 (vade takvimi doküman senkronu; finans raporları yaşlandırma; banka PDF yolu; entegrasyon iskeletleri; araç/personel import.)*
+*Son güncelleme: 2026-03-29 (GL: hesap planı / yevmiye / banka→yevmiye; trial balance; doküman Faz 3 senkronu.)*

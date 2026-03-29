@@ -23,9 +23,11 @@ new #[Title('Chart of accounts')] class extends Component
         Gate::authorize('create', ChartAccount::class);
 
         $tenantId = auth()->user()?->tenant_id;
-        if (! is_int($tenantId)) {
+        if ($tenantId === null) {
             abort(403);
         }
+
+        $tenantId = (int) $tenantId;
 
         $validated = $this->validate([
             'code' => ['required', 'string', 'max:32'],
