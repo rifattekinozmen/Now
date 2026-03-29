@@ -21,7 +21,7 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
                 'channel' => $channel,
                 'template' => $template,
                 'context' => $context,
-            ], $timeout);
+            ], $timeout, $this->resolveBearerToken('generic'));
         }
 
         $smsEnabled = (bool) config('customer_engagement.sms.enabled', false);
@@ -32,7 +32,7 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
                 'original_channel' => $channel,
                 'template' => $template,
                 'context' => $context,
-            ], $timeout);
+            ], $timeout, $this->resolveBearerToken('sms'));
         }
 
         $waEnabled = (bool) config('customer_engagement.whatsapp.enabled', false);
@@ -43,14 +43,34 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
                 'original_channel' => $channel,
                 'template' => $template,
                 'context' => $context,
-            ], $timeout);
+            ], $timeout, $this->resolveBearerToken('whatsapp'));
         }
+    }
+
+    private function resolveBearerToken(string $channel): ?string
+    {
+        if ($channel === 'sms') {
+            $t = config('customer_engagement.sms.bearer_token');
+            if (is_string($t) && $t !== '') {
+                return $t;
+            }
+        }
+        if ($channel === 'whatsapp') {
+            $t = config('customer_engagement.whatsapp.bearer_token');
+            if (is_string($t) && $t !== '') {
+                return $t;
+            }
+        }
+
+        $generic = config('customer_engagement.http.bearer_token');
+
+        return is_string($generic) && $generic !== '' ? $generic : null;
     }
 
     /**
      * @param  array<string, mixed>  $body
      */
-    private function postJson(string $url, array $body, int $timeout): void
+    private function postJson(string $url, array $body, int $timeout, ?string $bearerToken = null): void
     {
         try {
             $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
@@ -67,9 +87,8 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
             ->acceptJson()
             ->withHeaders($this->headersForWebhookPayload($json));
 
-        $bearer = config('customer_engagement.http.bearer_token');
-        if (is_string($bearer) && $bearer !== '') {
-            $pending = $pending->withToken($bearer);
+        if ($bearerToken !== null) {
+            $pending = $pending->withToken($bearerToken);
         }
 
         try {

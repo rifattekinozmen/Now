@@ -349,7 +349,7 @@ class ExcelImportService
             'partner_number', 'tax_id', 'legal_name', 'trade_name', 'pin_code', 'sas_no',
             'customer_legal_name', 'currency_code', 'loading_site', 'unloading_site',
             'plate', 'vin', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone' => is_scalar($value) ? trim((string) $value) : null,
-            'distance_km', 'tonnage' => is_numeric($value) ? $value : null,
+            'distance_km', 'tonnage', 'gross_weight_kg', 'tara_weight_kg', 'net_weight_kg', 'moisture_percent' => is_numeric($value) ? $value : null,
             'inspection_valid_until' => $this->normalizeImportDate($value),
             default => $value,
         };
@@ -400,6 +400,14 @@ class ExcelImportService
             'Mesafe (km)' => 'distance_km',
             'Mesafe' => 'distance_km',
             'Tonaj' => 'tonnage',
+            'Dolu' => 'gross_weight_kg',
+            'Gross' => 'gross_weight_kg',
+            'Boş' => 'tara_weight_kg',
+            'Tara' => 'tara_weight_kg',
+            'Geçerli Miktar' => 'net_weight_kg',
+            'Net' => 'net_weight_kg',
+            'Rutubet' => 'moisture_percent',
+            'Rutubet %' => 'moisture_percent',
         ];
     }
 
@@ -470,6 +478,13 @@ class ExcelImportService
                     $currency = 'TRY';
                 }
 
+                $gross = isset($raw['gross_weight_kg']) && is_numeric($raw['gross_weight_kg']) ? (string) $raw['gross_weight_kg'] : null;
+                $tara = isset($raw['tara_weight_kg']) && is_numeric($raw['tara_weight_kg']) ? (string) $raw['tara_weight_kg'] : null;
+                $net = isset($raw['net_weight_kg']) && is_numeric($raw['net_weight_kg']) ? (string) $raw['net_weight_kg'] : null;
+                if ($net === null && $gross !== null && $tara !== null) {
+                    $net = (string) round((float) $gross - (float) $tara, 3);
+                }
+
                 Order::query()->create([
                     'tenant_id' => $tenantId,
                     'customer_id' => $customer->id,
@@ -480,6 +495,10 @@ class ExcelImportService
                     'currency_code' => $currency,
                     'distance_km' => isset($raw['distance_km']) && is_numeric($raw['distance_km']) ? $raw['distance_km'] : null,
                     'tonnage' => isset($raw['tonnage']) && is_numeric($raw['tonnage']) ? $raw['tonnage'] : null,
+                    'gross_weight_kg' => $gross,
+                    'tara_weight_kg' => $tara,
+                    'net_weight_kg' => $net,
+                    'moisture_percent' => isset($raw['moisture_percent']) && is_numeric($raw['moisture_percent']) ? $raw['moisture_percent'] : null,
                     'loading_site' => isset($raw['loading_site']) ? (string) $raw['loading_site'] : null,
                     'unloading_site' => isset($raw['unloading_site']) ? (string) $raw['unloading_site'] : null,
                 ]);

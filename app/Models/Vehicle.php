@@ -53,4 +53,12 @@ class Vehicle extends Model
     {
         return $this->hasMany(Shipment::class);
     }
+
+    /**
+     * @return HasMany<FuelIntake, $this>
+     */
+    public function fuelIntakes(): HasMany
+    {
+        return $this->hasMany(FuelIntake::class);
+    }
 }

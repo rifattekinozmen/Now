@@ -37,3 +37,44 @@ test('http webhook sends bearer and hmac signature when configured', function ()
         return $sig === $expected;
     });
 });
+
+test('sms endpoint uses dedicated bearer when configured', function () {
+    config([
+        'customer_engagement.sms.enabled' => true,
+        'customer_engagement.sms.endpoint' => 'https://sms.example.test/send',
+        'customer_engagement.sms.bearer_token' => 'sms-only-bearer',
+        'customer_engagement.http.bearer_token' => 'wrong-bearer',
+        'customer_engagement.http.retry' => ['times' => 1, 'sleep_ms' => 0],
+    ]);
+
+    Http::fake([
+        'https://sms.example.test/send' => Http::response(['ok' => true], 200),
+    ]);
+
+    (new HttpCustomerEngagementNotifier)->send('logistics', 'shipment.dispatched', ['id' => 1]);
+
+    Http::assertSent(function (Request $request): bool {
+        return $request->url() === 'https://sms.example.test/send'
+            && $request->hasHeader('Authorization', 'Bearer sms-only-bearer');
+    });
+});
+
+test('whatsapp endpoint uses dedicated bearer when configured', function () {
+    config([
+        'customer_engagement.whatsapp.enabled' => true,
+        'customer_engagement.whatsapp.endpoint' => 'https://wa.example.test/messages',
+        'customer_engagement.whatsapp.bearer_token' => 'wa-bearer',
+        'customer_engagement.http.retry' => ['times' => 1, 'sleep_ms' => 0],
+    ]);
+
+    Http::fake([
+        'https://wa.example.test/messages' => Http::response(['ok' => true], 200),
+    ]);
+
+    (new HttpCustomerEngagementNotifier)->send('logistics', 'shipment.dispatched', ['id' => 1]);
+
+    Http::assertSent(function (Request $request): bool {
+        return $request->url() === 'https://wa.example.test/messages'
+            && $request->hasHeader('Authorization', 'Bearer wa-bearer');
+    });
+});

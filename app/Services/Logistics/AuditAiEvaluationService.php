@@ -2,7 +2,9 @@
 
 namespace App\Services\Logistics;
 
+use App\Models\FuelIntake;
 use App\Models\Order;
+use App\Models\Vehicle;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -115,6 +117,82 @@ final class AuditAiEvaluationService
             'evaluated_orders' => $orders->count(),
             'flagged' => $flagged,
         ];
+    }
+
+    /**
+     * Ardışık yakıt kayıtlarında km × tüketim ile beklenen litre kıyaslı % sapma (varsayılan %15).
+     *
+     * @return array{evaluated_pairs: int, flagged: list<array{fuel_intake_id: int, vehicle_id: int, liters: float, expected_liters: float, reasons: list<string>}>}
+     */
+    public function summarizeFuelIntakeAnomalies(
+        int $tenantId,
+        float $thresholdPercent = 15.0,
+    ): array {
+        $intakes = FuelIntake::query()
+            ->where('tenant_id', $tenantId)
+            ->with('vehicle')
+            ->orderBy('vehicle_id')
+            ->orderBy('recorded_at')
+            ->get();
+
+        /** @var array<int, FuelIntake> $prevByVehicle */
+        $prevByVehicle = [];
+        $flagged = [];
+        $pairs = 0;
+
+        foreach ($intakes as $intake) {
+            $vid = (int) $intake->vehicle_id;
+            $prev = $prevByVehicle[$vid] ?? null;
+            if ($prev instanceof FuelIntake) {
+                $pairs++;
+                $expected = null;
+                if ($intake->odometer_km !== null && $prev->odometer_km !== null) {
+                    $diff = (float) $intake->odometer_km - (float) $prev->odometer_km;
+                    if ($diff > 0.0) {
+                        $lpk = $this->litersPerKmFromVehicle($intake->vehicle);
+                        $expected = $diff * $lpk;
+                    }
+                }
+                if ($expected !== null && $expected > 0.0) {
+                    $eval = $this->evaluateFuelVolumeAgainstExpected(
+                        (float) $intake->liters,
+                        $expected,
+                        $thresholdPercent
+                    );
+                    if ($eval['flagged']) {
+                        $flagged[] = [
+                            'fuel_intake_id' => (int) $intake->id,
+                            'vehicle_id' => $vid,
+                            'liters' => (float) $intake->liters,
+                            'expected_liters' => $expected,
+                            'reasons' => $eval['reasons'],
+                        ];
+                    }
+                }
+            }
+            $prevByVehicle[$vid] = $intake;
+        }
+
+        return [
+            'evaluated_pairs' => $pairs,
+            'flagged' => $flagged,
+        ];
+    }
+
+    private function litersPerKmFromVehicle(?Vehicle $vehicle): float
+    {
+        if ($vehicle === null) {
+            return 0.35;
+        }
+        $meta = $vehicle->meta;
+        if (is_array($meta) && isset($meta['liters_per_km']) && is_numeric($meta['liters_per_km'])) {
+            return max(0.001, (float) $meta['liters_per_km']);
+        }
+        if (is_array($meta) && isset($meta['liters_per_100km']) && is_numeric($meta['liters_per_100km'])) {
+            return max(0.0001, (float) $meta['liters_per_100km'] / 100.0);
+        }
+
+        return 0.35;
     }
 
     /**

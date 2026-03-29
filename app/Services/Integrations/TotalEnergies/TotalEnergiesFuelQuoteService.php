@@ -179,6 +179,16 @@ final class TotalEnergiesFuelQuoteService
 
         $merged['region'] ??= config('totalenergies.default_region', 'TR');
 
+        $province = config('totalenergies.province');
+        if (is_string($province) && trim($province) !== '') {
+            $merged['province'] ??= trim($province);
+        }
+
+        $district = config('totalenergies.district');
+        if (is_string($district) && trim($district) !== '') {
+            $merged['district'] ??= trim($district);
+        }
+
         /** @var array<string, scalar> $out */
         $out = [];
         foreach ($merged as $k => $v) {

@@ -30,6 +30,19 @@ return [
 
     'default_region' => env('TOTALENERGIES_REGION', 'TR'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | İl / ilçe (navlun pompa bazı — GET sorgu ve POST gövdeye merge)
+    |--------------------------------------------------------------------------
+    |
+    | Sözleşmede farklı anahtar adları kullanılıyorsa `quote_query` ile override edin.
+    |
+    */
+
+    'province' => env('TOTALENERGIES_PROVINCE'),
+
+    'district' => env('TOTALENERGIES_DISTRICT'),
+
     'timeout_seconds' => (int) env('TOTALENERGIES_TIMEOUT', 15),
 
     /*

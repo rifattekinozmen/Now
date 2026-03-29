@@ -11,7 +11,7 @@ use App\Services\Logistics\ShipmentDispatchComplianceGate;
 test('gate allows planned shipment without vehicle', function () {
     $shipment = Shipment::factory()->create(['status' => ShipmentStatus::Planned, 'vehicle_id' => null]);
 
-    $gate = new ShipmentDispatchComplianceGate;
+    $gate = app(ShipmentDispatchComplianceGate::class);
 
     $gate->assertDispatchAllowed($shipment);
 
@@ -32,7 +32,7 @@ test('gate allows shipment when vehicle inspection is in the future', function (
         'status' => ShipmentStatus::Planned,
     ]);
 
-    $gate = new ShipmentDispatchComplianceGate;
+    $gate = app(ShipmentDispatchComplianceGate::class);
 
     $gate->assertDispatchAllowed($shipment);
 
@@ -53,7 +53,7 @@ test('gate blocks when vehicle inspection date is missing', function () {
         'status' => ShipmentStatus::Planned,
     ]);
 
-    $gate = new ShipmentDispatchComplianceGate;
+    $gate = app(ShipmentDispatchComplianceGate::class);
 
     $gate->assertDispatchAllowed($shipment);
 })->throws(InvalidArgumentException::class);
@@ -72,7 +72,7 @@ test('gate blocks when vehicle inspection is expired', function () {
         'status' => ShipmentStatus::Planned,
     ]);
 
-    $gate = new ShipmentDispatchComplianceGate;
+    $gate = app(ShipmentDispatchComplianceGate::class);
 
     $gate->assertDispatchAllowed($shipment);
 })->throws(InvalidArgumentException::class);
@@ -97,7 +97,47 @@ test('gate blocks driver with expired license when meta references employee', fu
         'meta' => ['driver_employee_id' => $driver->id],
     ]);
 
-    $gate = new ShipmentDispatchComplianceGate;
+    $gate = app(ShipmentDispatchComplianceGate::class);
+
+    $gate->assertDispatchAllowed($shipment);
+})->throws(InvalidArgumentException::class);
+
+test('gate blocks driver when driving hours in lookback exceed limit', function () {
+    config(['logistics.driver_fatigue.max_driving_hours_in_window' => 9.0]);
+
+    $customer = Customer::factory()->create();
+    $order = Order::factory()->create(['customer_id' => $customer->id, 'tenant_id' => $customer->tenant_id]);
+    $vehicle = Vehicle::factory()->create([
+        'tenant_id' => $customer->tenant_id,
+        'inspection_valid_until' => now()->addYear(),
+    ]);
+    $driver = Employee::factory()->create([
+        'tenant_id' => $customer->tenant_id,
+        'is_driver' => true,
+        'license_valid_until' => now()->addYear(),
+        'src_valid_until' => now()->addYear(),
+        'psychotechnical_valid_until' => now()->addYear(),
+    ]);
+
+    Shipment::factory()->create([
+        'order_id' => $order->id,
+        'tenant_id' => $customer->tenant_id,
+        'vehicle_id' => $vehicle->id,
+        'status' => ShipmentStatus::Delivered,
+        'meta' => ['driver_employee_id' => $driver->id],
+        'dispatched_at' => now()->subHours(20),
+        'delivered_at' => now()->subHours(6),
+    ]);
+
+    $shipment = Shipment::factory()->create([
+        'order_id' => $order->id,
+        'tenant_id' => $customer->tenant_id,
+        'vehicle_id' => $vehicle->id,
+        'status' => ShipmentStatus::Planned,
+        'meta' => ['driver_employee_id' => $driver->id],
+    ]);
+
+    $gate = app(ShipmentDispatchComplianceGate::class);
 
     $gate->assertDispatchAllowed($shipment);
 })->throws(InvalidArgumentException::class);

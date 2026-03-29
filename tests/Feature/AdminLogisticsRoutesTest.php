@@ -46,8 +46,8 @@ test('admin full-page layout is not nested twice', function () {
 
     $html = $this->get(route('admin.vehicles.index'))->assertSuccessful()->getContent();
 
-    $marker = 'https://github.com/laravel/livewire-starter-kit';
-    expect(substr_count($html, $marker))->toBe(1);
+    expect(substr_count($html, '<body'))->toBe(1)
+        ->and(substr_count($html, '</body>'))->toBe(1);
 });
 
 test('authenticated users can access admin logistics routes', function () {

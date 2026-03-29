@@ -35,6 +35,7 @@ final class LogoErpExportService
     private function orderElement(DOMDocument $dom, Order $order): DOMElement
     {
         $el = $dom->createElement('Order');
+        $this->appendTextChild($dom, $el, 'OrderRecordId', (string) $order->getKey());
         $this->appendTextChild($dom, $el, 'OrderNumber', (string) $order->order_number);
         $this->appendTextChild($dom, $el, 'SasNo', $order->sas_no !== null ? (string) $order->sas_no : '');
         $this->appendTextChild($dom, $el, 'Currency', $order->currency_code !== null ? (string) $order->currency_code : '');

@@ -56,10 +56,11 @@ new #[Title('Chart of accounts')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <flux:heading size="xl">{{ __('Chart of accounts') }}</flux:heading>
-        <flux:button :href="route('admin.finance.index')" variant="ghost" wire:navigate>{{ __('Back to finance summary') }}</flux:button>
-    </div>
+    <x-admin.page-header :heading="__('Chart of accounts')">
+        <x-slot name="actions">
+            <flux:button :href="route('admin.finance.index')" variant="outline" wire:navigate>{{ __('Back to finance summary') }}</flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     @can('create', App\Models\ChartAccount::class)
         <flux:card class="!p-4">

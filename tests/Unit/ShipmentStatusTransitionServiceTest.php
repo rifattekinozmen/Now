@@ -137,3 +137,25 @@ test('cannot cancel delivered shipment', function () {
 
     $svc->cancel($shipment);
 })->throws(InvalidArgumentException::class);
+
+test('mark delivered rejects strict ipod without gps and photo', function () {
+    config(['logistics.ipod.strict' => true]);
+
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+    $order = Order::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'customer_id' => $customer->id,
+    ]);
+    $shipment = Shipment::factory()->create([
+        'order_id' => $order->id,
+        'status' => ShipmentStatus::Dispatched,
+    ]);
+    $svc = app(ShipmentStatusTransitionService::class);
+
+    $svc->markDelivered($shipment, [
+        'signature_data_url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    ]);
+})->throws(InvalidArgumentException::class);

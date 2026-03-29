@@ -11,6 +11,10 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
+    --color-background: #ffffff;
+    --color-card: #fafafa;
+    --color-border-app: #e5e5e5;
+
     --color-zinc-50: #fafafa;
     --color-zinc-100: #f5f5f5;
     --color-zinc-200: #e5e5e5;
@@ -33,6 +37,9 @@
         --color-accent: var(--color-white);
         --color-accent-content: var(--color-white);
         --color-accent-foreground: var(--color-neutral-800);
+        --color-background: #262626;
+        --color-card: #171717;
+        --color-border-app: #404040;
     }
 }
 

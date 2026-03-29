@@ -20,8 +20,9 @@ test('authenticated users can visit the dashboard', function () {
     $response->assertSee(__('Shipment status distribution'), false);
     $response->assertSee(__('Refresh TCMB rates'), false);
 
-    $marker = 'https://github.com/laravel/livewire-starter-kit';
-    expect(substr_count($response->getContent(), $marker))->toBe(1);
+    $html = $response->getContent();
+    expect(substr_count($html, '<body'))->toBe(1)
+        ->and(substr_count($html, '</body>'))->toBe(1);
 });
 
 test('logistics viewer does not see tcmb refresh on dashboard', function () {

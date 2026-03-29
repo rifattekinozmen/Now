@@ -14,6 +14,7 @@ final class ShipmentStatusTransitionService
 {
     public function __construct(
         private ShipmentDispatchComplianceGate $dispatchComplianceGate,
+        private PodDeliveryComplianceGate $podDeliveryComplianceGate,
     ) {}
 
     public function markDispatched(Shipment $shipment): void
@@ -41,6 +42,8 @@ final class ShipmentStatusTransitionService
             throw new \InvalidArgumentException(__('Only dispatched shipments can be marked delivered.'));
         }
 
+        $this->podDeliveryComplianceGate->assertDeliveredProofAllowed($pod);
+
         $attributes = [
             'status' => ShipmentStatus::Delivered,
             'delivered_at' => now(),
@@ -57,7 +60,13 @@ final class ShipmentStatusTransitionService
             $signedAt = now()->toIso8601String();
         }
 
-        $hasPodPayload = $note !== '' || $receivedBy !== '' || $signaturePath !== null;
+        $hasGeoOrPhoto = $pod !== null && (
+            (isset($pod['latitude']) && is_numeric($pod['latitude']))
+            || (isset($pod['longitude']) && is_numeric($pod['longitude']))
+            || (isset($pod['photo_storage_path']) && is_string($pod['photo_storage_path']) && trim($pod['photo_storage_path']) !== '')
+        );
+
+        $hasPodPayload = $note !== '' || $receivedBy !== '' || $signaturePath !== null || $hasGeoOrPhoto;
 
         if ($hasPodPayload) {
             $payload = [
@@ -69,6 +78,20 @@ final class ShipmentStatusTransitionService
             if ($signaturePath !== null) {
                 $payload['signature_storage_path'] = $signaturePath;
                 $payload['signed_at'] = $signedAt;
+            }
+            if ($pod !== null) {
+                if (isset($pod['latitude']) && is_numeric($pod['latitude'])) {
+                    $payload['delivery_latitude'] = (float) $pod['latitude'];
+                }
+                if (isset($pod['longitude']) && is_numeric($pod['longitude'])) {
+                    $payload['delivery_longitude'] = (float) $pod['longitude'];
+                }
+                if (isset($pod['photo_storage_path']) && is_string($pod['photo_storage_path'])) {
+                    $trim = trim($pod['photo_storage_path']);
+                    if ($trim !== '') {
+                        $payload['photo_storage_path'] = $trim;
+                    }
+                }
             }
             $attributes['pod_payload'] = $payload;
         }

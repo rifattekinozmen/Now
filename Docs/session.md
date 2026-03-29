@@ -4,10 +4,10 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
-- Finans: `pages::admin.finance-index` — nakit akış projeksiyonu (**tahsilat tarih penceresi**), **vade takvimi** (`pages::admin.finance-payment-due-calendar`, `admin.finance.payment-due-calendar`), Logo XML, banka ekstresi CSV import; PDF ekstre **metin katmanı** (`BankStatementOcrService` + Smalot; görüntü OCR yok).
-- GL çekirdek: `pages::admin.chart-accounts-index`, `pages::admin.journal-entries-index`, `JournalPostingService`, `BankStatementJournalPoster`; **mizan** `TrialBalanceService` + `pages::admin.finance-trial-balance`; **bilanço özeti** `BalanceSheetService` + `admin.finance.balance-sheet` (isteğe bağlı açılış birleşimi: `LegalFinancialStatementsService`); **mali yıl açılış bakiyeleri** `pages::admin.fiscal-opening-balances-index` + `FiscalOpeningBalancePolicy`.
-- Entegrasyon: `TotalEnergiesFuelQuoteService` + `TotalEnergiesResponseParser` (`config/totalenergies.php` şema v1); müşteri bildirimi `CustomerEngagementNotifier` + `CompositeCustomerEngagementNotifier` (isteğe bağlı çoklu kanal).
-- Faz 3 servisleri: `BankStatementOcrService`, `LogoErpExportService`, `AuditAiEvaluationService` (admin finans özetinde navlun aykırılık özeti).
+- Finans: `pages::admin.finance-index` — üstte **yakıt alımı uyarı özeti** (`AuditAiEvaluationService::summarizeFuelIntakeAnomalies`, `fuel_intakes` tablosu); navlun medyan sapması ile birlikte.
+- Operasyon: `config/logistics.php` — `LOGISTICS_IPOD_STRICT`, `PodDeliveryComplianceGate`; `DriverSafetyService` + sevkiyat gönderim kapısında yorgunluk; siparişlerde **kantar/rutubet** alanları ve CSV import genişlemesi (`ExcelImportService`).
+- Entegrasyon: `TotalEnergiesFuelQuoteService` — `TOTALENERGIES_PROVINCE` / `DISTRICT`; `HttpCustomerEngagementNotifier` — SMS/WhatsApp ayrı Bearer (`CUSTOMER_ENGAGEMENT_SMS_BEARER`, `WHATSAPP_BEARER`); `LogoErpExportService` — `OrderRecordId`, kantar alanları + `MaterialCode`/`PlantCode`/`StorageLocation` (config `logo_export`).
+- UI: `resources/css/app.css` — `bg-card`, `bg-background`, `border-border-app`; sidebar’da harici repo linkleri kaldırıldı, **Ayarlar** (`profile.edit`); finans alt sayfalarında `x-admin.page-header` yaygınlaştırıldı.
 
 ## Rol matrisi (özet)
 
@@ -22,11 +22,11 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ## Pending Work
 
-- TotalEnergies: üretim ortamında müşteri sözleşmesindeki gerçek endpoint/gövde ile doğrulama (yer tutucu URL dışı; `tests/Feature/TotalEnergiesFuelQuoteIntegrationTest.php` mock HTTP + başlık/sorgu kontrolü mevcut).
-- Gerçek SMS/WhatsApp üretim uçları (HTTP endpoint’ler; `driver=composite` ile log + webhook birlikte — `.env.example` notları).
+- TotalEnergies: üretim ortamında müşteri sözleşmesindeki gerçek endpoint/gövde ile doğrulama (yer tutucu URL dışı; il/ilçe sorgu parametreleri ve entegrasyon testleri mevcut).
 - Banka ekstresi: görüntü-only PDF için harici OCR (şu an yalnızca metin katmanı; `BankStatementOcrService` sınıf yorumu).
-- Logo XML: canlı Logo Connect dokümantasyonuna göre ek alanlar (`CustomerPartnerNo` + `partner_number` birleşik XML’de).
+- Logo XML: canlı Logo Connect dokümantasyonuna göre ek alanlar / şema doğrulaması.
 - Resmi yasal bilanço / denetim çıktısı (TFRS, dönem kapanış; operasyonel açılış birleştirmesi UI tamamlandı).
+- Yakıt: `fuel_intakes` için admin CRUD veya içe aktarma; POD sıkı modda foto yükleme (şu an `photo_storage_path` yolu beklenir).
 
 ## Son teslim (plan — 2026-03-29)
 

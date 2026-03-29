@@ -24,6 +24,13 @@ return [
         'DeliveryOrderNo' => 'meta.delivery_order_no',
         'OrderNotes' => 'meta.notes',
         'InternalReference' => 'meta.internal_reference',
+        'MaterialCode' => 'meta.material_code',
+        'PlantCode' => 'meta.plant_code',
+        'StorageLocation' => 'meta.storage_location',
+        'GrossWeightKg' => 'gross_weight_kg',
+        'TaraWeightKg' => 'tara_weight_kg',
+        'NetWeightKg' => 'net_weight_kg',
+        'MoisturePercent' => 'moisture_percent',
     ],
 
     /*

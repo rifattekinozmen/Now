@@ -235,6 +235,20 @@ new #[Title('Finance summary')] class extends Component
             $to
         );
     }
+
+    /**
+     * @return array{evaluated_pairs: int, flagged: list<array{fuel_intake_id: int, vehicle_id: int, liters: float, expected_liters: float, reasons: list<string>}>}
+     */
+    #[Computed]
+    public function auditFuelIntakeAnomalies(): array
+    {
+        $user = auth()->user();
+        if ($user === null || $user->tenant_id === null) {
+            return ['evaluated_pairs' => 0, 'flagged' => []];
+        }
+
+        return app(AuditAiEvaluationService::class)->summarizeFuelIntakeAnomalies((int) $user->tenant_id);
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
@@ -316,6 +330,45 @@ new #[Title('Finance summary')] class extends Component
                                     </flux:link>
                                 </flux:table.cell>
                                 <flux:table.cell>{{ $row['currency_code'] ?? '—' }}</flux:table.cell>
+                                <flux:table.cell>{{ $row['reasons'][0] ?? '—' }}</flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            @endif
+        </flux:card>
+
+        <flux:card class="!p-4">
+            <flux:heading size="lg" class="mb-2">{{ __('Fuel intake audit (vs expected by km)') }}</flux:heading>
+            <flux:text class="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Compared consecutive fuel entries per vehicle (odometer delta × default :lpk L/km unless vehicle meta overrides).', ['lpk' => 0.35]) }}
+            </flux:text>
+            @if ($this->auditFuelIntakeAnomalies['evaluated_pairs'] === 0)
+                <flux:text class="text-sm text-zinc-500">{{ __('Not enough fuel intake pairs to evaluate in this tenant.') }}</flux:text>
+            @elseif (count($this->auditFuelIntakeAnomalies['flagged']) === 0)
+                <flux:text class="text-sm text-zinc-500">{{ __('No fuel volume anomalies detected (pairs checked: :n).', ['n' => $this->auditFuelIntakeAnomalies['evaluated_pairs']]) }}</flux:text>
+            @else
+                <flux:callout variant="danger" icon="shield-exclamation" class="mb-4">
+                    <flux:callout.heading>{{ __('Fuel volumes flagged for review') }}</flux:callout.heading>
+                    <flux:callout.text>{{ __('Actual liters deviate more than 15% from expected for the odometer segment.') }}</flux:callout.text>
+                </flux:callout>
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Vehicle') }}</flux:table.column>
+                        <flux:table.column>{{ __('Liters') }}</flux:table.column>
+                        <flux:table.column>{{ __('Expected (L)') }}</flux:table.column>
+                        <flux:table.column>{{ __('Reason') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($this->auditFuelIntakeAnomalies['flagged'] as $row)
+                            <flux:table.row :key="$row['fuel_intake_id']">
+                                <flux:table.cell>
+                                    <flux:link :href="route('admin.vehicles.index')" wire:navigate>
+                                        #{{ $row['vehicle_id'] }}
+                                    </flux:link>
+                                </flux:table.cell>
+                                <flux:table.cell>{{ number_format($row['liters'], 2, '.', ',') }}</flux:table.cell>
+                                <flux:table.cell>{{ number_format($row['expected_liters'], 2, '.', ',') }}</flux:table.cell>
                                 <flux:table.cell>{{ $row['reasons'][0] ?? '—' }}</flux:table.cell>
                             </flux:table.row>
                         @endforeach

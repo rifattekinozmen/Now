@@ -6,6 +6,26 @@ use App\Models\Order;
 use App\Services\Integrations\Logo\LogoErpExportService;
 use Illuminate\Support\Carbon;
 
+test('builds xml with order record id', function () {
+    $customer = Customer::factory()->make(['legal_name' => 'Rec A.Ş.']);
+    $order = Order::factory()->make([
+        'id' => 4242,
+        'order_number' => 'ORD-RID-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 1,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<OrderRecordId>')
+        ->and($xml)->toContain('4242');
+});
+
 test('builds xml with order fields', function () {
     $customer = Customer::factory()->make(['legal_name' => 'Acme Lojistik A.Ş.']);
     $orderedAt = Carbon::parse('2026-03-15 12:00:00');
@@ -126,6 +146,31 @@ test('builds xml with customer trade name and payment term when present', functi
         ->and($xml)->toContain('Ticaret Kısa')
         ->and($xml)->toContain('<CustomerPaymentTermDays>')
         ->and($xml)->toContain('45');
+});
+
+test('builds xml with kantar and moisture fields when present', function () {
+    $customer = Customer::factory()->make(['legal_name' => 'Kantar A.Ş.']);
+    $order = Order::factory()->make([
+        'order_number' => 'ORD-K-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 10,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+        'gross_weight_kg' => 42000.5,
+        'tara_weight_kg' => 16000,
+        'net_weight_kg' => 26000.5,
+        'moisture_percent' => 2.5,
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<GrossWeightKg>')
+        ->and($xml)->toContain('42000.500')
+        ->and($xml)->toContain('<MoisturePercent>')
+        ->and($xml)->toContain('2.5000');
 });
 
 test('builds xml with customer partner number when present', function () {

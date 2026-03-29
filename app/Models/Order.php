@@ -23,6 +23,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'exchange_rate',
     'distance_km',
     'tonnage',
+    'gross_weight_kg',
+    'tara_weight_kg',
+    'net_weight_kg',
+    'moisture_percent',
     'incoterms',
     'loading_site',
     'unloading_site',
@@ -69,6 +73,10 @@ class Order extends Model
             'exchange_rate' => 'decimal:6',
             'distance_km' => 'decimal:2',
             'tonnage' => 'decimal:3',
+            'gross_weight_kg' => 'decimal:3',
+            'tara_weight_kg' => 'decimal:3',
+            'net_weight_kg' => 'decimal:3',
+            'moisture_percent' => 'decimal:4',
             'meta' => 'array',
         ];
     }

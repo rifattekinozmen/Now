@@ -27,10 +27,11 @@ new #[Title('Journal entries')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <flux:heading size="xl">{{ __('Journal entries') }}</flux:heading>
-        <flux:button :href="route('admin.finance.index')" variant="ghost" wire:navigate>{{ __('Back to finance summary') }}</flux:button>
-    </div>
+    <x-admin.page-header :heading="__('Journal entries')">
+        <x-slot name="actions">
+            <flux:button :href="route('admin.finance.index')" variant="outline" wire:navigate>{{ __('Back to finance summary') }}</flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     <flux:card>
         @if ($this->entries->isEmpty())

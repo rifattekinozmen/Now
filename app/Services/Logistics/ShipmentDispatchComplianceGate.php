@@ -13,6 +13,10 @@ use Illuminate\Support\Carbon;
  */
 final class ShipmentDispatchComplianceGate
 {
+    public function __construct(
+        private DriverSafetyService $driverSafety,
+    ) {}
+
     /**
      * @throws \InvalidArgumentException
      */
@@ -35,6 +39,7 @@ final class ShipmentDispatchComplianceGate
                 ->first();
             if ($employee instanceof Employee) {
                 $this->assertDriverDocumentsAllowDispatch($employee);
+                $this->driverSafety->assertFatigueAllowsDispatch($employee);
             }
         }
     }

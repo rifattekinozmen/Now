@@ -116,6 +116,32 @@ test('fetch parses fixture shaped nested json body', function () {
         ->and($result['schema_version'])->toBe(1);
 });
 
+test('get quote merges province and district from config into query string', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'k',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/diesel-quote',
+        'totalenergies.default_region' => 'TR',
+        'totalenergies.province' => 'Adana',
+        'totalenergies.district' => 'Seyhan',
+        'totalenergies.timeout_seconds' => 10,
+    ]);
+
+    Http::fake([
+        'https://fuel.example.com/diesel-quote*' => Http::response(['price_try_per_liter' => 50], 200),
+    ]);
+
+    $result = TotalEnergiesFuelQuoteService::fromConfig()->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue();
+
+    Http::assertSent(function (Request $request): bool {
+        return str_contains($request->url(), 'province=Adana')
+            && str_contains($request->url(), 'district=Seyhan');
+    });
+});
+
 test('get quote merges extra headers from config', function () {
     config([
         'totalenergies.enabled' => true,
