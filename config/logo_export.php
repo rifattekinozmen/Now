@@ -27,8 +27,9 @@ return [
     ],
 
     /*
-    | CustomerPartnerNo / CustomerTaxId XML etiketleri LogoErpExportService içinde
-    | müşteri partner_number ve tax_id alanlarından üretilir.
+    | CustomerPartnerNo, CustomerTaxId, CustomerTradeName, CustomerPaymentTermDays
+    | LogoErpExportService içinde müşteri alanlarından üretilir (partner_number, tax_id,
+    | trade_name, payment_term_days).
     | meta.* yolları `orders.meta` JSON alanından (dot notation) okunur.
     */
 

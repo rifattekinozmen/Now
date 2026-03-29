@@ -103,6 +103,31 @@ test('builds xml with order meta fields from config mapping', function () {
         ->and($xml)->toContain('INT-2026-03');
 });
 
+test('builds xml with customer trade name and payment term when present', function () {
+    $customer = Customer::factory()->make([
+        'legal_name' => 'Ticaret A.Ş.',
+        'trade_name' => 'Ticaret Kısa',
+        'payment_term_days' => 45,
+    ]);
+    $order = Order::factory()->make([
+        'order_number' => 'ORD-TERM-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 10,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<CustomerTradeName>')
+        ->and($xml)->toContain('Ticaret Kısa')
+        ->and($xml)->toContain('<CustomerPaymentTermDays>')
+        ->and($xml)->toContain('45');
+});
+
 test('builds xml with customer partner number when present', function () {
     $customer = Customer::factory()->make([
         'legal_name' => 'Partner A.Ş.',

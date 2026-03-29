@@ -41,6 +41,9 @@
                         <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" wire:navigate wire:current="font-medium">
                             {{ __('PIN pool') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="archive-box" :href="route('admin.warehouse.index')" wire:navigate wire:current="font-medium">
+                            {{ __('Warehouse') }}
+                        </flux:sidebar.item>
                     </flux:sidebar.group>
 
                     <flux:sidebar.group :heading="__('Finance')" class="grid">

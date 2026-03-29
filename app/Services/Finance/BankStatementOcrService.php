@@ -2,17 +2,23 @@
 
 namespace App\Services\Finance;
 
+use App\Contracts\Finance\ScannedPdfOcrAdapter;
 use Smalot\PdfParser\Parser;
 use Throwable;
 
 /**
  * Banka ekstresi: PDF metin çıkarımı (Smalot PdfParser) ve CSV satır çıkarımı.
  *
- * Görüntü tabanlı taranmış PDF’ler için OCR ayrıca gerekir; bu sınıf metin katmanını okur.
+ * Görüntü tabanlı taranmış PDF’ler için OCR ayrıca gerekir; bu sınıf önce metin katmanını okur.
+ * {@see ScannedPdfOcrAdapter} bağlı ve `isAvailable()` true ise boş metin sonrası OCR denenir.
  * Taranmış PDF kullanıcı mesajı: {@see self::pdfImportDiagnosticMessage()} ve `empty_text` anahtarı.
  */
 class BankStatementOcrService
 {
+    public function __construct(
+        private ?ScannedPdfOcrAdapter $scannedPdfOcrAdapter = null,
+    ) {}
+
     /**
      * PDF içinde seçilebilir metin katmanı varsa satır çıkarımı yapılabilir.
      */
@@ -22,11 +28,11 @@ class BankStatementOcrService
     }
 
     /**
-     * Taranmış görüntü / görüntü-only PDF için harici OCR entegrasyonu yoktur.
+     * Container’da {@see ScannedPdfOcrAdapter} kayıtlı ve kullanılabilir mi.
      */
     public function scannedImageOcrSupported(): bool
     {
-        return false;
+        return $this->resolveScannedPdfAdapter()->isAvailable();
     }
 
     /**
@@ -86,7 +92,12 @@ class BankStatementOcrService
 
         $text = trim((string) $text);
         if ($text === '') {
-            return ['rows' => [], 'diagnostic' => 'empty_text'];
+            $ocrText = $this->tryScannedPdfOcrPlainText($absolutePath);
+            if ($ocrText !== null && trim($ocrText) !== '') {
+                $text = trim($ocrText);
+            } else {
+                return ['rows' => [], 'diagnostic' => 'empty_text'];
+            }
         }
 
         $rows = $this->extractRowsFromStatementPlainText($text, $maxRows);
@@ -384,5 +395,28 @@ class BankStatementOcrService
         }
 
         return number_format((float) $s, 2, '.', '');
+    }
+
+    private function resolveScannedPdfAdapter(): ScannedPdfOcrAdapter
+    {
+        if ($this->scannedPdfOcrAdapter !== null) {
+            return $this->scannedPdfOcrAdapter;
+        }
+
+        if (app()->bound(ScannedPdfOcrAdapter::class)) {
+            return app(ScannedPdfOcrAdapter::class);
+        }
+
+        return new NullScannedPdfOcrAdapter;
+    }
+
+    private function tryScannedPdfOcrPlainText(string $absolutePath): ?string
+    {
+        $adapter = $this->resolveScannedPdfAdapter();
+        if (! $adapter->isAvailable()) {
+            return null;
+        }
+
+        return $adapter->extractPlainText($absolutePath);
     }
 }

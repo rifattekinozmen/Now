@@ -40,6 +40,15 @@ return [
     'http' => [
         'endpoint' => env('CUSTOMER_ENGAGEMENT_HTTP_ENDPOINT'),
         'timeout_seconds' => (int) env('CUSTOMER_ENGAGEMENT_HTTP_TIMEOUT', 10),
+        'bearer_token' => env('CUSTOMER_ENGAGEMENT_HTTP_BEARER'),
+        /*
+         * Doluysa gövde JSON'unun HMAC-SHA256 özeti X-Webhook-Signature: sha256=<hex> başlığında gönderilir.
+         */
+        'signature_secret' => env('CUSTOMER_ENGAGEMENT_HTTP_SIGNATURE_SECRET'),
+        'retry' => [
+            'times' => max(1, (int) env('CUSTOMER_ENGAGEMENT_HTTP_RETRY_TIMES', 2)),
+            'sleep_ms' => max(0, (int) env('CUSTOMER_ENGAGEMENT_HTTP_RETRY_SLEEP_MS', 100)),
+        ],
     ],
 
 ];

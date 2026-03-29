@@ -34,6 +34,42 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Ek HTTP başlıkları (JSON: {"Authorization":"Bearer ...","X-Custom":"v"})
+    |--------------------------------------------------------------------------
+    |
+    | Sözleşmede Bearer veya ek anahtar gerekiyorsa burada tanımlayın. Sadece
+    | string anahtar/değer çiftleri kullanılır; geçersiz JSON yok sayılır.
+    |
+    */
+
+    'extra_headers' => (static function (): array {
+        $raw = json_decode((string) env('TOTALENERGIES_EXTRA_HEADERS', '{}'), true);
+        if (! is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $k => $v) {
+            if (is_string($k) && is_string($v)) {
+                $out[$k] = $v;
+            }
+        }
+
+        return $out;
+    })(),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Geçici ağ hatalarında yeniden deneme (Http::retry)
+    |--------------------------------------------------------------------------
+    */
+
+    'retry' => [
+        'times' => max(0, (int) env('TOTALENERGIES_RETRY_TIMES', 2)),
+        'sleep_ms' => max(0, (int) env('TOTALENERGIES_RETRY_SLEEP_MS', 100)),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | İstek yöntemi: get | post
     |--------------------------------------------------------------------------
     |

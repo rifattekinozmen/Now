@@ -54,6 +54,16 @@ final class LogoErpExportService
             $taxId = (string) $order->customer->tax_id;
         }
         $this->appendTextChild($dom, $el, 'CustomerTaxId', $taxId);
+        $tradeName = '';
+        if ($order->relationLoaded('customer') && $order->customer !== null && $order->customer->trade_name !== null) {
+            $tradeName = (string) $order->customer->trade_name;
+        }
+        $this->appendTextChild($dom, $el, 'CustomerTradeName', $tradeName);
+        $paymentTerm = '';
+        if ($order->relationLoaded('customer') && $order->customer !== null && $order->customer->payment_term_days !== null) {
+            $paymentTerm = (string) $order->customer->payment_term_days;
+        }
+        $this->appendTextChild($dom, $el, 'CustomerPaymentTermDays', $paymentTerm);
         $this->appendConfiguredOrderFields($dom, $el, $order);
 
         return $el;

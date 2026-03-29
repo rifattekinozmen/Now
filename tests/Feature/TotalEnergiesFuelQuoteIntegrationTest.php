@@ -115,3 +115,32 @@ test('fetch parses fixture shaped nested json body', function () {
         ->and($result['location_label'])->toBe('Adana')
         ->and($result['schema_version'])->toBe(1);
 });
+
+test('get quote merges extra headers from config', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'k',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/q',
+        'totalenergies.timeout_seconds' => 10,
+        'totalenergies.extra_headers' => [
+            'X-Contract-Id' => 'acme-2026',
+            'Authorization' => 'Bearer secondary-token',
+        ],
+        'totalenergies.retry' => ['times' => 1, 'sleep_ms' => 0],
+    ]);
+
+    Http::fake([
+        'https://fuel.example.com/q*' => Http::response(['price_try_per_liter' => 40], 200),
+    ]);
+
+    $result = TotalEnergiesFuelQuoteService::fromConfig()->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue();
+
+    Http::assertSent(function (Request $request): bool {
+        return $request->hasHeader('X-Contract-Id', 'acme-2026')
+            && $request->hasHeader('Authorization', 'Bearer secondary-token')
+            && $request->hasHeader('X-API-Key', 'k');
+    });
+});

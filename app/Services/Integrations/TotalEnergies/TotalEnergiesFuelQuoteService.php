@@ -2,6 +2,7 @@
 
 namespace App\Services\Integrations\TotalEnergies;
 
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -70,13 +71,7 @@ final class TotalEnergiesFuelQuoteService
         }
 
         try {
-            $timeout = (int) config('totalenergies.timeout_seconds', 15);
-            $client = Http::timeout($timeout)
-                ->withHeaders([
-                    'Accept' => 'application/json',
-                    'X-API-Key' => $this->apiKey,
-                ]);
-
+            $client = $this->buildHttpClient();
             $method = strtolower((string) config('totalenergies.quote_http_method', 'get'));
             $response = $method === 'post'
                 ? $client->asJson()->post($url, $this->quotePostJsonBody())
@@ -145,6 +140,33 @@ final class TotalEnergiesFuelQuoteService
     public function baseUrl(): string
     {
         return $this->baseUrl;
+    }
+
+    private function buildHttpClient(): PendingRequest
+    {
+        $timeout = (int) config('totalenergies.timeout_seconds', 15);
+        $retry = config('totalenergies.retry');
+        $times = is_array($retry) && isset($retry['times']) ? (int) $retry['times'] : 2;
+        $sleepMs = is_array($retry) && isset($retry['sleep_ms']) ? (int) $retry['sleep_ms'] : 100;
+
+        $headers = [
+            'Accept' => 'application/json',
+            'X-API-Key' => $this->apiKey,
+        ];
+        $extra = config('totalenergies.extra_headers');
+        if (is_array($extra)) {
+            foreach ($extra as $name => $value) {
+                if (is_string($name) && is_string($value)) {
+                    $headers[$name] = $value;
+                }
+            }
+        }
+
+        $attempts = max(1, $times);
+
+        return Http::timeout($timeout)
+            ->retry($attempts, max(0, $sleepMs))
+            ->withHeaders($headers);
     }
 
     /**

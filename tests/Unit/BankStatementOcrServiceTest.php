@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\Finance\ScannedPdfOcrAdapter;
 use App\Services\Finance\BankStatementOcrService;
 
 test('csv extraction maps tr headers', function () {
@@ -39,4 +40,24 @@ test('plain text line parsing extracts date amount description', function () {
     expect($rows)->toHaveCount(1)
         ->and($rows[0]['booked_at'])->toBe('2026-03-01')
         ->and($rows[0]['description'])->toContain('Alıcı');
+});
+
+test('scanned pdf ocr supported when adapter reports available', function () {
+    $adapter = new class implements ScannedPdfOcrAdapter
+    {
+        public function isAvailable(): bool
+        {
+            return true;
+        }
+
+        public function extractPlainText(string $absolutePathToPdf): ?string
+        {
+            return null;
+        }
+    };
+
+    $svc = new BankStatementOcrService($adapter);
+
+    expect($svc->scannedImageOcrSupported())->toBeTrue()
+        ->and($svc->importCapabilities()['scanned_pdf_ocr'])->toBeTrue();
 });

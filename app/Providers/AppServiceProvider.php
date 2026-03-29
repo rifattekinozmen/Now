@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Contracts\CustomerEngagementNotifier;
+use App\Contracts\Finance\ScannedPdfOcrAdapter;
 use App\Contracts\Operations\OperationalNotifier;
 use App\Livewire\DockerFriendlyCacheManager;
+use App\Services\Finance\NullScannedPdfOcrAdapter;
 use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
 use App\Services\Notifications\CompositeCustomerEngagementNotifier;
 use App\Services\Notifications\HttpCustomerEngagementNotifier;
@@ -29,6 +31,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(ScannedPdfOcrAdapter::class, fn (): ScannedPdfOcrAdapter => new NullScannedPdfOcrAdapter);
+
         $this->app->bind(OperationalNotifier::class, fn (): OperationalNotifier => new CompositeOperationalNotifier([
             new LogOperationalNotifier,
             new SlackOperationalNotifier,

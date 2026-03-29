@@ -4,6 +4,7 @@ namespace App\Services\Notifications;
 
 use App\Contracts\CustomerEngagementNotifier;
 use Illuminate\Support\Facades\Http;
+use JsonException;
 use Throwable;
 
 /**
@@ -52,12 +53,46 @@ final class HttpCustomerEngagementNotifier implements CustomerEngagementNotifier
     private function postJson(string $url, array $body, int $timeout): void
     {
         try {
-            Http::timeout($timeout)
-                ->acceptJson()
-                ->asJson()
-                ->post($url, $body);
+            $json = json_encode($body, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        } catch (JsonException) {
+            return;
+        }
+
+        $retry = config('customer_engagement.http.retry');
+        $times = is_array($retry) && isset($retry['times']) ? (int) $retry['times'] : 2;
+        $sleepMs = is_array($retry) && isset($retry['sleep_ms']) ? (int) $retry['sleep_ms'] : 100;
+
+        $pending = Http::timeout($timeout)
+            ->retry(max(1, $times), max(0, $sleepMs))
+            ->acceptJson()
+            ->withHeaders($this->headersForWebhookPayload($json));
+
+        $bearer = config('customer_engagement.http.bearer_token');
+        if (is_string($bearer) && $bearer !== '') {
+            $pending = $pending->withToken($bearer);
+        }
+
+        try {
+            $pending->withBody($json, 'application/json')->post($url);
         } catch (Throwable) {
             //
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function headersForWebhookPayload(string $jsonBody): array
+    {
+        $secret = config('customer_engagement.http.signature_secret');
+        if (! is_string($secret) || $secret === '') {
+            return [];
+        }
+
+        $hash = hash_hmac('sha256', $jsonBody, $secret);
+
+        return [
+            'X-Webhook-Signature' => 'sha256='.$hash,
+        ];
     }
 }
