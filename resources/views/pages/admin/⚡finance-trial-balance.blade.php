@@ -66,13 +66,13 @@ new #[Title('Trial balance')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-    <x-admin.page-toolbar :heading="__('Trial balance')">
+    <x-admin.page-header :heading="__('Trial balance')">
         <x-slot name="actions">
             <flux:button :href="route('admin.finance.index')" variant="ghost" wire:navigate>{{ __('Finance summary') }}</flux:button>
             <flux:button :href="route('admin.finance.reports')" variant="ghost" wire:navigate>{{ __('Finance reports') }}</flux:button>
             <flux:button :href="route('admin.finance.balance-sheet')" variant="ghost" wire:navigate>{{ __('Balance sheet summary') }}</flux:button>
         </x-slot>
-    </x-admin.page-toolbar>
+    </x-admin.page-header>
 
     <flux:callout variant="warning" icon="exclamation-triangle">
         <flux:callout.heading>{{ __('Operational reference only') }}</flux:callout.heading>
@@ -81,13 +81,12 @@ new #[Title('Trial balance')] class extends Component
         </flux:callout.text>
     </flux:callout>
 
-    <flux:card class="!p-4">
-        <flux:heading size="lg" class="mb-4">{{ __('Period') }}</flux:heading>
+    <x-admin.filter-bar :label="__('Period')">
         <div class="grid gap-4 sm:grid-cols-2 sm:max-w-xl">
             <flux:input wire:model.live="dateFrom" type="date" :label="__('From date')" />
             <flux:input wire:model.live="dateTo" type="date" :label="__('To date')" />
         </div>
-    </flux:card>
+    </x-admin.filter-bar>
 
     @if (count($this->accountRows) === 0)
         <flux:card>

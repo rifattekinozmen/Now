@@ -162,17 +162,8 @@ new #[Title('Shipment detail')] class extends Component
         $s = $this->shipment;
     @endphp
 
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <flux:heading size="xl">{{ __('Shipment') }} #{{ $s->id }}</flux:heading>
-            <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Order') }}: {{ $s->order?->order_number ?? '—' }}
-                @if ($s->order?->customer)
-                    — {{ $s->order->customer->legal_name }}
-                @endif
-            </flux:text>
-        </div>
-        <div class="flex flex-wrap gap-2">
+    <x-admin.page-header :heading="__('Shipment').' #'.$s->id">
+        <x-slot name="actions">
             @if ($s->order_id)
                 <flux:button :href="route('admin.orders.show', $s->order_id)" variant="ghost" wire:navigate>
                     {{ __('Order detail') }}
@@ -181,8 +172,14 @@ new #[Title('Shipment detail')] class extends Component
             <flux:button :href="route('admin.shipments.index')" variant="ghost" wire:navigate>
                 {{ __('Back to shipments') }}
             </flux:button>
-        </div>
-    </div>
+        </x-slot>
+        <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {{ __('Order') }}: {{ $s->order?->order_number ?? '—' }}
+            @if ($s->order?->customer)
+                — {{ $s->order->customer->legal_name }}
+            @endif
+        </flux:text>
+    </x-admin.page-header>
 
     @if (session()->has('error'))
         <flux:callout variant="danger" icon="exclamation-triangle">{{ session('error') }}</flux:callout>

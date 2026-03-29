@@ -65,20 +65,19 @@ new #[Title('Order detail')] class extends Component
 @endphp
 
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-8 p-4 lg:p-8">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <flux:heading size="xl">{{ __('Order detail') }}</flux:heading>
-            <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ $o->order_number }}
-                @if ($o->customer)
-                    — {{ $o->customer->legal_name }}
-                @endif
-            </flux:text>
-        </div>
-        <flux:button :href="route('admin.orders.index')" variant="ghost" wire:navigate>
-            {{ __('Back to orders') }}
-        </flux:button>
-    </div>
+    <x-admin.page-header :heading="__('Order detail')">
+        <x-slot name="actions">
+            <flux:button :href="route('admin.orders.index')" variant="ghost" wire:navigate>
+                {{ __('Back to orders') }}
+            </flux:button>
+        </x-slot>
+        <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {{ $o->order_number }}
+            @if ($o->customer)
+                — {{ $o->customer->legal_name }}
+            @endif
+        </flux:text>
+    </x-admin.page-header>
 
     @if ($life['cancelled'])
         <flux:callout variant="danger" icon="exclamation-triangle">

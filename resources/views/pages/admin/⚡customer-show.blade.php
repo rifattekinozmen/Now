@@ -107,27 +107,26 @@ new #[Title('Customer profile')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <flux:heading size="xl">{{ __('Customer profile') }}</flux:heading>
-            <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ $this->customer->legal_name }}
-                @if ($this->customer->trade_name)
-                    — {{ $this->customer->trade_name }}
-                @endif
-            </flux:text>
-            <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Tax ID') }}: {{ $this->customer->tax_id ?? '—' }}
-                @if ($this->customer->partner_number)
-                    · {{ __('Partner no.') }}: {{ $this->customer->partner_number }}
-                @endif
-                · {{ __('Payment term') }}: {{ $this->customer->payment_term_days }} {{ __('days') }}
-            </flux:text>
-        </div>
-        <flux:button :href="route('admin.customers.index')" variant="ghost" wire:navigate>
-            {{ __('Back to customers') }}
-        </flux:button>
-    </div>
+    <x-admin.page-header :heading="__('Customer profile')">
+        <x-slot name="actions">
+            <flux:button :href="route('admin.customers.index')" variant="ghost" wire:navigate>
+                {{ __('Back to customers') }}
+            </flux:button>
+        </x-slot>
+        <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {{ $this->customer->legal_name }}
+            @if ($this->customer->trade_name)
+                — {{ $this->customer->trade_name }}
+            @endif
+        </flux:text>
+        <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {{ __('Tax ID') }}: {{ $this->customer->tax_id ?? '—' }}
+            @if ($this->customer->partner_number)
+                · {{ __('Partner no.') }}: {{ $this->customer->partner_number }}
+            @endif
+            · {{ __('Payment term') }}: {{ $this->customer->payment_term_days }} {{ __('days') }}
+        </flux:text>
+    </x-admin.page-header>
 
     <div class="flex flex-wrap gap-2 border-b border-border pb-2">
         <flux:button
@@ -191,9 +190,17 @@ new #[Title('Customer profile')] class extends Component
                 {{ __('Finance summary and aging reports are under Finance.') }}
             </flux:text>
             @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-                <flux:button :href="route('admin.finance.reports')" variant="outline" wire:navigate>
-                    {{ __('Open finance reports') }}
-                </flux:button>
+                <div class="flex flex-wrap gap-2">
+                    <flux:button :href="route('admin.finance.index')" variant="primary" wire:navigate>
+                        {{ __('Open finance summary') }}
+                    </flux:button>
+                    <flux:button :href="route('admin.finance.reports')" variant="outline" wire:navigate>
+                        {{ __('Open finance reports') }}
+                    </flux:button>
+                    <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline" wire:navigate>
+                        {{ __('Payment due calendar') }}
+                    </flux:button>
+                </div>
             @endcanany
         </flux:card>
     @elseif ($activeTab === 'locations')

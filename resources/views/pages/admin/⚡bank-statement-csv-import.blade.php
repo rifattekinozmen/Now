@@ -248,6 +248,11 @@ new #[Title('Bank statement CSV import')] class extends Component
         <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
             {{ __('Each line should start with a date (YYYY-MM-DD or DD.MM.YYYY), include a description, and end with an amount.') }}
         </flux:text>
+        <flux:callout variant="neutral" icon="information-circle" class="mb-4">
+            <flux:callout.text>
+                {{ __('Scanned PDFs (image-only, no selectable text) cannot be parsed here. Download CSV from your bank’s online banking, or register a ScannedPdfOcrAdapter for OCR in production.') }}
+            </flux:callout.text>
+        </flux:callout>
         <form wire:submit="importPdf" class="flex flex-col gap-4">
             <input type="file" wire:model="pdfFile" accept=".pdf,application/pdf" class="text-sm" />
             @error('pdfFile')

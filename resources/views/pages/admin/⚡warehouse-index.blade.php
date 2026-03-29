@@ -408,6 +408,7 @@ new #[Title('Warehouse')] class extends Component
                         <th class="py-2 pe-4 font-medium text-zinc-800 dark:text-white">{{ __('Code') }}</th>
                         <th class="py-2 pe-4 font-medium text-zinc-800 dark:text-white">{{ __('Name') }}</th>
                         <th class="py-2 pe-4">{{ __('Address') }}</th>
+                        <th class="py-2 pe-4 text-end">{{ __('View') }}</th>
                         @if ($canWriteWarehouse)
                             <th class="py-2 text-end">{{ __('Actions') }}</th>
                         @endif
@@ -419,6 +420,9 @@ new #[Title('Warehouse')] class extends Component
                             <td class="py-2 pe-4 font-mono text-xs">{{ $w->code }}</td>
                             <td class="py-2 pe-4">{{ $w->name }}</td>
                             <td class="py-2 pe-4 text-zinc-600 dark:text-zinc-400">{{ $w->address ? \Illuminate\Support\Str::limit($w->address, 60) : '—' }}</td>
+                            <td class="py-2 pe-4 text-end">
+                                <flux:link :href="route('admin.warehouse.show', $w)" wire:navigate>{{ __('Detail') }}</flux:link>
+                            </td>
                             @if ($canWriteWarehouse)
                                 <td class="py-2 text-end">
                                     <flux:button size="sm" variant="ghost" wire:click="startEditWarehouse({{ $w->id }})">{{ __('Edit') }}</flux:button>
@@ -435,7 +439,7 @@ new #[Title('Warehouse')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="py-6 text-center text-zinc-500">{{ __('No warehouses yet.') }}</td>
+                            <td colspan="{{ $canWriteWarehouse ? 5 : 4 }}" class="py-6 text-center text-zinc-500">{{ __('No warehouses yet.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>

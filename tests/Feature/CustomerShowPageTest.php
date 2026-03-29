@@ -27,6 +27,18 @@ test('user cannot open other tenant customer profile', function () {
         ->assertNotFound();
 });
 
+test('customer show accounts tab links to finance summary and calendar', function () {
+    $user = User::factory()->create();
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::admin.customer-show', ['customer' => $customer])
+        ->set('activeTab', 'accounts')
+        ->assertSee(route('admin.finance.index'), escape: false)
+        ->assertSee(route('admin.finance.payment-due-calendar'), escape: false);
+});
+
 test('customer show locations tab lists distinct unloading sites from orders', function () {
     $user = User::factory()->create();
     $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);

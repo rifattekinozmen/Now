@@ -209,6 +209,29 @@ test('contract_valid false when response schema_version mismatches', function ()
         ->and($result['response_schema_match'] ?? null)->toBeFalse();
 });
 
+test('describeQuoteRequest includes province and district in query params for get method', function () {
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'secret',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/diesel-quote',
+        'totalenergies.quote_http_method' => 'get',
+        'totalenergies.default_region' => 'TR',
+        'totalenergies.province' => 'Adana',
+        'totalenergies.district' => 'Seyhan',
+    ]);
+
+    $desc = TotalEnergiesFuelQuoteService::fromConfig()->describeQuoteRequest();
+
+    expect($desc['http_method'])->toBe('GET')
+        ->and($desc['query_params']['region'] ?? null)->toBe('TR')
+        ->and($desc['query_params']['province'] ?? null)->toBe('Adana')
+        ->and($desc['query_params']['district'] ?? null)->toBe('Seyhan')
+        ->and($desc['schema_version_expected'])->toBe(1);
+
+    Http::assertNothingSent();
+});
+
 test('describeQuoteRequest exposes post body merge without calling api', function () {
     config([
         'totalenergies.enabled' => true,

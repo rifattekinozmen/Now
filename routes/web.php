@@ -66,6 +66,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('delivery-numbers', 'pages::admin.delivery-numbers-index')->name('delivery-numbers.index');
             Route::get('delivery-numbers/template.xlsx', DownloadPinImportTemplateController::class)->name('delivery-numbers.template.xlsx');
             Route::livewire('warehouse', 'pages::admin.warehouse-index')->name('warehouse.index');
+            Route::livewire('warehouse/{warehouse}', 'pages::admin.warehouse-show')->name('warehouse.show');
             Route::livewire('finance', 'pages::admin.finance-index')->name('finance.index');
             Route::livewire('finance/reports', 'pages::admin.finance-reports')->name('finance.reports');
             Route::livewire('finance/payment-due-calendar', 'pages::admin.finance-payment-due-calendar')->name('finance.payment-due-calendar');

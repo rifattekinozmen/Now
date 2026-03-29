@@ -161,12 +161,12 @@ new #[Title('Fiscal opening balances')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-    <x-admin.page-toolbar :heading="__('Fiscal opening balances')">
+    <x-admin.page-header :heading="__('Fiscal opening balances')">
         <x-slot name="actions">
             <flux:button :href="route('admin.finance.index')" variant="ghost" wire:navigate>{{ __('Finance summary') }}</flux:button>
             <flux:button :href="route('admin.finance.balance-sheet')" variant="ghost" wire:navigate>{{ __('Balance sheet summary') }}</flux:button>
         </x-slot>
-    </x-admin.page-toolbar>
+    </x-admin.page-header>
 
     <flux:callout variant="warning" icon="exclamation-triangle">
         <flux:callout.heading>{{ __('Operational reference only') }}</flux:callout.heading>
@@ -175,10 +175,9 @@ new #[Title('Fiscal opening balances')] class extends Component
         </flux:callout.text>
     </flux:callout>
 
-    <flux:card class="!p-4">
-        <flux:heading size="lg" class="mb-4">{{ __('Filter by fiscal year') }}</flux:heading>
-        <flux:input wire:model.live="filterFiscalYear" type="number" min="2000" max="2100" :label="__('Fiscal year')" />
-    </flux:card>
+    <x-admin.filter-bar :label="__('Filter by fiscal year')">
+        <flux:input wire:model.live="filterFiscalYear" type="number" min="2000" max="2100" :label="__('Fiscal year')" class="max-w-xs" />
+    </x-admin.filter-bar>
 
     @can('create', App\Models\FiscalOpeningBalance::class)
         <flux:card class="!p-4">

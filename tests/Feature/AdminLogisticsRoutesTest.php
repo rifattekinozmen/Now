@@ -4,6 +4,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\User;
+use App\Models\Warehouse;
 use Tests\TestCase;
 
 test('guests cannot access admin logistics routes', function () {
@@ -26,6 +27,7 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.delivery-numbers.index'))->assertRedirect(route('login'));
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.warehouse.index'))->assertRedirect(route('login'));
+    $this->get(route('admin.warehouse.show', 1))->assertRedirect(route('login'));
     $this->get(route('admin.fuel-intakes.index'))->assertRedirect(route('login'));
     $this->get(route('admin.fuel-intakes.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.index'))->assertRedirect(route('login'));
@@ -81,6 +83,8 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.delivery-numbers.index'))->assertSuccessful();
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.warehouse.index'))->assertSuccessful();
+    $warehouse = Warehouse::factory()->create(['tenant_id' => $user->tenant_id]);
+    $this->get(route('admin.warehouse.show', $warehouse))->assertSuccessful();
     $this->get(route('admin.fuel-intakes.index'))->assertSuccessful();
     $this->get(route('admin.fuel-intakes.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.finance.index'))->assertSuccessful();
