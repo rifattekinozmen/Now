@@ -241,6 +241,7 @@ new #[Title('Finance summary')] class extends Component
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <flux:heading size="xl">{{ __('Finance summary') }}</flux:heading>
             <div class="flex flex-wrap gap-2">
+                <flux:button :href="route('admin.finance.reports')" variant="outline">{{ __('Finance reports') }}</flux:button>
                 <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline">{{ __('Payment due calendar') }}</flux:button>
                 <flux:button :href="route('admin.finance.bank-statement-csv')" variant="outline">{{ __('Bank statement CSV import') }}</flux:button>
                 <flux:button :href="route('admin.orders.export.finance.csv')" variant="outline">{{ __('Export orders CSV') }}</flux:button>

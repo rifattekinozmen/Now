@@ -79,6 +79,17 @@ new #[Title('Bank statement CSV import')] class extends Component
         }
 
         $rows = $parser->extractRowsFromPdf($path);
+        if ($rows === []) {
+            $this->previewRows = [];
+            $this->savedImportId = null;
+            $this->addError(
+                'pdfFile',
+                __('No transaction lines were parsed from this PDF. Try a CSV export from your bank, or use a PDF with a selectable text layer (image-only scans need separate OCR).')
+            );
+
+            return;
+        }
+
         $this->previewRows = $rows;
         $this->savedImportId = null;
 

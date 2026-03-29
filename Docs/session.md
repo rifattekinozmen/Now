@@ -4,8 +4,8 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
-- Finans: `pages::admin.finance-index` — nakit akış projeksiyonu için **tahsilat tarih penceresi** (`projectionDateFrom` / `projectionDateTo`), Logo XML dışa aktarma (`admin.orders.export.logo.xml`), banka ekstresi **CSV içe aktarma** (`admin.finance.bank-statement-csv`, `BankStatementCsvImport`, `logistics.admin` zorunlu).
-- Faz 3 servisleri: `BankStatementOcrService` (CSV ayrıştırma; PDF OCR hâlâ boş), `LogoErpExportService` (`LogoConnectExport` XML), `AuditAiEvaluationService` (yakıt %15 / navlun %20 sapma kuralları, `skipped` durumu).
+- Finans: `pages::admin.finance-index` — nakit akış projeksiyonu (**tahsilat tarih penceresi**), **vade takvimi** (`pages::admin.finance-payment-due-calendar`, `admin.finance.payment-due-calendar`), Logo XML, banka ekstresi CSV import.
+- Faz 3 servisleri: `BankStatementOcrService`, `LogoErpExportService`, `AuditAiEvaluationService` (admin finans özetinde navlun aykırılık özeti).
 
 ## Rol matrisi (özet)
 
@@ -21,9 +21,10 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 ## Pending Work
 
 - TotalEnergies yanıt şeması müşteri API’sine göre netleştirme.
-- Gerçek SMS/WhatsApp sağlayıcısı (`CustomerEngagementNotifier` uygulaması).
-- Banka ekstresi **PDF OCR** (`BankStatementOcrService::extractRowsFromPdf`) ve otomatik cari eşleştirme.
-- Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi; `AuditAI` kurallarının UI/olay tetikleyicilerine bağlanması.
+- Gerçek SMS/WhatsApp sağlayıcısı (`CustomerEngagementNotifier` somut adaptör; yapılandırma ile no-op).
+- Banka ekstresi PDF metin çıkarımı / OCR ve otomatik cari eşleştirme (ileri iterasyon).
+- Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi.
+- Tam muhasebe / çift taraflı kayıt (doküman vizyonu).
 
 ## Safe Next Actions
 
@@ -50,4 +51,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-29 (finans: vade penceresi + Logo XML + banka CSV import + AuditAI birim testleri; `Docs/views-port-checklist.md` finans/banka satırları)*
+*Son güncelleme: 2026-03-29 (vade takvimi doküman senkronu; finans raporları yaşlandırma; banka PDF yolu; entegrasyon iskeletleri; araç/personel import.)*

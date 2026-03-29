@@ -39,7 +39,11 @@ class AppServiceProvider extends ServiceProvider
                 return new HttpCustomerEngagementNotifier;
             }
 
-            if ((bool) config('customer_engagement.enabled', false)) {
+            $logExplicit = (bool) config('customer_engagement.enabled', false);
+            $smsOn = (bool) config('customer_engagement.sms.enabled', false);
+            $whatsappOn = (bool) config('customer_engagement.whatsapp.enabled', false);
+
+            if ($logExplicit || $smsOn || $whatsappOn) {
                 return new LogCustomerEngagementNotifier;
             }
 

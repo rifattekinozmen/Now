@@ -26,6 +26,26 @@ test('tenant user downloads pin import xlsx template', function () {
         ->assertSuccessful();
 });
 
+test('tenant user downloads vehicle import xlsx template', function () {
+    /** @var TestCase $this */
+    /** @var User $user */
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('admin.vehicles.template.xlsx'))
+        ->assertSuccessful();
+});
+
+test('tenant user downloads employee import xlsx template', function () {
+    /** @var TestCase $this */
+    /** @var User $user */
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get(route('admin.employees.template.xlsx'))
+        ->assertSuccessful();
+});
+
 test('tenant user downloads finance orders csv with scoped rows', function () {
     /** @var TestCase $this */
     $tenant = Tenant::factory()->create();

@@ -348,7 +348,7 @@ class ExcelImportService
             'payment_term_days' => is_numeric($value) ? (int) $value : null,
             'partner_number', 'tax_id', 'legal_name', 'trade_name', 'pin_code', 'sas_no',
             'customer_legal_name', 'currency_code', 'loading_site', 'unloading_site',
-            'plate', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone' => is_scalar($value) ? trim((string) $value) : null,
+            'plate', 'vin', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone' => is_scalar($value) ? trim((string) $value) : null,
             'distance_km', 'tonnage' => is_numeric($value) ? $value : null,
             'inspection_valid_until' => $this->normalizeImportDate($value),
             default => $value,
@@ -508,6 +508,9 @@ class ExcelImportService
         return [
             'Plaka' => 'plate',
             'Plate' => 'plate',
+            'Şasi' => 'vin',
+            'Sasi' => 'vin',
+            'VIN' => 'vin',
             'Marka' => 'brand',
             'Brand' => 'brand',
             'Model' => 'model',
@@ -578,9 +581,13 @@ class ExcelImportService
                     throw new \InvalidArgumentException(__('Vehicle plate already exists: :p', ['p' => $plate]));
                 }
 
+                $vinCompact = isset($raw['vin']) ? preg_replace('/\s+/', '', (string) $raw['vin']) : '';
+                $vin = $vinCompact !== '' ? strtoupper($vinCompact) : null;
+
                 Vehicle::query()->create([
                     'tenant_id' => $tenantId,
                     'plate' => $plate,
+                    'vin' => $vin,
                     'brand' => isset($raw['brand']) ? (string) $raw['brand'] : null,
                     'model' => isset($raw['model']) ? (string) $raw['model'] : null,
                     'inspection_valid_until' => $raw['inspection_valid_until'] ?? null,

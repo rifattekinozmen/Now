@@ -1,6 +1,6 @@
 # docs/views → Now: sıralı port kontrol listesi
 
-Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles`, `employees`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `finance`, `finance/bank-statement-csv`, `orders.export.finance.csv`, `orders.export.logo.xml` + `track.shipment` kamu rotası).
+Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles` + `vehicles.template.xlsx`, `employees` + `employees.template.xlsx`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `finance`, `finance/reports`, `finance/payment-due-calendar`, `finance/bank-statement-csv`, `orders.export.finance.csv`, `orders.export.logo.xml` + `track.shipment` kamu rotası).
 
 **Durum kodları:** `VAR` tam veya işlevsel karşılık · `KISMI` iskelet / tek tip CRUD / placeholder · `YOK` karşılık yok.
 
@@ -140,7 +140,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import`, `_vehicle_styles`, `_license-card` | `pages::admin.vehicles-index` | KISMI _(liste + kısa form; import yok)_ _(2026-03-28)_ |
+| `index`, `create`, `edit`, `show`, `import`, `_vehicle_styles`, `_license-card` | `pages::admin.vehicles-index` | KISMI _(CSV/XLSX import + XLSX şablon; Şasi/VIN kolonu; 2026-03-29)_ |
 
 ### admin/vehicles/tyres
 
@@ -168,7 +168,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `pages::admin.employees-index` | KISMI _(liste + form; import yok)_ _(2026-03-29)_ |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.employees-index` | KISMI _(liste + form; CSV/XLSX import + XLSX şablon; 2026-03-29)_ |
 
 ### admin/personnel
 
@@ -250,7 +250,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `aging`, `customer-summary`, `top-customers` | `⚡finance-reports` placeholder | KISMI |
+| `aging`, `customer-summary`, `top-customers` | `pages::admin.finance-reports` (`admin.finance.reports`) | KISMI _(alacak yaşlandırma + müşteri gecikme özeti; 2026-03-29)_ |
 
 ### Now — finans özeti (`admin/finance`)
 
@@ -262,7 +262,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| — | `pages::admin.bank-statement-csv-import` (`logistics.admin`), `BankStatementCsvImport`, `BankStatementOcrService` | KISMI _(CSV; PDF OCR yok; 2026-03-29)_ |
+| — | `pages::admin.bank-statement-csv-import` (`logistics.admin`), `BankStatementCsvImport`, `BankStatementOcrService` | KISMI _(CSV; PDF metin katmanı + boş sonuçta kullanıcı mesajı; 2026-03-29)_ |
 
 ---
 

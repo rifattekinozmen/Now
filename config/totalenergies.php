@@ -26,16 +26,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | GET sorgu parametreleri (sözleşmeye göre genişletin)
+    |--------------------------------------------------------------------------
+    |
+    | `region` her zaman `default_region` ile birleştirilir; aynı anahtar burada
+    | verilirse bu dizi önceliklidir.
+    |
+    */
+
+    'quote_query' => [
+        // 'product' => 'diesel',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Yanıttan fiyat çıkarma (dot notation)
     |--------------------------------------------------------------------------
     |
-    | Sözleşmeye göre ilk bulunan sayısal yol kullanılır. Örn: data.items.0.price
+    | Sözleşmeye göre ilk bulunan sayısal yol kullanılır. Örn: data.items.0.price,
+    | result.fuel_price_try, quotes.0.amount
     |
     */
 
     'response_price_paths' => [
         'price_eur_per_liter',
         'data.price',
+        'result.price',
+        'data.0.price',
     ],
 
 ];

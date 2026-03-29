@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\DownloadCustomerImportTemplateController;
+use App\Http\Controllers\Admin\DownloadEmployeeImportTemplateController;
 use App\Http\Controllers\Admin\DownloadPinImportTemplateController;
+use App\Http\Controllers\Admin\DownloadVehicleImportTemplateController;
 use App\Http\Controllers\Admin\ExportCustomerCsvController;
 use App\Http\Controllers\Admin\ExportFinanceOrdersCsvController;
 use App\Http\Controllers\Admin\ExportLogoOrdersXmlController;
@@ -43,7 +45,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('customers/export.csv', ExportCustomerCsvController::class)->name('customers.export.csv');
             Route::get('customers/template.xlsx', DownloadCustomerImportTemplateController::class)->name('customers.template.xlsx');
             Route::livewire('vehicles', 'pages::admin.vehicles-index')->name('vehicles.index');
+            Route::get('vehicles/template.xlsx', DownloadVehicleImportTemplateController::class)->name('vehicles.template.xlsx');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
+            Route::get('employees/template.xlsx', DownloadEmployeeImportTemplateController::class)->name('employees.template.xlsx');
             Route::livewire('orders', 'pages::admin.orders-index')->name('orders.index');
             Route::get('orders/export-finance.csv', ExportFinanceOrdersCsvController::class)->name('orders.export.finance.csv');
             Route::get('orders/export-logo.xml', ExportLogoOrdersXmlController::class)->name('orders.export.logo.xml');
@@ -56,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('delivery-numbers', 'pages::admin.delivery-numbers-index')->name('delivery-numbers.index');
             Route::get('delivery-numbers/template.xlsx', DownloadPinImportTemplateController::class)->name('delivery-numbers.template.xlsx');
             Route::livewire('finance', 'pages::admin.finance-index')->name('finance.index');
+            Route::livewire('finance/reports', 'pages::admin.finance-reports')->name('finance.reports');
             Route::livewire('finance/payment-due-calendar', 'pages::admin.finance-payment-due-calendar')->name('finance.payment-due-calendar');
             Route::livewire('finance/bank-statement-csv', 'pages::admin.bank-statement-csv-import')->name('finance.bank-statement-csv');
         });

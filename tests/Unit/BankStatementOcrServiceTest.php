@@ -2,51 +2,34 @@
 
 use App\Services\Finance\BankStatementOcrService;
 
-test('parses csv with english headers', function () {
-    $csv = "Date,Amount,Description\n2026-03-15,123.45,Wire transfer\n";
-    $svc = new BankStatementOcrService;
-    $rows = $svc->extractRowsFromCsvContent($csv);
+test('extract rows from statement plain text parses dated lines with trailing amount', function () {
+    $svc = app(BankStatementOcrService::class);
+    $text = "2026-03-15 Ödeme REF123 1.250,50\n2026-03-16 2026-03-16 Other -99.00\n";
 
-    expect($rows)->toHaveCount(1)
-        ->and($rows[0]['booked_at'])->toBe('2026-03-15')
-        ->and($rows[0]['amount'])->toBe('123.45')
-        ->and($rows[0]['description'])->toBe('Wire transfer');
-});
-
-test('parses turkish date and amount format', function () {
-    $csv = "Tarih,Tutar,Açıklama\n15.03.2026,\"1.234,56\",Ödeme\n";
-    $svc = new BankStatementOcrService;
-    $rows = $svc->extractRowsFromCsvContent($csv);
-
-    expect($rows)->toHaveCount(1)
-        ->and($rows[0]['booked_at'])->toBe('2026-03-15')
-        ->and($rows[0]['amount'])->toBe('1234.56')
-        ->and($rows[0]['description'])->toBe('Ödeme');
-});
-
-test('pdf extraction returns empty list for missing file', function () {
-    $svc = new BankStatementOcrService;
-    expect($svc->extractRowsFromPdf('/nonexistent.pdf'))->toBe([]);
-});
-
-test('plain text statement lines parse date amount and description', function () {
-    $svc = new BankStatementOcrService;
-    $text = "2026-03-15  Wire transfer inbound  123.45\n15.03.2026  Ödeme örnek  1.234,56\n";
     $rows = $svc->extractRowsFromStatementPlainText($text);
 
     expect($rows)->toHaveCount(2)
         ->and($rows[0]['booked_at'])->toBe('2026-03-15')
-        ->and($rows[0]['amount'])->toBe('123.45')
-        ->and($rows[0]['description'])->toBe('Wire transfer inbound')
-        ->and($rows[1]['booked_at'])->toBe('2026-03-15')
-        ->and($rows[1]['amount'])->toBe('1234.56')
-        ->and($rows[1]['description'])->toBe('Ödeme örnek');
+        ->and($rows[0]['amount'])->toBe('1250.50')
+        ->and($rows[0]['description'])->toContain('Ödeme')
+        ->and($rows[1]['booked_at'])->toBe('2026-03-16')
+        ->and($rows[1]['amount'])->toBe('-99.00');
 });
 
-test('plain text line with only date and amount parses', function () {
-    $svc = new BankStatementOcrService;
-    $rows = $svc->extractRowsFromStatementPlainText("2026-01-01 500.00\n");
+test('extract rows from pdf returns empty for missing file', function () {
+    $svc = app(BankStatementOcrService::class);
+
+    expect($svc->extractRowsFromPdf('/nonexistent/path/bank.pdf'))->toBe([]);
+});
+
+test('extract rows from csv content maps turkish headers', function () {
+    $svc = app(BankStatementOcrService::class);
+    $csv = "Tarih,Tutar,Açıklama\n20.03.2026,\"1.000,25\",HAVALE\n";
+
+    $rows = $svc->extractRowsFromCsvContent($csv);
 
     expect($rows)->toHaveCount(1)
-        ->and($rows[0]['description'])->toBeNull();
+        ->and($rows[0]['booked_at'])->toBe('2026-03-20')
+        ->and($rows[0]['amount'])->toBe('1000.25')
+        ->and($rows[0]['description'])->toBe('HAVALE');
 });

@@ -85,3 +85,23 @@ test('logistics admin can upload bank pdf and persist import when parser returns
         ->and($import->row_count)->toBe(1)
         ->and($import->rows[0]['description'])->toBe('PDF row');
 });
+
+test('logistics admin sees validation message when pdf parser returns no rows', function () {
+    /** @var TestCase $this */
+    $user = User::factory()->create();
+
+    $this->mock(BankStatementOcrService::class, function ($mock): void {
+        $mock->shouldReceive('extractRowsFromPdf')
+            ->once()
+            ->andReturn([]);
+    });
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::admin.bank-statement-csv-import')
+        ->set('pdfFile', UploadedFile::fake()->create('empty.pdf', 50))
+        ->call('importPdf')
+        ->assertHasErrors(['pdfFile']);
+
+    expect(BankStatementCsvImport::query()->count())->toBe(0);
+});

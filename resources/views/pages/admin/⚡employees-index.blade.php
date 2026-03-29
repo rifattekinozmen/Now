@@ -494,6 +494,7 @@ new #[Title('Employees')] class extends Component
                 {{ __('Headers: Ad, Soyad, T.C., Kan, Telefon') }}
             </flux:text>
             <div class="flex max-w-xl flex-col gap-3">
+                <flux:button :href="route('admin.employees.template.xlsx')" variant="outline">{{ __('Download import template (XLSX)') }}</flux:button>
                 <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
                 <flux:button type="button" wire:click="importEmployees" variant="ghost">{{ __('Import') }}</flux:button>
             </div>

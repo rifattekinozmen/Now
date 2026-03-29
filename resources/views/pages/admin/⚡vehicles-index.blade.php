@@ -361,9 +361,10 @@ new #[Title('Vehicles')] class extends Component
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('Import vehicles (CSV / Excel)') }}</flux:heading>
             <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Headers: Plaka, Marka, Model, Muayene') }}
+                {{ __('Headers: Plaka, Şasi (isteğe bağlı), Marka, Model, Muayene. English: Plate, VIN, Brand, Model, Inspection.') }}
             </flux:text>
             <div class="flex max-w-xl flex-col gap-3">
+                <flux:button :href="route('admin.vehicles.template.xlsx')" variant="outline">{{ __('Download import template (XLSX)') }}</flux:button>
                 <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
                 <flux:button type="button" wire:click="importVehicles" variant="ghost">{{ __('Import') }}</flux:button>
             </div>

@@ -60,9 +60,7 @@ final class TotalEnergiesFuelQuoteService
                     'Accept' => 'application/json',
                     'X-API-Key' => $this->apiKey,
                 ])
-                ->get($url, [
-                    'region' => config('totalenergies.default_region', 'TR'),
-                ]);
+                ->get($url, $this->quoteQueryParams());
         } catch (\Throwable $e) {
             return [
                 'ok' => false,
@@ -118,5 +116,26 @@ final class TotalEnergiesFuelQuoteService
     public function baseUrl(): string
     {
         return $this->baseUrl;
+    }
+
+    /**
+     * @return array<string, scalar>
+     */
+    private function quoteQueryParams(): array
+    {
+        $extra = config('totalenergies.quote_query');
+        $merged = is_array($extra) ? $extra : [];
+
+        $merged['region'] ??= config('totalenergies.default_region', 'TR');
+
+        /** @var array<string, scalar> $out */
+        $out = [];
+        foreach ($merged as $k => $v) {
+            if (is_string($k) && (is_scalar($v) || $v === null)) {
+                $out[$k] = $v ?? '';
+            }
+        }
+
+        return $out;
     }
 }

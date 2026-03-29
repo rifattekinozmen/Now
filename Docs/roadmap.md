@@ -75,6 +75,7 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] Finans / operasyon **sipariş CSV** dışa aktarma (`admin.orders.export.finance.csv`) _(tamamlandı: 2026-03-28)_
 - [x] Finans özeti: **sipariş tarihi aralığı** (`ordered_at`) ile KPI/tablo süzme; CSV dışa aktarma kiracı tam kapsam _(tamamlandı: 2026-03-28)_
 - [x] Dashboard **Chart.js** halka grafiği (sevkiyat durum dağılımı; `resources/js/app.js` + `chart.js`) _(tamamlandı: 2026-03-28)_
+- [x] Finans raporları: alacak yaşlandırma + müşteri gecikme özeti (`admin.finance.reports`, `ReceivablesAgingService`) _(2026-03-29)_
 - [ ] Harici BI, gelişmiş finans raporları — sonraki iterasyon
 
 ## Faz D — ilerleme (otomasyon & bildirim)

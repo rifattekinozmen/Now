@@ -4,6 +4,7 @@ use App\Models\Customer;
 use App\Models\Order;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -94,6 +95,47 @@ test('finance cash flow projection respects collection window filter', function 
         });
 });
 
+test('finance reports aging isolates data by tenant', function () {
+    /** @var TestCase $this */
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+    $userA = User::factory()->create(['tenant_id' => $tenantA->id]);
+    $customerA = Customer::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'payment_term_days' => 0,
+        'legal_name' => 'Tenant A Aging Customer',
+    ]);
+    $customerB = Customer::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'payment_term_days' => 0,
+        'legal_name' => 'Tenant B Aging Customer',
+    ]);
+    $asOf = '2026-03-29';
+    Order::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'customer_id' => $customerA->id,
+        'order_number' => 'AGING-A',
+        'ordered_at' => Carbon::parse($asOf)->subDays(15),
+        'freight_amount' => 400,
+        'currency_code' => 'TRY',
+    ]);
+    Order::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'customer_id' => $customerB->id,
+        'order_number' => 'AGING-B',
+        'ordered_at' => Carbon::parse($asOf)->subDays(15),
+        'freight_amount' => 800,
+        'currency_code' => 'TRY',
+    ]);
+
+    $this->actingAs($userA);
+
+    Livewire::test('pages::admin.finance-reports')
+        ->set('asOfDate', $asOf)
+        ->assertSee('Tenant A Aging Customer', false)
+        ->assertDontSee('Tenant B Aging Customer', false);
+});
+
 test('payment due calendar page loads for logistics user', function () {
     /** @var TestCase $this */
     $user = User::factory()->create();
@@ -103,6 +145,50 @@ test('payment due calendar page loads for logistics user', function () {
     $this->get(route('admin.finance.payment-due-calendar'))
         ->assertSuccessful()
         ->assertSee(__('Payment due calendar'), false);
+});
+
+test('finance audit freight outliers are isolated by tenant', function () {
+    /** @var TestCase $this */
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+    $userA = User::factory()->create(['tenant_id' => $tenantA->id]);
+    $customerA = Customer::factory()->create(['tenant_id' => $tenantA->id]);
+    $customerB = Customer::factory()->create(['tenant_id' => $tenantB->id]);
+
+    Order::factory()->create([
+        'customer_id' => $customerA->id,
+        'tenant_id' => $tenantA->id,
+        'freight_amount' => 100,
+        'currency_code' => 'TRY',
+        'order_number' => 'ORD-A-1',
+    ]);
+    Order::factory()->create([
+        'customer_id' => $customerA->id,
+        'tenant_id' => $tenantA->id,
+        'freight_amount' => 100,
+        'currency_code' => 'TRY',
+        'order_number' => 'ORD-A-2',
+    ]);
+    Order::factory()->create([
+        'customer_id' => $customerA->id,
+        'tenant_id' => $tenantA->id,
+        'freight_amount' => 900,
+        'currency_code' => 'TRY',
+        'order_number' => 'OUTLIER-TENANT-A',
+    ]);
+    Order::factory()->create([
+        'customer_id' => $customerB->id,
+        'tenant_id' => $tenantB->id,
+        'freight_amount' => 9999,
+        'currency_code' => 'TRY',
+        'order_number' => 'OUTLIER-TENANT-B-ONLY',
+    ]);
+
+    $this->actingAs($userA);
+
+    Livewire::test('pages::admin.finance-index')
+        ->assertSee('OUTLIER-TENANT-A', false)
+        ->assertDontSee('OUTLIER-TENANT-B-ONLY', false);
 });
 
 test('finance summary surfaces freight outlier order from audit rule', function () {

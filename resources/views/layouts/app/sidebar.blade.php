@@ -41,6 +41,9 @@
                         <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Finance summary') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="chart-bar" :href="route('admin.finance.reports')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Finance reports') }}
+                        </flux:sidebar.item>
                         <flux:sidebar.item icon="calendar-days" :href="route('admin.finance.payment-due-calendar')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Payment due calendar') }}
                         </flux:sidebar.item>

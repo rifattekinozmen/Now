@@ -12,7 +12,9 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.customers.export.csv'))->assertRedirect(route('login'));
     $this->get(route('admin.customers.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.vehicles.index'))->assertRedirect(route('login'));
+    $this->get(route('admin.vehicles.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.employees.index'))->assertRedirect(route('login'));
+    $this->get(route('admin.employees.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.orders.index'))->assertRedirect(route('login'));
     $this->get(route('admin.orders.show', 1))->assertRedirect(route('login'));
     $this->get(route('admin.shipments.index'))->assertRedirect(route('login'));
@@ -23,6 +25,7 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.delivery-numbers.index'))->assertRedirect(route('login'));
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.index'))->assertRedirect(route('login'));
+    $this->get(route('admin.finance.reports'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.payment-due-calendar'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.bank-statement-csv'))->assertRedirect(route('login'));
     $this->get(route('admin.orders.export.finance.csv'))->assertRedirect(route('login'));
@@ -50,7 +53,9 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.customers.export.csv'))->assertSuccessful();
     $this->get(route('admin.customers.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.vehicles.index'))->assertSuccessful();
+    $this->get(route('admin.vehicles.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.employees.index'))->assertSuccessful();
+    $this->get(route('admin.employees.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.orders.index'))->assertSuccessful();
     $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
     $order = Order::factory()->create([
@@ -66,6 +71,7 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.delivery-numbers.index'))->assertSuccessful();
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.finance.index'))->assertSuccessful();
+    $this->get(route('admin.finance.reports'))->assertSuccessful();
     $this->get(route('admin.finance.payment-due-calendar'))->assertSuccessful();
     $this->get(route('admin.finance.bank-statement-csv'))->assertSuccessful();
     $this->get(route('admin.orders.export.finance.csv'))->assertSuccessful();

@@ -56,3 +56,18 @@ test('totalenergies rejects placeholder base url', function () {
     expect($result['ok'])->toBeFalse()
         ->and($result['price_eur_per_liter'])->toBeNull();
 });
+
+test('totalenergies reads price from array index path', function () {
+    config(['totalenergies.response_price_paths' => ['quotes.0.unit_price']]);
+
+    Http::fake([
+        'https://api.test/diesel-quote*' => Http::response(['quotes' => [['unit_price' => 42.5]]], 200),
+    ]);
+
+    $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.test', '/diesel-quote');
+
+    $result = $svc->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['price_eur_per_liter'])->toBe(42.5);
+});
