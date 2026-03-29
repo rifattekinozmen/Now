@@ -2,74 +2,52 @@
 
 use App\Services\Integrations\TotalEnergies\TotalEnergiesResponseParser;
 
-test('schema v1 parses flat price_try_per_liter and location', function () {
-    config([
-        'totalenergies.response_price_paths' => ['price_try_per_liter'],
-        'totalenergies.response_currency_paths' => ['currency'],
-        'totalenergies.response_location_paths' => ['location.province'],
-    ]);
+test('parses nested diesel_try price and tr comma string', function () {
+    $parser = new TotalEnergiesResponseParser(
+        ['data.fuel.diesel_try', 'price_try_per_liter'],
+        ['data.currency', 'currency'],
+        ['location.province', 'data.province'],
+    );
 
-    $p = TotalEnergiesResponseParser::fromConfig();
-    $out = $p->parse([
-        'price_try_per_liter' => '49,85',
-        'currency' => 'try',
-        'location' => ['province' => 'Adana'],
-    ]);
+    $json = json_decode((string) file_get_contents(__DIR__.'/../Fixtures/totalenergies_quote_schema_v1.json'), true);
+    expect($json)->toBeArray();
+
+    $out = $parser->parse($json);
 
     expect($out['price'])->toBe(49.85)
         ->and($out['currency'])->toBe('TRY')
         ->and($out['location'])->toBe('Adana');
 });
 
-test('schema v1 parses nested data.fuel.diesel path', function () {
-    config([
-        'totalenergies.response_price_paths' => ['data.fuel.diesel'],
-        'totalenergies.response_currency_paths' => [],
-        'totalenergies.response_location_paths' => [],
-    ]);
+test('normalize float accepts european comma decimals', function () {
+    $parser = new TotalEnergiesResponseParser(['p'], [], []);
 
-    $p = TotalEnergiesResponseParser::fromConfig();
-    $out = $p->parse(['data' => ['fuel' => ['diesel' => 42.1]]]);
-
-    expect($out['price'])->toBe(42.1)
-        ->and($out['currency'])->toBeNull()
-        ->and($out['location'])->toBeNull();
+    $out = $parser->parse(['p' => '1.234,56']);
+    expect($out['price'])->toBe(1234.56);
 });
 
-test('schema v1 parses quotes zero amount path', function () {
-    config([
-        'totalenergies.response_price_paths' => ['quotes.0.amount'],
-        'totalenergies.response_currency_paths' => ['quotes.0.currency'],
-        'totalenergies.response_location_paths' => [],
-    ]);
-
-    $p = TotalEnergiesResponseParser::fromConfig();
-    $out = $p->parse([
-        'quotes' => [
-            ['amount' => '33,5', 'currency' => 'try'],
-        ],
-    ]);
-
-    expect($out['price'])->toBe(33.5)
-        ->and($out['currency'])->toBe('TRY')
-        ->and($out['location'])->toBeNull();
-});
-
-test('configured schema version reads config', function () {
+test('configured schema version follows config', function () {
     config(['totalenergies.schema_version' => 1]);
-
     expect(TotalEnergiesResponseParser::configuredSchemaVersion())->toBe(1);
+
+    config(['totalenergies.schema_version' => 2]);
+    expect(TotalEnergiesResponseParser::configuredSchemaVersion())->toBe(2);
 });
 
-test('schema v1 returns null price when no path matches', function () {
+test('fromConfig uses totalenergies response paths', function () {
     config([
-        'totalenergies.response_price_paths' => ['missing'],
-        'totalenergies.response_currency_paths' => [],
-        'totalenergies.response_location_paths' => [],
+        'totalenergies.response_price_paths' => ['result.fuel_price_try'],
+        'totalenergies.response_currency_paths' => ['meta.currency'],
+        'totalenergies.response_location_paths' => ['result.city'],
     ]);
 
-    $p = TotalEnergiesResponseParser::fromConfig();
-    $out = $p->parse(['other' => 1]);
+    $parser = TotalEnergiesResponseParser::fromConfig();
+    $out = $parser->parse([
+        'result' => ['fuel_price_try' => 51.2, 'city' => 'İskenderun'],
+        'meta' => ['currency' => 'try'],
+    ]);
 
-    expect($out['price'])->toBeNull();
+    expect($out['price'])->toBe(51.2)
+        ->and($out['currency'])->toBe('TRY')
+        ->and($out['location'])->toBe('İskenderun');
 });

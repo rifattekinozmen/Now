@@ -92,6 +92,23 @@ final class LogoErpExportService
             return '';
         }
 
+        if (str_starts_with($attribute, 'meta.')) {
+            $path = substr($attribute, 5);
+            $meta = $order->getAttribute('meta');
+            if (! is_array($meta)) {
+                return '';
+            }
+            $v = data_get($meta, $path);
+            if ($v === null) {
+                return '';
+            }
+            if (is_scalar($v) || $v instanceof \Stringable) {
+                return (string) $v;
+            }
+
+            return '';
+        }
+
         $v = $order->getAttribute($attribute);
         if ($v === null) {
             return '';

@@ -1,0 +1,12 @@
+{
+  "data": {
+    "fuel": {
+      "diesel_try": "49,85"
+    },
+    "currency": "TRY",
+    "province": "Adana"
+  },
+  "location": {
+    "province": "Adana"
+  }
+}

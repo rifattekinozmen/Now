@@ -75,6 +75,34 @@ test('builds xml with customer tax id when present', function () {
         ->and($xml)->toContain('1234567890');
 });
 
+test('builds xml with order meta fields from config mapping', function () {
+    $customer = Customer::factory()->make(['legal_name' => 'Meta A.Ş.']);
+    $order = Order::factory()->make([
+        'order_number' => 'ORD-META-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 10,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+        'meta' => [
+            'delivery_order_no' => '864450789',
+            'notes' => 'Fabrika giriş öncesi arayın.',
+            'internal_reference' => 'INT-2026-03',
+        ],
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<DeliveryOrderNo>')
+        ->and($xml)->toContain('864450789')
+        ->and($xml)->toContain('<OrderNotes>')
+        ->and($xml)->toContain('Fabrika giriş öncesi arayın.')
+        ->and($xml)->toContain('<InternalReference>')
+        ->and($xml)->toContain('INT-2026-03');
+});
+
 test('builds xml with customer partner number when present', function () {
     $customer = Customer::factory()->make([
         'legal_name' => 'Partner A.Ş.',

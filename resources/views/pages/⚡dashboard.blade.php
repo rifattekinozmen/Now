@@ -176,14 +176,18 @@ new #[Title('Dashboard')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <flux:heading size="xl">{{ __('Operations overview') }}</flux:heading>
-            @can(LogisticsPermission::ADMIN)
-                <flux:button type="button" wire:click="refreshTcmb" variant="ghost" size="sm">
-                    {{ __('Refresh TCMB rates') }}
-                </flux:button>
-            @endcan
-        </div>
+        <x-admin.page-header
+            :heading="__('Operations overview')"
+            :description="__('Tenant KPIs, FX cache, and shipment distribution.')"
+        >
+            <x-slot name="actions">
+                @can(LogisticsPermission::ADMIN)
+                    <flux:button type="button" wire:click="refreshTcmb" variant="ghost" size="sm">
+                        {{ __('Refresh TCMB rates') }}
+                    </flux:button>
+                @endcan
+            </x-slot>
+        </x-admin.page-header>
 
         @if (session()->has('status'))
             <flux:callout variant="success" icon="check-circle">{{ session('status') }}</flux:callout>

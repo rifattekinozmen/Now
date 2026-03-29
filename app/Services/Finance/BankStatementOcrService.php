@@ -30,6 +30,34 @@ class BankStatementOcrService
     }
 
     /**
+     * PDF / CSV içe aktarma yetenekleri (UI veya yardım metinleri için tek kaynak).
+     *
+     * @return array{
+     *     csv: bool,
+     *     pdf_text_layer: bool,
+     *     scanned_pdf_ocr: bool,
+     *     scanned_pdf_user_message: string
+     * }
+     */
+    public function importCapabilities(): array
+    {
+        return [
+            'csv' => true,
+            'pdf_text_layer' => $this->pdfTextLayerExtractionSupported(),
+            'scanned_pdf_ocr' => $this->scannedImageOcrSupported(),
+            'scanned_pdf_user_message' => $this->unsupportedScannedPdfUserMessage(),
+        ];
+    }
+
+    /**
+     * Görüntü-only / taranmış PDF için kullanıcıya gösterilecek açıklama (empty_text ile aynı metin).
+     */
+    public function unsupportedScannedPdfUserMessage(): string
+    {
+        return __('This PDF has no extractable text (likely a scanned image). Export CSV from your bank or use OCR in a later release.');
+    }
+
+    /**
      * PDF dosyasından metin çıkarır ve satır desenlerine göre ayrıştırır.
      *
      * @return list<array{booked_at: string|null, amount: string|null, description: string|null}>
@@ -75,7 +103,7 @@ class BankStatementOcrService
     public function pdfImportDiagnosticMessage(string $diagnostic): string
     {
         return match ($diagnostic) {
-            'empty_text' => __('This PDF has no extractable text (likely a scanned image). Export CSV from your bank or use OCR in a later release.'),
+            'empty_text' => $this->unsupportedScannedPdfUserMessage(),
             'no_matching_lines' => __('Text was found but no lines matched the expected format (date at start, amount at end). Try CSV export or check the sample line format below.'),
             'unreadable_file' => __('The uploaded file could not be read.'),
             'parse_error' => __('The PDF could not be parsed. It may be corrupted or password-protected.'),

@@ -16,8 +16,19 @@ test('csv extraction maps tr headers', function () {
 test('pdf import diagnostic messages are translated keys', function () {
     $svc = new BankStatementOcrService;
     expect($svc->pdfImportDiagnosticMessage('empty_text'))->toBeString()->not->toBe('')
+        ->and($svc->unsupportedScannedPdfUserMessage())->toBe($svc->pdfImportDiagnosticMessage('empty_text'))
         ->and($svc->scannedImageOcrSupported())->toBeFalse()
         ->and($svc->pdfTextLayerExtractionSupported())->toBeTrue();
+});
+
+test('import capabilities expose csv and scanned pdf limitation', function () {
+    $svc = new BankStatementOcrService;
+    $caps = $svc->importCapabilities();
+
+    expect($caps['csv'])->toBeTrue()
+        ->and($caps['pdf_text_layer'])->toBeTrue()
+        ->and($caps['scanned_pdf_ocr'])->toBeFalse()
+        ->and($caps['scanned_pdf_user_message'])->toBe($svc->unsupportedScannedPdfUserMessage());
 });
 
 test('plain text line parsing extracts date amount description', function () {

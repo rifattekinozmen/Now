@@ -77,3 +77,41 @@ test('post quote sends merged json body with api key headers', function () {
             && ($data['fuel_grade'] ?? null) === 'motorin';
     });
 });
+
+test('fetch parses fixture shaped nested json body', function () {
+    $fixture = json_decode((string) file_get_contents(__DIR__.'/../Fixtures/totalenergies_quote_schema_v1.json'), true);
+    expect($fixture)->toBeArray();
+
+    config([
+        'totalenergies.enabled' => true,
+        'totalenergies.api_key' => 'fixture-key',
+        'totalenergies.base_url' => 'https://fuel.example.com',
+        'totalenergies.quote_path' => '/v1/quote',
+        'totalenergies.default_region' => 'TR',
+        'totalenergies.timeout_seconds' => 10,
+        'totalenergies.response_price_paths' => [
+            'data.fuel.diesel_try',
+            'price_try_per_liter',
+        ],
+        'totalenergies.response_currency_paths' => [
+            'data.currency',
+            'currency',
+        ],
+        'totalenergies.response_location_paths' => [
+            'location.province',
+            'data.province',
+        ],
+    ]);
+
+    Http::fake([
+        'https://fuel.example.com/v1/quote*' => Http::response($fixture, 200),
+    ]);
+
+    $result = TotalEnergiesFuelQuoteService::fromConfig()->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['price_eur_per_liter'])->toBe(49.85)
+        ->and($result['currency'])->toBe('TRY')
+        ->and($result['location_label'])->toBe('Adana')
+        ->and($result['schema_version'])->toBe(1);
+});

@@ -21,11 +21,15 @@ return [
         'DistanceKm' => 'distance_km',
         'Tonnage' => 'tonnage',
         'ExchangeRate' => 'exchange_rate',
+        'DeliveryOrderNo' => 'meta.delivery_order_no',
+        'OrderNotes' => 'meta.notes',
+        'InternalReference' => 'meta.internal_reference',
     ],
 
     /*
     | CustomerPartnerNo / CustomerTaxId XML etiketleri LogoErpExportService içinde
     | müşteri partner_number ve tax_id alanlarından üretilir.
+    | meta.* yolları `orders.meta` JSON alanından (dot notation) okunur.
     */
 
 ];
