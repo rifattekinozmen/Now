@@ -34,6 +34,23 @@ class AppServiceProvider extends ServiceProvider
         ]));
 
         $this->app->bind(CustomerEngagementNotifier::class, function (): CustomerEngagementNotifier {
+            $driver = config('customer_engagement.driver', 'auto');
+            if (is_string($driver)) {
+                $driver = strtolower($driver);
+            } else {
+                $driver = 'auto';
+            }
+
+            if ($driver === 'null') {
+                return new NullCustomerEngagementNotifier;
+            }
+            if ($driver === 'log') {
+                return new LogCustomerEngagementNotifier;
+            }
+            if ($driver === 'http') {
+                return new HttpCustomerEngagementNotifier;
+            }
+
             $httpEndpoint = config('customer_engagement.http.endpoint');
             $smsOn = (bool) config('customer_engagement.sms.enabled', false);
             $smsEndpoint = config('customer_engagement.sms.endpoint');

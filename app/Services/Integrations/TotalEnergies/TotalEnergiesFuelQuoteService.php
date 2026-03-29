@@ -7,10 +7,9 @@ use Illuminate\Support\Facades\Http;
 /**
  * TotalEnergies yakıt / fiyat entegrasyonu.
  *
- * Sözleşme özeti: `config('totalenergies.schema_version')`, yollar `response_price_paths`,
- * `response_currency_paths`, `response_location_paths`. Fiyat ondalık string ("1,55")
- * normalize edilir. `price_eur_per_liter` anahtarı geçmiş uyumluluk için birim başına
- * sayısal fiyatı taşır (para birimi `currency` ile birlikte değerlendirilmelidir).
+ * Sözleşme özeti: `config('totalenergies.schema_version')` (1); ayrıştırma
+ * {@see TotalEnergiesResponseParser}. `price_eur_per_liter` anahtarı geçmiş uyumluluk için
+ * birim başına sayısal fiyatı taşır (para birimi `currency` ile birlikte değerlendirilmelidir).
  */
 final class TotalEnergiesFuelQuoteService
 {
@@ -99,49 +98,10 @@ final class TotalEnergiesFuelQuoteService
         $currency = null;
         $locationLabel = null;
         if (is_array($json)) {
-            $paths = config('totalenergies.response_price_paths');
-            if (! is_array($paths) || $paths === []) {
-                $paths = ['price_eur_per_liter', 'data.price'];
-            }
-            foreach ($paths as $path) {
-                if (! is_string($path) || $path === '') {
-                    continue;
-                }
-                $candidate = data_get($json, $path);
-                $normalized = $this->normalizeToFloat($candidate);
-                if ($normalized !== null) {
-                    $price = $normalized;
-                    break;
-                }
-            }
-
-            $currencyPaths = config('totalenergies.response_currency_paths');
-            if (is_array($currencyPaths)) {
-                foreach ($currencyPaths as $cPath) {
-                    if (! is_string($cPath) || $cPath === '') {
-                        continue;
-                    }
-                    $cVal = data_get($json, $cPath);
-                    if (is_string($cVal) && trim($cVal) !== '') {
-                        $currency = strtoupper(trim($cVal));
-                        break;
-                    }
-                }
-            }
-
-            $locationPaths = config('totalenergies.response_location_paths');
-            if (is_array($locationPaths)) {
-                foreach ($locationPaths as $locPath) {
-                    if (! is_string($locPath) || $locPath === '') {
-                        continue;
-                    }
-                    $locVal = data_get($json, $locPath);
-                    if (is_string($locVal) && trim($locVal) !== '') {
-                        $locationLabel = trim($locVal);
-                        break;
-                    }
-                }
-            }
+            $parsed = TotalEnergiesResponseParser::fromConfig()->parse($json);
+            $price = $parsed['price'];
+            $currency = $parsed['currency'];
+            $locationLabel = $parsed['location'];
         }
 
         if ($price === null) {
@@ -194,33 +154,5 @@ final class TotalEnergiesFuelQuoteService
         }
 
         return $out;
-    }
-
-    private function normalizeToFloat(mixed $value): ?float
-    {
-        if (is_int($value) || is_float($value)) {
-            return (float) $value;
-        }
-        if (! is_string($value)) {
-            return null;
-        }
-        $s = trim($value);
-        if ($s === '') {
-            return null;
-        }
-        $s = str_replace([' ', "\xc2\xa0"], '', $s);
-        $lastComma = strrpos($s, ',');
-        $lastDot = strrpos($s, '.');
-        if ($lastComma !== false && ($lastDot === false || $lastComma > $lastDot)) {
-            $s = str_replace('.', '', $s);
-            $s = str_replace(',', '.', $s);
-        } else {
-            $s = str_replace(',', '', $s);
-        }
-        if (! is_numeric($s)) {
-            return null;
-        }
-
-        return (float) $s;
     }
 }

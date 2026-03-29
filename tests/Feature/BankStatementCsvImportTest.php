@@ -166,6 +166,10 @@ test('logistics admin sees distinct message when pdf has no text layer', functio
         $mock->shouldReceive('extractRowsFromPdfWithDiagnostics')
             ->once()
             ->andReturn(['rows' => [], 'diagnostic' => 'empty_text']);
+        $mock->shouldReceive('pdfImportDiagnosticMessage')
+            ->once()
+            ->with('empty_text')
+            ->andReturn((new BankStatementOcrService)->pdfImportDiagnosticMessage('empty_text'));
     });
 
     $this->actingAs($user);

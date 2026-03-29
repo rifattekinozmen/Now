@@ -42,3 +42,24 @@ test('extract rows from csv content maps turkish headers', function () {
         ->and($rows[0]['amount'])->toBe('1000.25')
         ->and($rows[0]['description'])->toBe('HAVALE');
 });
+
+test('pdf import diagnostic messages are non-empty for known codes', function () {
+    $svc = app(BankStatementOcrService::class);
+
+    foreach (['empty_text', 'no_matching_lines', 'unreadable_file', 'parse_error'] as $code) {
+        expect($svc->pdfImportDiagnosticMessage($code))->not->toBe('');
+    }
+});
+
+test('garbage file yields non-ok diagnostic from pdf extraction', function () {
+    $path = tempnam(sys_get_temp_dir(), 'stmt');
+    $path = $path !== false ? $path.'.pdf' : sys_get_temp_dir().'/stmt-test.pdf';
+    file_put_contents($path, '%PDF-1.4 invalid binary junk');
+
+    $svc = app(BankStatementOcrService::class);
+    $r = $svc->extractRowsFromPdfWithDiagnostics($path);
+    @unlink($path);
+
+    expect($r['rows'])->toBe([])
+        ->and($r['diagnostic'])->not->toBe('ok');
+});

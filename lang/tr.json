@@ -272,5 +272,19 @@
     "No freight outliers detected in this period.": "Bu dönemde navlun aykırısı tespit edilmedi.",
     "Freight amounts flagged for review": "İnceleme için işaretlenen navlun tutarları",
     "These orders deviate more than 20% from the median freight in the filtered period.": "Bu siparişler süzülen dönemdeki medyan navlundan %20’den fazla sapıyor.",
-    "Reason": "Gerekçe"
+    "Reason": "Gerekçe",
+    "Balance sheet summary": "Bilanço özeti",
+    "Period net activity by account type. Not a statutory balance sheet or financial statement.": "Hesap tipine göre dönem net hareketleri. Yasal bilanço veya mali tablo değildir.",
+    "Balance sheet (by type)": "Bilanço (hesap tipine göre)",
+    "Section": "Bölüm",
+    "Assets": "Varlıklar",
+    "Liabilities": "Yükümlülükler",
+    "Equity": "Özkaynak",
+    "Assets net": "Varlık net",
+    "Liabilities + equity (net)": "Yükümlülük + özkaynak (net)",
+    "Income statement (period)": "Gelir tablosu (dönem)",
+    "Revenue": "Gelir",
+    "Expense": "Gider",
+    "Period result (revenue + expense net)": "Dönem sonucu (gelir + gider net)",
+    "Unable to load report for this period.": "Bu dönem için rapor yüklenemedi."
 }

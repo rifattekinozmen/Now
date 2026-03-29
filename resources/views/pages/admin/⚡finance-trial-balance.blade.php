@@ -66,13 +66,13 @@ new #[Title('Trial balance')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <flux:heading size="xl">{{ __('Trial balance') }}</flux:heading>
-        <div class="flex flex-wrap gap-2">
+    <x-admin.page-toolbar :heading="__('Trial balance')">
+        <x-slot name="actions">
             <flux:button :href="route('admin.finance.index')" variant="ghost" wire:navigate>{{ __('Finance summary') }}</flux:button>
             <flux:button :href="route('admin.finance.reports')" variant="ghost" wire:navigate>{{ __('Finance reports') }}</flux:button>
-        </div>
-    </div>
+            <flux:button :href="route('admin.finance.balance-sheet')" variant="ghost" wire:navigate>{{ __('Balance sheet summary') }}</flux:button>
+        </x-slot>
+    </x-admin.page-toolbar>
 
     <flux:callout variant="warning" icon="exclamation-triangle">
         <flux:callout.heading>{{ __('Operational reference only') }}</flux:callout.heading>

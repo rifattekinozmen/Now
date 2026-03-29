@@ -53,6 +53,20 @@ class BankStatementOcrService
     }
 
     /**
+     * PDF içe aktarma hatası için kullanıcıya gösterilecek çevrilmiş mesaj (UI ile aynı kaynak).
+     */
+    public function pdfImportDiagnosticMessage(string $diagnostic): string
+    {
+        return match ($diagnostic) {
+            'empty_text' => __('This PDF has no extractable text (likely a scanned image). Export CSV from your bank or use OCR in a later release.'),
+            'no_matching_lines' => __('Text was found but no lines matched the expected format (date at start, amount at end). Try CSV export or check the sample line format below.'),
+            'unreadable_file' => __('The uploaded file could not be read.'),
+            'parse_error' => __('The PDF could not be parsed. It may be corrupted or password-protected.'),
+            default => __('No transaction lines were parsed from this PDF. Try a CSV export from your bank, or use a PDF with a selectable text layer (image-only scans need separate OCR).'),
+        };
+    }
+
+    /**
      * PDF veya başka kaynaktan gelen düz metni (ekstre satırları) ayrıştırır.
      *
      * @return list<array{booked_at: string|null, amount: string|null, description: string|null}>

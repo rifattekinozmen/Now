@@ -2,6 +2,20 @@
 
 return [
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bildirim çözümleyici: auto | http | log | null
+    |--------------------------------------------------------------------------
+    |
+    | auto: uç nokta / log bayraklarına göre mevcut mantık (varsayılan).
+    | http: yalnızca HttpCustomerEngagementNotifier (endpoint boşsa istek gitmez).
+    | log: LogCustomerEngagementNotifier.
+    | null: NullCustomerEngagementNotifier (tam no-op).
+    |
+    */
+
+    'driver' => env('CUSTOMER_ENGAGEMENT_DRIVER', 'auto'),
+
     'enabled' => (bool) env('CUSTOMER_ENGAGEMENT_LOG', false),
 
     'log_channel' => env('CUSTOMER_ENGAGEMENT_LOG_CHANNEL', 'single'),

@@ -66,6 +66,7 @@ test('customer engagement resolves log notifier when whatsapp flag enabled witho
 
 test('customer engagement resolves null notifier when all channels off', function () {
     config([
+        'customer_engagement.driver' => 'auto',
         'customer_engagement.http.endpoint' => null,
         'customer_engagement.sms.enabled' => false,
         'customer_engagement.whatsapp.enabled' => false,
@@ -73,4 +74,35 @@ test('customer engagement resolves null notifier when all channels off', functio
     ]);
 
     expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(NullCustomerEngagementNotifier::class);
+});
+
+test('customer engagement driver null forces null notifier even if http endpoint set', function () {
+    config([
+        'customer_engagement.driver' => 'null',
+        'customer_engagement.http.endpoint' => 'https://hooks.example.test/notify',
+        'customer_engagement.sms.enabled' => false,
+        'customer_engagement.whatsapp.enabled' => false,
+    ]);
+
+    expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(NullCustomerEngagementNotifier::class);
+});
+
+test('customer engagement driver log forces log notifier', function () {
+    config([
+        'customer_engagement.driver' => 'log',
+        'customer_engagement.http.endpoint' => 'https://hooks.example.test/notify',
+    ]);
+
+    expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(LogCustomerEngagementNotifier::class);
+});
+
+test('customer engagement driver http forces http notifier', function () {
+    config([
+        'customer_engagement.driver' => 'http',
+        'customer_engagement.http.endpoint' => null,
+        'customer_engagement.sms.enabled' => false,
+        'customer_engagement.whatsapp.enabled' => false,
+    ]);
+
+    expect(app(CustomerEngagementNotifier::class))->toBeInstanceOf(HttpCustomerEngagementNotifier::class);
 });
