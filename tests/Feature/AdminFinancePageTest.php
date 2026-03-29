@@ -136,6 +136,17 @@ test('finance reports aging isolates data by tenant', function () {
         ->assertDontSee('Tenant B Aging Customer', false);
 });
 
+test('bank statement import page loads for logistics user', function () {
+    /** @var TestCase $this */
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('admin.finance.bank-statement-csv'))
+        ->assertSuccessful()
+        ->assertSee(__('Bank statement import'), false);
+});
+
 test('payment due calendar page loads for logistics user', function () {
     /** @var TestCase $this */
     $user = User::factory()->create();

@@ -50,9 +50,36 @@ return [
 
     'response_price_paths' => [
         'price_eur_per_liter',
+        'price_try_per_liter',
+        'price',
         'data.price',
+        'data.unit_price',
         'result.price',
+        'result.fuel_price',
+        'result.fuel_price_try',
+        'data.fuel.diesel',
+        'data.items.0.price',
+        'quotes.0.amount',
+        'quotes.0.unit_price',
         'data.0.price',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Yanıttan para birimi (isteğe bağlı, dot notation)
+    |--------------------------------------------------------------------------
+    |
+    | İlk bulunan string değer kullanılır. Bulunamazsa default_currency uygulanır.
+    |
+    */
+
+    'response_currency_paths' => [
+        'currency',
+        'data.currency',
+        'result.currency',
+        'meta.currency',
+    ],
+
+    'default_currency' => env('TOTALENERGIES_DEFAULT_CURRENCY', 'EUR'),
 
 ];

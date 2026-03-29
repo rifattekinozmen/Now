@@ -15,6 +15,12 @@ return [
     'order_fields' => [
         'OrderedAt' => 'ordered_at',
         'OrderStatus' => 'status',
+        'LoadingSite' => 'loading_site',
+        'UnloadingSite' => 'unloading_site',
+        'Incoterms' => 'incoterms',
+        'DistanceKm' => 'distance_km',
+        'Tonnage' => 'tonnage',
+        'ExchangeRate' => 'exchange_rate',
     ],
 
 ];

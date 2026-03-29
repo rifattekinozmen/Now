@@ -19,8 +19,16 @@ class BankStatementOcrService
      */
     public function extractRowsFromPdf(string $absolutePath, int $maxRows = 500): array
     {
+        return $this->extractRowsFromPdfWithDiagnostics($absolutePath, $maxRows)['rows'];
+    }
+
+    /**
+     * @return array{rows: list<array{booked_at: string|null, amount: string|null, description: string|null}>, diagnostic: string}
+     */
+    public function extractRowsFromPdfWithDiagnostics(string $absolutePath, int $maxRows = 500): array
+    {
         if (! is_file($absolutePath) || ! is_readable($absolutePath)) {
-            return [];
+            return ['rows' => [], 'diagnostic' => 'unreadable_file'];
         }
 
         try {
@@ -28,10 +36,20 @@ class BankStatementOcrService
             $pdf = $parser->parseFile($absolutePath);
             $text = $pdf->getText();
         } catch (Throwable) {
-            return [];
+            return ['rows' => [], 'diagnostic' => 'parse_error'];
         }
 
-        return $this->extractRowsFromStatementPlainText($text, $maxRows);
+        $text = trim((string) $text);
+        if ($text === '') {
+            return ['rows' => [], 'diagnostic' => 'empty_text'];
+        }
+
+        $rows = $this->extractRowsFromStatementPlainText($text, $maxRows);
+        if ($rows === []) {
+            return ['rows' => [], 'diagnostic' => 'no_matching_lines'];
+        }
+
+        return ['rows' => $rows, 'diagnostic' => 'ok'];
     }
 
     /**

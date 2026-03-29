@@ -66,10 +66,13 @@ test('logistics admin can upload bank pdf and persist import when parser returns
     $user = User::factory()->create();
 
     $this->mock(BankStatementOcrService::class, function ($mock): void {
-        $mock->shouldReceive('extractRowsFromPdf')
+        $mock->shouldReceive('extractRowsFromPdfWithDiagnostics')
             ->once()
             ->andReturn([
-                ['booked_at' => '2026-04-01', 'amount' => '50.00', 'description' => 'PDF row'],
+                'rows' => [
+                    ['booked_at' => '2026-04-01', 'amount' => '50.00', 'description' => 'PDF row'],
+                ],
+                'diagnostic' => 'ok',
             ]);
     });
 
@@ -86,14 +89,14 @@ test('logistics admin can upload bank pdf and persist import when parser returns
         ->and($import->rows[0]['description'])->toBe('PDF row');
 });
 
-test('logistics admin sees validation message when pdf parser returns no rows', function () {
+test('logistics admin sees distinct message when pdf has no text layer', function () {
     /** @var TestCase $this */
     $user = User::factory()->create();
 
     $this->mock(BankStatementOcrService::class, function ($mock): void {
-        $mock->shouldReceive('extractRowsFromPdf')
+        $mock->shouldReceive('extractRowsFromPdfWithDiagnostics')
             ->once()
-            ->andReturn([]);
+            ->andReturn(['rows' => [], 'diagnostic' => 'empty_text']);
     });
 
     $this->actingAs($user);
@@ -101,7 +104,8 @@ test('logistics admin sees validation message when pdf parser returns no rows', 
     Livewire::test('pages::admin.bank-statement-csv-import')
         ->set('pdfFile', UploadedFile::fake()->create('empty.pdf', 50))
         ->call('importPdf')
-        ->assertHasErrors(['pdfFile']);
+        ->assertHasErrors(['pdfFile'])
+        ->assertSee('likely a scanned image', false);
 
     expect(BankStatementCsvImport::query()->count())->toBe(0);
 });

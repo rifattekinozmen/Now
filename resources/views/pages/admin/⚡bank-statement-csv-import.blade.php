@@ -78,14 +78,19 @@ new #[Title('Bank statement CSV import')] class extends Component
             return;
         }
 
-        $rows = $parser->extractRowsFromPdf($path);
+        $parsed = $parser->extractRowsFromPdfWithDiagnostics($path);
+        $rows = $parsed['rows'];
         if ($rows === []) {
             $this->previewRows = [];
             $this->savedImportId = null;
-            $this->addError(
-                'pdfFile',
-                __('No transaction lines were parsed from this PDF. Try a CSV export from your bank, or use a PDF with a selectable text layer (image-only scans need separate OCR).')
-            );
+            $message = match ($parsed['diagnostic']) {
+                'empty_text' => __('This PDF has no extractable text (likely a scanned image). Export CSV from your bank or use OCR in a later release.'),
+                'no_matching_lines' => __('Text was found but no lines matched the expected format (date at start, amount at end). Try CSV export or check the sample line format below.'),
+                'unreadable_file' => __('The uploaded file could not be read.'),
+                'parse_error' => __('The PDF could not be parsed. It may be corrupted or password-protected.'),
+                default => __('No transaction lines were parsed from this PDF. Try a CSV export from your bank, or use a PDF with a selectable text layer (image-only scans need separate OCR).'),
+            };
+            $this->addError('pdfFile', $message);
 
             return;
         }

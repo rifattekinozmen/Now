@@ -47,6 +47,9 @@
                         <flux:sidebar.item icon="calendar-days" :href="route('admin.finance.payment-due-calendar')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Payment due calendar') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-text" :href="route('admin.finance.bank-statement-csv')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Bank statement import') }}
+                        </flux:sidebar.item>
                     @endcanany
                 </flux:sidebar.group>
             </flux:sidebar.nav>

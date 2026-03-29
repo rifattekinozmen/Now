@@ -22,6 +22,15 @@ test('extract rows from pdf returns empty for missing file', function () {
     expect($svc->extractRowsFromPdf('/nonexistent/path/bank.pdf'))->toBe([]);
 });
 
+test('extract rows from pdf with diagnostics reports unreadable file', function () {
+    $svc = app(BankStatementOcrService::class);
+
+    $result = $svc->extractRowsFromPdfWithDiagnostics('/nonexistent/path/bank.pdf');
+
+    expect($result['rows'])->toBe([])
+        ->and($result['diagnostic'])->toBe('unreadable_file');
+});
+
 test('extract rows from csv content maps turkish headers', function () {
     $svc = app(BankStatementOcrService::class);
     $csv = "Tarih,Tutar,Açıklama\n20.03.2026,\"1.000,25\",HAVALE\n";

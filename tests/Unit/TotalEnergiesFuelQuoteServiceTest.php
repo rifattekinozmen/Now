@@ -71,3 +71,54 @@ test('totalenergies reads price from array index path', function () {
     expect($result['ok'])->toBeTrue()
         ->and($result['price_eur_per_liter'])->toBe(42.5);
 });
+
+test('totalenergies parses european format string price', function () {
+    Http::fake([
+        'https://api.test/diesel-quote*' => Http::response(['price' => '45,89'], 200),
+    ]);
+
+    config(['totalenergies.response_price_paths' => ['price']]);
+
+    $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.test', '/diesel-quote');
+
+    $result = $svc->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['price_eur_per_liter'])->toBe(45.89);
+});
+
+test('totalenergies reads currency from configured path', function () {
+    Http::fake([
+        'https://api.test/diesel-quote*' => Http::response([
+            'data' => ['unit_price' => 1.2, 'currency' => 'try'],
+        ], 200),
+    ]);
+
+    config([
+        'totalenergies.response_price_paths' => ['data.unit_price'],
+        'totalenergies.response_currency_paths' => ['data.currency'],
+        'totalenergies.default_currency' => 'EUR',
+    ]);
+
+    $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.test', '/diesel-quote');
+
+    $result = $svc->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['currency'])->toBe('TRY');
+});
+
+test('totalenergies uses default currency when response omits it', function () {
+    Http::fake([
+        'https://api.test/diesel-quote*' => Http::response(['price_eur_per_liter' => 1.5], 200),
+    ]);
+
+    config(['totalenergies.default_currency' => 'TRY']);
+
+    $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.test', '/diesel-quote');
+
+    $result = $svc->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['currency'])->toBe('TRY');
+});
