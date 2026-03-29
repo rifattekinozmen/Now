@@ -80,7 +80,23 @@ final class TotalEnergiesFuelQuoteService
         }
 
         $json = $response->json();
-        $price = is_array($json) ? ($json['price_eur_per_liter'] ?? $json['data']['price'] ?? null) : null;
+        $price = null;
+        if (is_array($json)) {
+            $paths = config('totalenergies.response_price_paths');
+            if (! is_array($paths) || $paths === []) {
+                $paths = ['price_eur_per_liter', 'data.price'];
+            }
+            foreach ($paths as $path) {
+                if (! is_string($path) || $path === '') {
+                    continue;
+                }
+                $candidate = data_get($json, $path);
+                if (is_numeric($candidate)) {
+                    $price = $candidate;
+                    break;
+                }
+            }
+        }
 
         if (! is_numeric($price)) {
             return [

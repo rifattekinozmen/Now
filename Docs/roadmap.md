@@ -92,10 +92,10 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 
 _Kayıt: uygulama sözleşmesi için boş veya no-op sınıflar; üretim akışı ayrı onay._
 
-- [ ] `App\Services\Finance\BankStatementOcrService` — banka ekstresi OCR _(iskelet sınıf: 2026-03-29)_
+- [x] `App\Services\Finance\BankStatementOcrService` — CSV satır ayrıştırma + admin import + `bank_statement_csv_imports`; PDF OCR hâlâ boş _(2026-03-29)_
 - [x] `App\Services\Finance\CashFlowProjectionService` — sipariş tarihi + müşteri vade günü; finans özeti tablosu _(2026-03-29)_
-- [ ] `App\Services\Integrations\Logo\LogoErpExportService` — Logo ERP _(iskelet: 2026-03-29)_
-- [ ] `App\Services\Logistics\AuditAiEvaluationService` — denetim/AI değerlendirme _(iskelet: 2026-03-29)_
+- [x] `App\Services\Integrations\Logo\LogoErpExportService` — siparişler için `LogoConnectExport` XML + `admin.orders.export.logo.xml` _(2026-03-29)_
+- [x] `App\Services\Logistics\AuditAiEvaluationService` — yakıt hacmi %15 / navlun %20 sapma; `skipped` _(2026-03-29)_
 
 ## Harici ERP deposu
 

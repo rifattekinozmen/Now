@@ -17,6 +17,7 @@ test('users without logistics permission cannot access admin logistics routes', 
     $this->get(route('admin.customers.index'))->assertForbidden();
     $this->get(route('admin.customers.export.csv'))->assertForbidden();
     $this->get(route('admin.finance.index'))->assertForbidden();
+    $this->get(route('admin.finance.payment-due-calendar'))->assertForbidden();
 });
 
 test('users with tenant-user role can access admin logistics routes', function () {

@@ -33,6 +33,21 @@ test('totalenergies returns ok when http returns price', function () {
         ->and($result['price_eur_per_liter'])->toBe(1.55);
 });
 
+test('totalenergies reads nested price path from config', function () {
+    config(['totalenergies.response_price_paths' => ['data.fuel.diesel']]);
+
+    Http::fake([
+        'https://api.test/diesel-quote*' => Http::response(['data' => ['fuel' => ['diesel' => 2.1]]], 200),
+    ]);
+
+    $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.test', '/diesel-quote');
+
+    $result = $svc->fetchSampleDieselQuote();
+
+    expect($result['ok'])->toBeTrue()
+        ->and($result['price_eur_per_liter'])->toBe(2.1);
+});
+
 test('totalenergies rejects placeholder base url', function () {
     $svc = new TotalEnergiesFuelQuoteService(true, 'secret', 'https://api.totalenergies.example', '/diesel-quote');
 

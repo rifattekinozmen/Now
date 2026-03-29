@@ -3,6 +3,7 @@
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Services\Finance\CashFlowProjectionService;
+use App\Services\Logistics\AuditAiEvaluationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -16,14 +17,30 @@ new #[Title('Finance summary')] class extends Component
 
     public string $filterDateTo = '';
 
+    public string $projectionDateFrom = '';
+
+    public string $projectionDateTo = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Order::class);
+        if ($this->projectionDateFrom === '') {
+            $this->projectionDateFrom = now()->toDateString();
+        }
+        if ($this->projectionDateTo === '') {
+            $this->projectionDateTo = now()->addDays(30)->toDateString();
+        }
     }
 
     public function clearDateFilters(): void
     {
         $this->reset('filterDateFrom', 'filterDateTo');
+    }
+
+    public function resetProjectionWindow(): void
+    {
+        $this->projectionDateFrom = now()->toDateString();
+        $this->projectionDateTo = now()->addDays(30)->toDateString();
     }
 
     /**
@@ -151,12 +168,71 @@ new #[Title('Finance summary')] class extends Component
             return [];
         }
 
+        $from = Carbon::now()->startOfDay();
+        $to = Carbon::now()->addDays(30)->endOfDay();
+        if ($this->projectionDateFrom !== '') {
+            try {
+                $from = Carbon::parse($this->projectionDateFrom)->startOfDay();
+            } catch (\Throwable) {
+                //
+            }
+        }
+        if ($this->projectionDateTo !== '') {
+            try {
+                $to = Carbon::parse($this->projectionDateTo)->endOfDay();
+            } catch (\Throwable) {
+                //
+            }
+        }
+        if ($from->gt($to)) {
+            $tmp = $from->copy();
+            $from = $to->copy()->startOfDay();
+            $to = $tmp->endOfDay();
+        }
+
         $svc = app(CashFlowProjectionService::class);
 
         return $svc->projectForTenant(
             (int) $user->tenant_id,
-            Carbon::now()->startOfDay(),
-            Carbon::now()->addDays(30)->endOfDay()
+            $from,
+            $to
+        );
+    }
+
+    /**
+     * @return array{evaluated_orders: int, flagged: list<array{order_id: int, order_number: string, currency_code: string|null, reasons: list<string>}>}
+     */
+    #[Computed]
+    public function auditFreightOutliers(): array
+    {
+        $user = auth()->user();
+        if ($user === null || $user->tenant_id === null) {
+            return ['evaluated_orders' => 0, 'flagged' => []];
+        }
+
+        $from = null;
+        $to = null;
+        if ($this->filterDateFrom !== '') {
+            try {
+                $from = Carbon::parse($this->filterDateFrom);
+            } catch (\Throwable) {
+                //
+            }
+        }
+        if ($this->filterDateTo !== '') {
+            try {
+                $to = Carbon::parse($this->filterDateTo);
+            } catch (\Throwable) {
+                //
+            }
+        }
+
+        $svc = app(AuditAiEvaluationService::class);
+
+        return $svc->summarizeFreightOutliersAgainstMedian(
+            (int) $user->tenant_id,
+            $from,
+            $to
         );
     }
 }; ?>
@@ -165,7 +241,10 @@ new #[Title('Finance summary')] class extends Component
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <flux:heading size="xl">{{ __('Finance summary') }}</flux:heading>
             <div class="flex flex-wrap gap-2">
+                <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline">{{ __('Payment due calendar') }}</flux:button>
+                <flux:button :href="route('admin.finance.bank-statement-csv')" variant="outline">{{ __('Bank statement CSV import') }}</flux:button>
                 <flux:button :href="route('admin.orders.export.finance.csv')" variant="outline">{{ __('Export orders CSV') }}</flux:button>
+                <flux:button :href="route('admin.orders.export.logo.xml')" variant="outline">{{ __('Export Logo XML') }}</flux:button>
                 <flux:button :href="route('dashboard')" variant="ghost" wire:navigate>{{ __('Back to dashboard') }}</flux:button>
             </div>
         </div>
@@ -208,11 +287,51 @@ new #[Title('Finance summary')] class extends Component
             </flux:callout.text>
         </flux:callout>
 
-        <flux:card>
-            <flux:heading size="lg" class="mb-2">{{ __('Cash flow projection (next :days days)', ['days' => 30]) }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Based on order date plus customer payment term (days).') }}
+        <flux:card class="!p-4">
+            <flux:heading size="lg" class="mb-2">{{ __('Operational audit (freight vs median)') }}</flux:heading>
+            <flux:text class="mb-2 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Orders checked: :count (same filters as report period). Compared to median freight per currency in that set.', ['count' => $this->auditFreightOutliers['evaluated_orders']]) }}
             </flux:text>
+            @if (count($this->auditFreightOutliers['flagged']) === 0)
+                <flux:text class="text-sm text-zinc-500">{{ __('No freight outliers detected in this period.') }}</flux:text>
+            @else
+                <flux:callout variant="danger" icon="shield-exclamation" class="mb-4">
+                    <flux:callout.heading>{{ __('Freight amounts flagged for review') }}</flux:callout.heading>
+                    <flux:callout.text>{{ __('These orders deviate more than 20% from the median freight in the filtered period.') }}</flux:callout.text>
+                </flux:callout>
+                <flux:table>
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Order') }}</flux:table.column>
+                        <flux:table.column>{{ __('Currency') }}</flux:table.column>
+                        <flux:table.column>{{ __('Reason') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($this->auditFreightOutliers['flagged'] as $row)
+                            <flux:table.row :key="$row['order_id']">
+                                <flux:table.cell>
+                                    <flux:link :href="route('admin.orders.show', $row['order_id'])" wire:navigate>
+                                        {{ $row['order_number'] }}
+                                    </flux:link>
+                                </flux:table.cell>
+                                <flux:table.cell>{{ $row['currency_code'] ?? '—' }}</flux:table.cell>
+                                <flux:table.cell>{{ $row['reasons'][0] ?? '—' }}</flux:table.cell>
+                            </flux:table.row>
+                        @endforeach
+                    </flux:table.rows>
+                </flux:table>
+            @endif
+        </flux:card>
+
+        <flux:card>
+            <flux:heading size="lg" class="mb-2">{{ __('Cash flow projection') }}</flux:heading>
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Based on order date plus customer payment term (days). Rows are filtered by expected collection (due) date range.') }}
+            </flux:text>
+            <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+                <flux:input wire:model.live="projectionDateFrom" type="date" :label="__('Collection window from')" />
+                <flux:input wire:model.live="projectionDateTo" type="date" :label="__('Collection window to')" />
+                <flux:button type="button" variant="ghost" wire:click="resetProjectionWindow">{{ __('Reset projection window') }}</flux:button>
+            </div>
             @if (count($this->cashFlowProjectionRows) === 0)
                 <flux:text class="text-sm text-zinc-500">{{ __('No projected inflows in this window.') }}</flux:text>
             @else

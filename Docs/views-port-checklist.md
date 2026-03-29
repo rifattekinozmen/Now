@@ -1,6 +1,6 @@
 # docs/views → Now: sıralı port kontrol listesi
 
-Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles`, `employees`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `finance` + `track.shipment` kamu rotası).
+Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles`, `employees`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `finance`, `finance/bank-statement-csv`, `orders.export.finance.csv`, `orders.export.logo.xml` + `track.shipment` kamu rotası).
 
 **Durum kodları:** `VAR` tam veya işlevsel karşılık · `KISMI` iskelet / tek tip CRUD / placeholder · `YOK` karşılık yok.
 
@@ -252,6 +252,18 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 |----------|------|--------|
 | `aging`, `customer-summary`, `top-customers` | `⚡finance-reports` placeholder | KISMI |
 
+### Now — finans özeti (`admin/finance`)
+
+| Referans | Now | Durum |
+|----------|------|--------|
+| Özet, KPI, nakit akışı | `pages::admin.finance-index` | KISMI _(tahsilat tarih penceresi + CSV/XML dışa aktarma; 2026-03-29)_ |
+
+### Now — banka ekstresi CSV
+
+| Referans | Now | Durum |
+|----------|------|--------|
+| — | `pages::admin.bank-statement-csv-import` (`logistics.admin`), `BankStatementCsvImport`, `BankStatementOcrService` | KISMI _(CSV; PDF OCR yok; 2026-03-29)_ |
+
 ---
 
 ## Faz 5 — Yakıt
@@ -365,6 +377,6 @@ Her faz bitince: ilgili modül için **Pest** (`assertSuccessful`, mümkünse ç
 
 ---
 
-*Son güncelleme: 2026-03-29 — Personel (`employees-index`), belge vade komutu/zamanlama.*
+*Son güncelleme: 2026-03-29 — Finans özeti (vade penceresi, Logo XML), banka CSV import, AuditAI servis kuralları.*
 
 *Dosya yolu: `Docs/views-port-checklist.md`.*

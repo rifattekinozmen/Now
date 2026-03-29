@@ -4,7 +4,8 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
-- Plan dalgaları 1–7 uygulandı: sipariş stepper + `order-show`, sevkiyat token + QR + `track.shipment`, POD iskeleti, TotalEnergies HTTP, import + düzenleme (sipariş/araç/personel), `CustomerEngagementNotifier` iskeleti, Faz 3 servis iskeletleri. Dokümantasyon: `Docs/views-port-checklist.md`, `Docs/roadmap.md` güncellendi.
+- Finans: `pages::admin.finance-index` — nakit akış projeksiyonu için **tahsilat tarih penceresi** (`projectionDateFrom` / `projectionDateTo`), Logo XML dışa aktarma (`admin.orders.export.logo.xml`), banka ekstresi **CSV içe aktarma** (`admin.finance.bank-statement-csv`, `BankStatementCsvImport`, `logistics.admin` zorunlu).
+- Faz 3 servisleri: `BankStatementOcrService` (CSV ayrıştırma; PDF OCR hâlâ boş), `LogoErpExportService` (`LogoConnectExport` XML), `AuditAiEvaluationService` (yakıt %15 / navlun %20 sapma kuralları, `skipped` durumu).
 
 ## Rol matrisi (özet)
 
@@ -19,9 +20,10 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ## Pending Work
 
-- TotalEnergies yanıt şeması müşteri API’sine göre netleştirme; POD dijital imza/PDF.
+- TotalEnergies yanıt şeması müşteri API’sine göre netleştirme.
 - Gerçek SMS/WhatsApp sağlayıcısı (`CustomerEngagementNotifier` uygulaması).
-- Faz 3: banka OCR, Logo, vade takvimi UI, AuditAI iş kuralları.
+- Banka ekstresi **PDF OCR** (`BankStatementOcrService::extractRowsFromPdf`) ve otomatik cari eşleştirme.
+- Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi; `AuditAI` kurallarının UI/olay tetikleyicilerine bağlanması.
 
 ## Safe Next Actions
 
@@ -48,4 +50,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-29 (plan dalgaları: stepper, QR, POD, TotalEnergies HTTP, import/CRUD, engagement iskeleti, Faz 3 sınıf iskeletleri, docs senkronu)*
+*Son güncelleme: 2026-03-29 (finans: vade penceresi + Logo XML + banka CSV import + AuditAI birim testleri; `Docs/views-port-checklist.md` finans/banka satırları)*

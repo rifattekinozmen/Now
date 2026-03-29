@@ -2,6 +2,7 @@
 
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Tenant;
 use App\Models\User;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -21,7 +22,7 @@ test('finance summary shows freight total for tenant scoped orders', function ()
 
     $response = $this->get(route('admin.finance.index'));
     $response->assertSuccessful();
-    $response->assertSee(__('Cash flow projection (next :days days)', ['days' => 30]), false);
+    $response->assertSee(__('Cash flow projection'), false);
     $response->assertSee(__('Freight totals by currency'), false);
     $response->assertSee('TRY', false);
     $response->assertSee('1,500.50', false);
@@ -58,4 +59,128 @@ test('finance summary date filter limits order counts on page', function () {
         ->tap(function ($component) {
             expect($component->instance()->financeIndexKpis['total_orders'])->toBe(1);
         });
+});
+
+test('finance cash flow projection respects collection window filter', function () {
+    /** @var TestCase $this */
+    $user = User::factory()->create();
+    $customer = Customer::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'payment_term_days' => 5,
+    ]);
+    Order::factory()->create([
+        'customer_id' => $customer->id,
+        'tenant_id' => $user->tenant_id,
+        'ordered_at' => now()->subDays(2),
+        'freight_amount' => 300,
+        'currency_code' => 'TRY',
+    ]);
+
+    $this->actingAs($user);
+
+    $due = now()->subDays(2)->addDays(5)->toDateString();
+
+    Livewire::test('pages::admin.finance-index')
+        ->set('projectionDateFrom', $due)
+        ->set('projectionDateTo', $due)
+        ->assertSee($due, false)
+        ->tap(function ($component) {
+            expect($component->instance()->cashFlowProjectionRows)->toHaveCount(1);
+        })
+        ->set('projectionDateFrom', now()->addYear()->toDateString())
+        ->set('projectionDateTo', now()->addYear()->addDay()->toDateString())
+        ->tap(function ($component) {
+            expect($component->instance()->cashFlowProjectionRows)->toHaveCount(0);
+        });
+});
+
+test('payment due calendar page loads for logistics user', function () {
+    /** @var TestCase $this */
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    $this->get(route('admin.finance.payment-due-calendar'))
+        ->assertSuccessful()
+        ->assertSee(__('Payment due calendar'), false);
+});
+
+test('finance summary surfaces freight outlier order from audit rule', function () {
+    /** @var TestCase $this */
+    $user = User::factory()->create();
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+    Order::factory()->create([
+        'customer_id' => $customer->id,
+        'tenant_id' => $user->tenant_id,
+        'freight_amount' => 100,
+        'currency_code' => 'TRY',
+    ]);
+    Order::factory()->create([
+        'customer_id' => $customer->id,
+        'tenant_id' => $user->tenant_id,
+        'freight_amount' => 100,
+        'currency_code' => 'TRY',
+    ]);
+    Order::factory()->create([
+        'customer_id' => $customer->id,
+        'tenant_id' => $user->tenant_id,
+        'freight_amount' => 900,
+        'currency_code' => 'TRY',
+        'order_number' => 'FLAGGED-OUTLIER',
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('admin.finance.index'))
+        ->assertSuccessful()
+        ->assertSee('FLAGGED-OUTLIER', false)
+        ->assertSee(__('Operational audit (freight vs median)'), false);
+});
+
+test('payment due calendar isolates projected dues by tenant', function () {
+    /** @var TestCase $this */
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+    $userA = User::factory()->create(['tenant_id' => $tenantA->id]);
+    $userB = User::factory()->create(['tenant_id' => $tenantB->id]);
+
+    $customerA = Customer::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'payment_term_days' => 0,
+    ]);
+    $customerB = Customer::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'payment_term_days' => 0,
+    ]);
+
+    $orderedAt = now()->startOfMonth()->startOfDay();
+    Order::factory()->create([
+        'tenant_id' => $tenantA->id,
+        'customer_id' => $customerA->id,
+        'order_number' => 'TENANT-A-ONLY',
+        'ordered_at' => $orderedAt,
+    ]);
+    Order::factory()->create([
+        'tenant_id' => $tenantB->id,
+        'customer_id' => $customerB->id,
+        'order_number' => 'TENANT-B-ONLY',
+        'ordered_at' => $orderedAt,
+    ]);
+
+    $month = $orderedAt->format('Y-m');
+    $dueDate = $orderedAt->toDateString();
+
+    $this->actingAs($userA);
+    Livewire::test('pages::admin.finance-payment-due-calendar')
+        ->set('month', $month)
+        ->set('selectedDate', $dueDate)
+        ->assertSee('TENANT-A-ONLY', false)
+        ->assertDontSee('TENANT-B-ONLY', false);
+
+    $this->actingAs($userB);
+    Livewire::test('pages::admin.finance-payment-due-calendar')
+        ->set('month', $month)
+        ->set('selectedDate', $dueDate)
+        ->assertSee('TENANT-B-ONLY', false)
+        ->assertDontSee('TENANT-A-ONLY', false);
 });

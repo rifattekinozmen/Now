@@ -44,3 +44,25 @@ test('tenant user downloads finance orders csv with scoped rows', function () {
     expect($content)->toContain('order_number')
         ->and($content)->toContain('CSV-FIN-EXPORT-1');
 });
+
+test('tenant user downloads logo orders xml scoped to tenant', function () {
+    /** @var TestCase $this */
+    $tenant = Tenant::factory()->create();
+    /** @var User $user */
+    $user = User::factory()->create(['tenant_id' => $tenant->id]);
+    $customer = Customer::factory()->create(['tenant_id' => $tenant->id]);
+    Order::factory()->create([
+        'tenant_id' => $tenant->id,
+        'customer_id' => $customer->id,
+        'order_number' => 'XML-LOGO-1',
+        'sas_no' => 'SAS-99',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('admin.orders.export.logo.xml'));
+
+    $response->assertSuccessful();
+    $content = $response->getContent();
+    expect($content)->toContain('XML-LOGO-1')
+        ->and($content)->toContain('SAS-99')
+        ->and($content)->toContain('LogoConnectExport');
+});

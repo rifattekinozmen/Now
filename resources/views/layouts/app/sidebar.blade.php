@@ -38,8 +38,11 @@
                         <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" wire:navigate wire:current="font-medium">
                             {{ __('PIN pool') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current="font-medium">
+                        <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Finance summary') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="calendar-days" :href="route('admin.finance.payment-due-calendar')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Payment due calendar') }}
                         </flux:sidebar.item>
                     @endcanany
                 </flux:sidebar.group>
