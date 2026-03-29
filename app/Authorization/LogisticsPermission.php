@@ -27,6 +27,9 @@ final class LogisticsPermission
 
     public const EMPLOYEES_WRITE = 'logistics.employees.write';
 
+    /** Hesap planı ve yevmiye (çift taraflı kayıt) yazımı. */
+    public const FINANCE_WRITE = 'logistics.finance.write';
+
     public static function canWrite(User $user, string $writePermission): bool
     {
         return $user->can(self::ADMIN) || $user->can($writePermission);

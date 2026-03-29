@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\ChartAccount;
+use App\Models\JournalEntry;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Finance\JournalPostingService;
@@ -78,3 +79,43 @@ test('journal posting rejects account from other tenant', function () {
         ],
     );
 })->throws(InvalidArgumentException::class);
+
+test('journal posting returns existing entry for duplicate source key', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->create(['tenant_id' => $tenant->id]);
+    $cash = ChartAccount::factory()->create(['tenant_id' => $tenant->id, 'code' => '100']);
+    $ar = ChartAccount::factory()->create(['tenant_id' => $tenant->id, 'code' => '120']);
+
+    $svc = new JournalPostingService;
+
+    $first = $svc->createBalancedEntry(
+        (int) $tenant->id,
+        (int) $user->id,
+        '2026-03-29',
+        null,
+        null,
+        [
+            ['chart_account_id' => $cash->id, 'debit' => '10.00', 'credit' => '0.00'],
+            ['chart_account_id' => $ar->id, 'debit' => '0.00', 'credit' => '10.00'],
+        ],
+        JournalEntry::SOURCE_BANK_STATEMENT_ROW,
+        '99:row:1',
+    );
+
+    $second = $svc->createBalancedEntry(
+        (int) $tenant->id,
+        (int) $user->id,
+        '2026-03-30',
+        'different',
+        'different memo',
+        [
+            ['chart_account_id' => $cash->id, 'debit' => '99.00', 'credit' => '0.00'],
+            ['chart_account_id' => $ar->id, 'debit' => '0.00', 'credit' => '99.00'],
+        ],
+        JournalEntry::SOURCE_BANK_STATEMENT_ROW,
+        '99:row:1',
+    );
+
+    expect($second->id)->toBe($first->id)
+        ->and($second->lines)->toHaveCount(2);
+});

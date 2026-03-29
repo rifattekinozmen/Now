@@ -23,7 +23,22 @@ class JournalPostingService
         ?string $reference,
         ?string $memo,
         array $lines,
+        ?string $sourceType = null,
+        ?string $sourceKey = null,
     ): JournalEntry {
+        if ($this->sourcePairIsSet($sourceType, $sourceKey)) {
+            $existing = JournalEntry::query()
+                ->withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('source_type', $sourceType)
+                ->where('source_key', $sourceKey)
+                ->with('lines')
+                ->first();
+            if ($existing !== null) {
+                return $existing;
+            }
+        }
+
         if ($lines === []) {
             throw new InvalidArgumentException(__('At least one journal line is required.'));
         }
@@ -60,13 +75,15 @@ class JournalPostingService
             throw new InvalidArgumentException(__('Debit total must equal credit total.'));
         }
 
-        return DB::transaction(function () use ($tenantId, $userId, $entryDate, $reference, $memo, $normalized): JournalEntry {
+        return DB::transaction(function () use ($tenantId, $userId, $entryDate, $reference, $memo, $normalized, $sourceType, $sourceKey): JournalEntry {
             $entry = JournalEntry::query()->create([
                 'tenant_id' => $tenantId,
                 'user_id' => $userId,
                 'entry_date' => $entryDate,
                 'reference' => $reference,
                 'memo' => $memo,
+                'source_type' => $this->sourcePairIsSet($sourceType, $sourceKey) ? $sourceType : null,
+                'source_key' => $this->sourcePairIsSet($sourceType, $sourceKey) ? $sourceKey : null,
             ]);
 
             foreach ($normalized as $row) {
@@ -94,5 +111,11 @@ class JournalPostingService
         }
 
         return $s;
+    }
+
+    private function sourcePairIsSet(?string $sourceType, ?string $sourceKey): bool
+    {
+        return $sourceType !== null && $sourceType !== ''
+            && $sourceKey !== null && $sourceKey !== '';
     }
 }

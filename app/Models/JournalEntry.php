@@ -16,9 +16,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'entry_date',
     'reference',
     'memo',
+    'source_type',
+    'source_key',
 ])]
 class JournalEntry extends Model
 {
+    public const SOURCE_BANK_STATEMENT_ROW = 'bank_statement_csv_row';
+
     /** @use HasFactory<JournalEntryFactory> */
     use BelongsToTenant, HasFactory;
 

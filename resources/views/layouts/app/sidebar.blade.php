@@ -50,6 +50,12 @@
                         <flux:sidebar.item icon="document-text" :href="route('admin.finance.bank-statement-csv')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Bank statement import') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="rectangle-stack" :href="route('admin.finance.chart-accounts.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Chart of accounts') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-duplicate" :href="route('admin.finance.journal-entries.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Journal entries') }}
+                        </flux:sidebar.item>
                     @endcanany
                 </flux:sidebar.group>
             </flux:sidebar.nav>

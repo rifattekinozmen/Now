@@ -25,6 +25,15 @@ class JournalEntryFactory extends Factory
             'entry_date' => now()->toDateString(),
             'reference' => null,
             'memo' => null,
+            'source_type' => null,
+            'source_key' => null,
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (JournalEntry $entry): void {
+            User::query()->whereKey($entry->user_id)->update(['tenant_id' => $entry->tenant_id]);
+        });
     }
 }
