@@ -286,7 +286,14 @@ new #[Title('Vehicles')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::VEHICLES_WRITE);
     @endphp
-    <flux:heading size="xl">{{ __('Vehicles') }}</flux:heading>
+    <x-admin.page-header :heading="__('Vehicles')">
+        <x-slot name="breadcrumb">
+            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Vehicles') }}</span>
+        </x-slot>
+        <x-slot name="actions">
+            <flux:button :href="route('admin.vehicles.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
@@ -364,29 +371,25 @@ new #[Title('Vehicles')] class extends Component
                 {{ __('Headers: Plaka, Şasi (isteğe bağlı), Marka, Model, Muayene. English: Plate, VIN, Brand, Model, Inspection.') }}
             </flux:text>
             <div class="flex max-w-xl flex-col gap-3">
-                <flux:button :href="route('admin.vehicles.template.xlsx')" variant="outline">{{ __('Download import template (XLSX)') }}</flux:button>
                 <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
                 <flux:button type="button" wire:click="importVehicles" variant="ghost">{{ __('Import') }}</flux:button>
             </div>
         </flux:card>
     @endif
 
-    <div class="flex flex-col gap-3">
+    <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
                 {{ $filtersOpen ? __('Hide') : __('Show') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:card class="!p-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (plate, brand, model)')"
-                />
-            </flux:card>
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :label="__('Search (plate, brand, model)')"
+            />
         @endif
-    </div>
+    </x-admin.filter-bar>
 
     @can(\App\Authorization\LogisticsPermission::ADMIN)
         @if (count($selectedIds) > 0)

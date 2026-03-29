@@ -70,12 +70,17 @@ final class TotalEnergiesFuelQuoteService
         }
 
         try {
-            $response = Http::timeout((int) config('totalenergies.timeout_seconds', 15))
+            $timeout = (int) config('totalenergies.timeout_seconds', 15);
+            $client = Http::timeout($timeout)
                 ->withHeaders([
                     'Accept' => 'application/json',
                     'X-API-Key' => $this->apiKey,
-                ])
-                ->get($url, $this->quoteQueryParams());
+                ]);
+
+            $method = strtolower((string) config('totalenergies.quote_http_method', 'get'));
+            $response = $method === 'post'
+                ? $client->asJson()->post($url, $this->quotePostJsonBody())
+                : $client->get($url, $this->quoteQueryParams());
         } catch (\Throwable $e) {
             return [
                 'ok' => false,
@@ -161,5 +166,29 @@ final class TotalEnergiesFuelQuoteService
         }
 
         return $out;
+    }
+
+    /**
+     * POST / JSON gövde: `quote_query` + `quote_json_body` (sonraki öncelikli).
+     *
+     * @return array<string, scalar>
+     */
+    private function quotePostJsonBody(): array
+    {
+        $query = $this->quoteQueryParams();
+        $extra = config('totalenergies.quote_json_body');
+        if (! is_array($extra)) {
+            return $query;
+        }
+
+        /** @var array<string, scalar> $merged */
+        $merged = $query;
+        foreach ($extra as $k => $v) {
+            if (is_string($k) && (is_scalar($v) || $v === null)) {
+                $merged[$k] = $v ?? '';
+            }
+        }
+
+        return $merged;
     }
 }

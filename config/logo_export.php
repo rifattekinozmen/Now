@@ -24,7 +24,8 @@ return [
     ],
 
     /*
-    | CustomerPartnerNo XML etiketi LogoErpExportService içinde müşteri partner_number alanından üretilir.
+    | CustomerPartnerNo / CustomerTaxId XML etiketleri LogoErpExportService içinde
+    | müşteri partner_number ve tax_id alanlarından üretilir.
     */
 
 ];

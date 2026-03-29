@@ -85,3 +85,89 @@ test('matcher matches partner number substring in description', function () {
     expect($rows[0]['match_candidates'] ?? [])->not->toBeEmpty()
         ->and($rows[0]['match_candidates'][0]['reason'])->toBe('partner_number');
 });
+
+test('matcher returns no candidates when description empty', function () {
+    $tenant = Tenant::factory()->create();
+    Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'legal_name' => 'Ghost Ltd',
+    ]);
+
+    $matcher = new BankStatementRowMatcher;
+    $rows = $matcher->enrichRowsForTenant((int) $tenant->id, [[
+        'booked_at' => '2026-01-05',
+        'amount' => '1.00',
+        'description' => '',
+    ]]);
+
+    expect($rows[0]['match_candidates'] ?? [])->toBeArray()->toBeEmpty();
+});
+
+test('matcher matches legal name substring', function () {
+    $tenant = Tenant::factory()->create();
+    $c = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'legal_name' => 'Büyük Anonim Şirketi',
+        'trade_name' => null,
+        'tax_id' => null,
+    ]);
+
+    $matcher = new BankStatementRowMatcher;
+    $rows = $matcher->enrichRowsForTenant((int) $tenant->id, [[
+        'booked_at' => '2026-01-06',
+        'amount' => '4.00',
+        'description' => 'EFT büyük anonim şirketi ödeme ref',
+    ]]);
+
+    expect($rows[0]['match_candidates'] ?? [])->not->toBeEmpty()
+        ->and($rows[0]['match_candidates'][0]['customer_id'])->toBe((int) $c->id)
+        ->and($rows[0]['match_candidates'][0]['reason'])->toBe('legal_name');
+});
+
+test('matcher matches trade name when legal does not match', function () {
+    $tenant = Tenant::factory()->create();
+    $c = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'legal_name' => 'X',
+        'trade_name' => 'Mağaza Markası A.Ş.',
+        'tax_id' => null,
+    ]);
+
+    $matcher = new BankStatementRowMatcher;
+    $rows = $matcher->enrichRowsForTenant((int) $tenant->id, [[
+        'booked_at' => '2026-01-07',
+        'amount' => '5.00',
+        'description' => 'Ödeme mağaza markası a.ş. fatura',
+    ]]);
+
+    expect($rows[0]['match_candidates'] ?? [])->not->toBeEmpty()
+        ->and($rows[0]['match_candidates'][0]['customer_id'])->toBe((int) $c->id)
+        ->and($rows[0]['match_candidates'][0]['reason'])->toBe('trade_name');
+});
+
+test('matcher sorts candidates by score with tax id first', function () {
+    $tenant = Tenant::factory()->create();
+    $taxCustomer = Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'tax_id' => '1112223344',
+        'legal_name' => 'Tax Winner A.Ş.',
+    ]);
+    Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'tax_id' => null,
+        'legal_name' => 'Tax Winner A.Ş. İkinci Kayıt',
+    ]);
+
+    $matcher = new BankStatementRowMatcher;
+    $rows = $matcher->enrichRowsForTenant((int) $tenant->id, [[
+        'booked_at' => '2026-01-08',
+        'amount' => '6.00',
+        'description' => 'Havale 1112223344 Tax Winner ödemesi',
+    ]]);
+
+    $candidates = $rows[0]['match_candidates'] ?? [];
+    expect($candidates)->not->toBeEmpty()
+        ->and($candidates[0]['customer_id'])->toBe((int) $taxCustomer->id)
+        ->and($candidates[0]['reason'])->toBe('tax_id')
+        ->and($candidates[0]['score'])->toBe(100);
+});

@@ -52,6 +52,29 @@ test('builds xml with order fields', function () {
         ->and($xml)->toContain('34.567800');
 });
 
+test('builds xml with customer tax id when present', function () {
+    $customer = Customer::factory()->make([
+        'legal_name' => 'Vergi A.Ş.',
+        'tax_id' => '1234567890',
+        'partner_number' => null,
+    ]);
+    $order = Order::factory()->make([
+        'order_number' => 'ORD-TAX-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 50,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<CustomerTaxId>')
+        ->and($xml)->toContain('1234567890');
+});
+
 test('builds xml with customer partner number when present', function () {
     $customer = Customer::factory()->make([
         'legal_name' => 'Partner A.Ş.',

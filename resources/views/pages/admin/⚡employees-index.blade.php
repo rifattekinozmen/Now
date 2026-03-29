@@ -382,7 +382,14 @@ new #[Title('Employees')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::EMPLOYEES_WRITE);
     @endphp
-    <flux:heading size="xl">{{ __('Employees') }}</flux:heading>
+    <x-admin.page-header :heading="__('Employees')">
+        <x-slot name="breadcrumb">
+            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Employees') }}</span>
+        </x-slot>
+        <x-slot name="actions">
+            <flux:button :href="route('admin.employees.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
@@ -494,29 +501,25 @@ new #[Title('Employees')] class extends Component
                 {{ __('Headers: Ad, Soyad, T.C., Kan, Telefon') }}
             </flux:text>
             <div class="flex max-w-xl flex-col gap-3">
-                <flux:button :href="route('admin.employees.template.xlsx')" variant="outline">{{ __('Download import template (XLSX)') }}</flux:button>
                 <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
                 <flux:button type="button" wire:click="importEmployees" variant="ghost">{{ __('Import') }}</flux:button>
             </div>
         </flux:card>
     @endif
 
-    <div class="flex flex-col gap-3">
+    <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
                 {{ $filtersOpen ? __('Hide') : __('Show') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:card class="!p-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (name, national ID, phone)')"
-                />
-            </flux:card>
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :label="__('Search (name, national ID, phone)')"
+            />
         @endif
-    </div>
+    </x-admin.filter-bar>
 
     @if ($canWriteEmployees && count($selectedIds) > 0)
         <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">

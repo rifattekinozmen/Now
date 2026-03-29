@@ -351,7 +351,14 @@ new #[Title('PIN pool')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::PINS_WRITE);
     @endphp
-    <flux:heading size="xl">{{ __('PIN pool') }}</flux:heading>
+    <x-admin.page-header :heading="__('PIN pool')">
+        <x-slot name="breadcrumb">
+            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('PIN pool') }}</span>
+        </x-slot>
+        <x-slot name="actions">
+            <flux:button :href="route('admin.delivery-numbers.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     @if (session()->has('pin_import_result'))
         @php($r = session('pin_import_result'))
@@ -401,10 +408,7 @@ new #[Title('PIN pool')] class extends Component
     </div>
 
     <flux:card>
-        <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-            <flux:heading size="lg">{{ __('Bulk import (CSV)') }}</flux:heading>
-            <flux:button :href="route('admin.delivery-numbers.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
-        </div>
+        <flux:heading size="lg" class="mb-4">{{ __('Bulk import (CSV)') }}</flux:heading>
         <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
             {{ __('First row: headers') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">pin_code</code> {{ __('or') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">PIN Kodu</code>;
             {{ __('optional') }} <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">sas_no</code> / <code class="rounded bg-zinc-100 px-1 dark:bg-zinc-700">SAS</code>.
@@ -467,15 +471,14 @@ new #[Title('PIN pool')] class extends Component
         </div>
     @endif
 
-    <div class="flex flex-col gap-3">
+    <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
                 {{ $filtersOpen ? __('Hide') : __('Show') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:card class="!p-4 flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
                 <flux:input
                     wire:model.live.debounce.400ms="filterSearch"
                     :label="__('Search (PIN, SAS)')"
@@ -491,9 +494,9 @@ new #[Title('PIN pool')] class extends Component
                         @endforeach
                     </select>
                 </flux:field>
-            </flux:card>
+            </div>
         @endif
-    </div>
+    </x-admin.filter-bar>
 
     @if ($canWritePins)
         @if (count($selectedIds) > 0)

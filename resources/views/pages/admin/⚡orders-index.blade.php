@@ -446,7 +446,11 @@ new #[Title('Orders')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::ORDERS_WRITE);
     @endphp
-    <flux:heading size="xl">{{ __('Orders') }}</flux:heading>
+    <x-admin.page-header :heading="__('Orders')">
+        <x-slot name="breadcrumb">
+            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Orders') }}</span>
+        </x-slot>
+    </x-admin.page-header>
 
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
@@ -601,15 +605,14 @@ new #[Title('Orders')] class extends Component
         </flux:card>
     @endif
 
-    <div class="flex flex-col gap-3">
+    <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
                 {{ $filtersOpen ? __('Hide') : __('Show') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:card class="!p-4 flex flex-col gap-4">
+            <div class="flex flex-col gap-4">
                 <flux:input
                     wire:model.live.debounce.400ms="filterSearch"
                     :label="__('Search (order no, SAS, customer)')"
@@ -625,9 +628,9 @@ new #[Title('Orders')] class extends Component
                         @endforeach
                     </select>
                 </flux:field>
-            </flux:card>
+            </div>
         @endif
-    </div>
+    </x-admin.filter-bar>
 
     @if ($canWriteOrders)
         @if (count($selectedIds) > 0)

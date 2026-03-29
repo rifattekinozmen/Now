@@ -238,20 +238,21 @@ new #[Title('Finance summary')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <flux:heading size="xl">{{ __('Finance summary') }}</flux:heading>
-            <div class="flex flex-wrap gap-2">
+        <x-admin.page-header :heading="__('Finance summary')">
+            <x-slot name="breadcrumb">
+                <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Finance summary') }}</span>
+            </x-slot>
+            <x-slot name="actions">
                 <flux:button :href="route('admin.finance.reports')" variant="outline">{{ __('Finance reports') }}</flux:button>
                 <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline">{{ __('Payment due calendar') }}</flux:button>
                 <flux:button :href="route('admin.finance.bank-statement-csv')" variant="outline">{{ __('Bank statement CSV import') }}</flux:button>
                 <flux:button :href="route('admin.orders.export.finance.csv')" variant="outline">{{ __('Export orders CSV') }}</flux:button>
                 <flux:button :href="route('admin.orders.export.logo.xml')" variant="outline">{{ __('Export Logo XML') }}</flux:button>
                 <flux:button :href="route('dashboard')" variant="ghost" wire:navigate>{{ __('Back to dashboard') }}</flux:button>
-            </div>
-        </div>
+            </x-slot>
+        </x-admin.page-header>
 
-        <flux:card class="!p-4">
-            <flux:heading size="lg" class="mb-2">{{ __('Report period') }}</flux:heading>
+        <x-admin.filter-bar :label="__('Report period')">
             <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
                 {{ __('Filter KPIs and tables by order date (ordered_at). CSV export stays full tenant scope.') }}
             </flux:text>
@@ -260,7 +261,7 @@ new #[Title('Finance summary')] class extends Component
                 <flux:input wire:model.live="filterDateTo" type="date" :label="__('To date')" />
                 <flux:button type="button" variant="ghost" wire:click="clearDateFilters">{{ __('Clear date filters') }}</flux:button>
             </div>
-        </flux:card>
+        </x-admin.filter-bar>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <flux:card class="!p-4">

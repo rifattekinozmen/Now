@@ -49,6 +49,11 @@ final class LogoErpExportService
             $partnerNo = (string) $order->customer->partner_number;
         }
         $this->appendTextChild($dom, $el, 'CustomerPartnerNo', $partnerNo);
+        $taxId = '';
+        if ($order->relationLoaded('customer') && $order->customer !== null && $order->customer->tax_id !== null) {
+            $taxId = (string) $order->customer->tax_id;
+        }
+        $this->appendTextChild($dom, $el, 'CustomerTaxId', $taxId);
         $this->appendConfiguredOrderFields($dom, $el, $order);
 
         return $el;

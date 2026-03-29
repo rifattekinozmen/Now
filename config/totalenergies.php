@@ -34,9 +34,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | GET sorgu parametreleri (sözleşmeye göre genişletin)
+    | İstek yöntemi: get | post
     |--------------------------------------------------------------------------
     |
+    | Sözleşmede teklif uç noktası GET ile sorgu parametreleri veya POST ile JSON
+    | gövde istiyorsa burayı ayarlayın. POST için gövde: `quote_json_body` +
+    | `quote_query` birleşimi (json_body boşsa yalnızca sorgu anahtarları kullanılır).
+    |
+    */
+
+    'quote_http_method' => strtolower((string) env('TOTALENERGIES_QUOTE_METHOD', 'get')),
+
+    /*
+    |--------------------------------------------------------------------------
+    | GET sorgu / POST JSON gövde parametreleri (sözleşmeye göre genişletin)
+    |--------------------------------------------------------------------------
+    |
+    | GET: URL sorgu dizisi. POST: JSON nesnesine merge edilir.
     | `region` her zaman `default_region` ile birleştirilir; aynı anahtar burada
     | verilirse bu dizi önceliklidir.
     |
@@ -44,6 +58,14 @@ return [
 
     'quote_query' => [
         // 'product' => 'diesel',
+    ],
+
+    /*
+    | POST isteklerinde ek JSON alanları (quote_query ile merge; bu anahtarlar baskın).
+    */
+
+    'quote_json_body' => [
+        // 'fuel_type' => 'diesel',
     ],
 
     /*
