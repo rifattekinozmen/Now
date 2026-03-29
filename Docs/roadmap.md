@@ -59,9 +59,13 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] `logistics:refresh-tcmb-rates` + `Schedule::dailyAt('09:10')` _(tamamlandı: 2026-03-30)_
 - [x] Sevkiyat timeline (admin tablo: Planned → Dispatched → Delivered; iptal rozeti) _(tamamlandı: 2026-03-28)_
 - [x] PIN toplu içe aktarma **XLSX şablonu** (`admin.delivery-numbers.template.xlsx`, `PinImportTemplateExport`) _(tamamlandı: 2026-03-28)_
-- [x] TotalEnergies **iskelet servisi** (`TotalEnergiesFuelQuoteService`, `config/totalenergies.php`, `.env` anahtarları; gerçek HTTP sözleşmesi sonraki adım) _(tamamlandı: 2026-03-28)_
+- [x] TotalEnergies servisi — `Http::` ile GET (`quote_path` + `X-API-Key`); yer tutucu base URL reddi; sözleşme alanı müşteri API dokümanına göre uyarlanabilir _(genişletildi: 2026-03-29)_
 - [x] Sevkiyat **detay sayfası** + dikey lifecycle timeline (`admin.shipments.show`, `pages::admin.shipment-show`) _(tamamlandı: 2026-03-28)_
-- [ ] TotalEnergies gerçek API + tam sayfa stepper (ek alanlar) — sonraki iterasyon
+- [x] Sipariş **detay + lifecycle stepper** (`admin.orders.show`, `OrderLifecyclePresentation`) + sevkiyat özeti _(tamamlandı: 2026-03-29)_
+- [x] **QR + kamu izleme:** `public_reference_token`, `admin.shipments.qr.svg`, `track.shipment` _(tamamlandı: 2026-03-29)_
+- [x] **POD iskeleti:** `pod_payload` + teslim notu/alıcı; imza/PDF sonraki adım _(tamamlandı: 2026-03-29)_
+- [x] Sipariş / araç / personel **içe aktarma** + sipariş/araç/personel **düzenleme** (admin index sayfaları) _(tamamlandı: 2026-03-29)_
+- [ ] TotalEnergies alan/yanıt şeması müşteri sözleşmesine göre kesinleştirme; dijital imza/PDF POD — sonraki iterasyon
 
 ## Faz C — ilerleme (tamamlanan / kısmi)
 
@@ -81,7 +85,17 @@ _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 - [x] Sevkiyat **gönderildi** olayı (`ShipmentDispatched`) + kuyruklu dinleyici (`NotifyShipmentDispatched` → operasyonel log) _(tamamlandı: 2026-03-28)_
 - [x] Navlun **eşik kuralı** (`FreightEscalationEvaluator` + `FreightEscalationRule` → `logistics.freight.threshold_exceeded`; `NavlunEskalasyonService` ile aynı oran mantığı) _(tamamlandı: 2026-03-28)_
 - [x] **Slack webhook** adaptörü (`SlackOperationalNotifier`) + `CompositeOperationalNotifier` (log + Slack birlikte) _(tamamlandı: 2026-03-28)_
-- [ ] Stok / diğer domain kuralları, SMS/WhatsApp — sonraki iterasyon (Faz E ile hizalanır)
+- [x] Müşteri kanalı **iskeleti:** `CustomerEngagementNotifier` + `config/customer_engagement.php` (varsayılan kapalı `NullCustomerEngagementNotifier`) _(iskelet: 2026-03-29)_
+- [ ] Stok / diğer domain kuralları, gerçek SMS/WhatsApp sağlayıcı adaptörü — sonraki iterasyon (Faz E ile hizalanır)
+
+## Faz 3 — büyük entegrasyonlar (planlı / iskelet)
+
+_Kayıt: uygulama sözleşmesi için boş veya no-op sınıflar; üretim akışı ayrı onay._
+
+- [ ] `App\Services\Finance\BankStatementOcrService` — banka ekstresi OCR _(iskelet sınıf: 2026-03-29)_
+- [ ] `App\Services\Finance\CashFlowProjectionService` — nakit/vade projeksiyonu _(iskelet: 2026-03-29)_
+- [ ] `App\Services\Integrations\Logo\LogoErpExportService` — Logo ERP _(iskelet: 2026-03-29)_
+- [ ] `App\Services\Logistics\AuditAiEvaluationService` — denetim/AI değerlendirme _(iskelet: 2026-03-29)_
 
 ## Harici ERP deposu
 

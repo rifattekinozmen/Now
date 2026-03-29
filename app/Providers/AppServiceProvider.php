@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Contracts\CustomerEngagementNotifier;
 use App\Contracts\Operations\OperationalNotifier;
 use App\Livewire\DockerFriendlyCacheManager;
 use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
+use App\Services\Notifications\LogCustomerEngagementNotifier;
+use App\Services\Notifications\NullCustomerEngagementNotifier;
 use App\Services\Operations\CompositeOperationalNotifier;
 use App\Services\Operations\FreightEscalationEvaluator;
 use App\Services\Operations\FreightEscalationRule;
@@ -28,6 +31,14 @@ class AppServiceProvider extends ServiceProvider
             new LogOperationalNotifier,
             new SlackOperationalNotifier,
         ]));
+
+        $this->app->bind(CustomerEngagementNotifier::class, function (): CustomerEngagementNotifier {
+            if ((bool) config('customer_engagement.enabled', false)) {
+                return new LogCustomerEngagementNotifier;
+            }
+
+            return new NullCustomerEngagementNotifier;
+        });
 
         $this->app->singleton(FreightEscalationEvaluator::class);
         $this->app->bind(FreightEscalationRule::class);

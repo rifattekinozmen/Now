@@ -3,9 +3,15 @@
 namespace App\Services\Logistics;
 
 use App\Enums\DeliveryNumberStatus;
+use App\Enums\OrderStatus;
 use App\Models\Customer;
 use App\Models\DeliveryNumber;
+use App\Models\Employee;
+use App\Models\Order;
+use App\Models\Vehicle;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -289,6 +295,30 @@ class ExcelImportService
     /**
      * @param  list<mixed>  $row
      */
+    private function normalizeImportDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_string($value) && trim($value) !== '') {
+            try {
+                return Carbon::parse($value)->toDateString();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<mixed>  $row
+     */
     private function rowIsEmpty(array $row): bool
     {
         foreach ($row as $value) {
@@ -316,7 +346,11 @@ class ExcelImportService
 
         return match ($field) {
             'payment_term_days' => is_numeric($value) ? (int) $value : null,
-            'partner_number', 'tax_id', 'legal_name', 'trade_name', 'pin_code', 'sas_no' => is_scalar($value) ? (string) $value : null,
+            'partner_number', 'tax_id', 'legal_name', 'trade_name', 'pin_code', 'sas_no',
+            'customer_legal_name', 'currency_code', 'loading_site', 'unloading_site',
+            'plate', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone' => is_scalar($value) ? trim((string) $value) : null,
+            'distance_km', 'tonnage' => is_numeric($value) ? $value : null,
+            'inspection_valid_until' => $this->normalizeImportDate($value),
             default => $value,
         };
     }
@@ -346,5 +380,330 @@ class ExcelImportService
             'pin_code' => ['required', 'string', 'max:64'],
             'sas_no' => ['nullable', 'string', 'max:64'],
         ])->validate();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getOrderImportMapping(): array
+    {
+        return [
+            'Ünvan' => 'customer_legal_name',
+            'Customer' => 'customer_legal_name',
+            'Müşteri' => 'customer_legal_name',
+            'Para Birimi' => 'currency_code',
+            'Currency' => 'currency_code',
+            'SAS' => 'sas_no',
+            'SAS / PO' => 'sas_no',
+            'Yükleme' => 'loading_site',
+            'Boşaltma' => 'unloading_site',
+            'Mesafe (km)' => 'distance_km',
+            'Mesafe' => 'distance_km',
+            'Tonaj' => 'tonnage',
+        ];
+    }
+
+    /**
+     * @return array{created: int, errors: list<array{row: int, message: string}>}
+     */
+    public function importOrdersFromPath(string $path, int $tenantId): array
+    {
+        $mapping = $this->getOrderImportMapping();
+        $matrix = $this->loadMatrixFromFile($path);
+        if ($matrix === []) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        $headerRow = array_shift($matrix);
+        if (! is_array($headerRow)) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        /** @var list<string> $headers */
+        $headers = array_map(function (mixed $cell): string {
+            if ($cell === null) {
+                return '';
+            }
+
+            return is_string($cell) ? trim($cell) : trim((string) $cell);
+        }, $headerRow);
+
+        $created = 0;
+        /** @var list<array{row: int, message: string}> $errors */
+        $errors = [];
+
+        foreach ($matrix as $offset => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowNumber = $offset + 2;
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = $row[$index] ?? null;
+            }
+
+            try {
+                $raw = $this->normalizeRow($assoc, $mapping);
+                $legalName = isset($raw['customer_legal_name']) ? trim((string) $raw['customer_legal_name']) : '';
+                if ($legalName === '') {
+                    throw new \InvalidArgumentException(__('Customer legal name is required.'));
+                }
+
+                $customer = Customer::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('legal_name', $legalName)
+                    ->first();
+                if ($customer === null) {
+                    throw new \InvalidArgumentException(__('Unknown customer: :name', ['name' => $legalName]));
+                }
+
+                $currency = strtoupper(trim((string) ($raw['currency_code'] ?? 'TRY')));
+                if (strlen($currency) !== 3) {
+                    $currency = 'TRY';
+                }
+
+                Order::query()->create([
+                    'tenant_id' => $tenantId,
+                    'customer_id' => $customer->id,
+                    'order_number' => $this->uniqueOrderNumber(),
+                    'sas_no' => isset($raw['sas_no']) && $raw['sas_no'] !== '' ? (string) $raw['sas_no'] : null,
+                    'status' => OrderStatus::Draft,
+                    'ordered_at' => now(),
+                    'currency_code' => $currency,
+                    'distance_km' => isset($raw['distance_km']) && is_numeric($raw['distance_km']) ? $raw['distance_km'] : null,
+                    'tonnage' => isset($raw['tonnage']) && is_numeric($raw['tonnage']) ? $raw['tonnage'] : null,
+                    'loading_site' => isset($raw['loading_site']) ? (string) $raw['loading_site'] : null,
+                    'unloading_site' => isset($raw['unloading_site']) ? (string) $raw['unloading_site'] : null,
+                ]);
+                $created++;
+            } catch (ValidationException $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->validator->errors()->first() ?? $e->getMessage(),
+                ];
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['created' => $created, 'errors' => $errors];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getVehicleImportMapping(): array
+    {
+        return [
+            'Plaka' => 'plate',
+            'Plate' => 'plate',
+            'Marka' => 'brand',
+            'Brand' => 'brand',
+            'Model' => 'model',
+            'Muayene' => 'inspection_valid_until',
+            'Inspection' => 'inspection_valid_until',
+        ];
+    }
+
+    /**
+     * @return array{created: int, errors: list<array{row: int, message: string}>}
+     */
+    public function importVehiclesFromPath(string $path, int $tenantId): array
+    {
+        $mapping = $this->getVehicleImportMapping();
+        $matrix = $this->loadMatrixFromFile($path);
+        if ($matrix === []) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        $headerRow = array_shift($matrix);
+        if (! is_array($headerRow)) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        /** @var list<string> $headers */
+        $headers = array_map(function (mixed $cell): string {
+            if ($cell === null) {
+                return '';
+            }
+
+            return is_string($cell) ? trim($cell) : trim((string) $cell);
+        }, $headerRow);
+
+        $created = 0;
+        /** @var list<array{row: int, message: string}> $errors */
+        $errors = [];
+
+        foreach ($matrix as $offset => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowNumber = $offset + 2;
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = $row[$index] ?? null;
+            }
+
+            try {
+                $raw = $this->normalizeRow($assoc, $mapping);
+                $plate = strtoupper(trim((string) ($raw['plate'] ?? '')));
+                if ($plate === '') {
+                    throw new \InvalidArgumentException(__('Plate is required.'));
+                }
+
+                $exists = Vehicle::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('plate', $plate)
+                    ->exists();
+                if ($exists) {
+                    throw new \InvalidArgumentException(__('Vehicle plate already exists: :p', ['p' => $plate]));
+                }
+
+                Vehicle::query()->create([
+                    'tenant_id' => $tenantId,
+                    'plate' => $plate,
+                    'brand' => isset($raw['brand']) ? (string) $raw['brand'] : null,
+                    'model' => isset($raw['model']) ? (string) $raw['model'] : null,
+                    'inspection_valid_until' => $raw['inspection_valid_until'] ?? null,
+                ]);
+                $created++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['created' => $created, 'errors' => $errors];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getEmployeeImportMapping(): array
+    {
+        return [
+            'Ad' => 'first_name',
+            'Soyad' => 'last_name',
+            'T.C.' => 'national_id',
+            'TC' => 'national_id',
+            'Kan' => 'blood_group',
+            'Telefon' => 'phone',
+        ];
+    }
+
+    /**
+     * @return array{created: int, errors: list<array{row: int, message: string}>}
+     */
+    public function importEmployeesFromPath(string $path, int $tenantId): array
+    {
+        $mapping = $this->getEmployeeImportMapping();
+        $matrix = $this->loadMatrixFromFile($path);
+        if ($matrix === []) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        $headerRow = array_shift($matrix);
+        if (! is_array($headerRow)) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        /** @var list<string> $headers */
+        $headers = array_map(function (mixed $cell): string {
+            if ($cell === null) {
+                return '';
+            }
+
+            return is_string($cell) ? trim($cell) : trim((string) $cell);
+        }, $headerRow);
+
+        $created = 0;
+        /** @var list<array{row: int, message: string}> $errors */
+        $errors = [];
+
+        foreach ($matrix as $offset => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowNumber = $offset + 2;
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = $row[$index] ?? null;
+            }
+
+            try {
+                $raw = $this->normalizeRow($assoc, $mapping);
+                $first = trim((string) ($raw['first_name'] ?? ''));
+                $last = trim((string) ($raw['last_name'] ?? ''));
+                if ($first === '' || $last === '') {
+                    throw new \InvalidArgumentException(__('First and last name are required.'));
+                }
+
+                $nid = isset($raw['national_id']) ? preg_replace('/\D/', '', (string) $raw['national_id']) : '';
+                $nid = $nid !== '' ? $nid : null;
+                if ($nid !== null && strlen($nid) !== 11) {
+                    throw new \InvalidArgumentException(__('National ID must be 11 digits.'));
+                }
+
+                if ($nid !== null && Employee::query()->where('tenant_id', $tenantId)->where('national_id', $nid)->exists()) {
+                    throw new \InvalidArgumentException(__('Employee with this national ID already exists.'));
+                }
+
+                Employee::query()->create([
+                    'tenant_id' => $tenantId,
+                    'first_name' => $first,
+                    'last_name' => $last,
+                    'national_id' => $nid,
+                    'blood_group' => isset($raw['blood_group']) ? (string) $raw['blood_group'] : null,
+                    'phone' => isset($raw['phone']) ? (string) $raw['phone'] : null,
+                    'is_driver' => false,
+                ]);
+                $created++;
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['created' => $created, 'errors' => $errors];
+    }
+
+    private function uniqueOrderNumber(): string
+    {
+        do {
+            $number = 'ON-'.now()->format('Ymd').'-'.strtoupper(Str::random(4));
+        } while (Order::query()->where('order_number', $number)->exists());
+
+        return $number;
     }
 }

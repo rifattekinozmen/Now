@@ -18,4 +18,10 @@ return [
 
     'base_url' => env('TOTALENERGIES_BASE_URL', 'https://api.totalenergies.example'),
 
+    'quote_path' => env('TOTALENERGIES_QUOTE_PATH', '/diesel-quote'),
+
+    'default_region' => env('TOTALENERGIES_REGION', 'TR'),
+
+    'timeout_seconds' => (int) env('TOTALENERGIES_TIMEOUT', 15),
+
 ];

@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\DownloadCustomerImportTemplateController;
 use App\Http\Controllers\Admin\DownloadPinImportTemplateController;
 use App\Http\Controllers\Admin\ExportCustomerCsvController;
 use App\Http\Controllers\Admin\ExportFinanceOrdersCsvController;
+use App\Http\Controllers\Admin\ShipmentQrSvgController;
+use App\Http\Controllers\TrackPublicShipmentController;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -27,6 +29,8 @@ Route::get('/locale/{locale}', function (string $locale) {
     return redirect()->back();
 })->name('locale.switch');
 
+Route::get('track/shipment/{token}', TrackPublicShipmentController::class)->name('track.shipment');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
@@ -39,8 +43,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
             Route::livewire('orders', 'pages::admin.orders-index')->name('orders.index');
             Route::get('orders/export-finance.csv', ExportFinanceOrdersCsvController::class)->name('orders.export.finance.csv');
+            Route::livewire('orders/{order}', 'pages::admin.order-show')->name('orders.show');
             Route::livewire('shipments', 'pages::admin.shipments-index')->name('shipments.index');
             Route::livewire('shipments/{shipment}', 'pages::admin.shipment-show')->name('shipments.show');
+            Route::get('shipments/{shipment}/qr.svg', ShipmentQrSvgController::class)->name('shipments.qr.svg');
             Route::livewire('delivery-numbers', 'pages::admin.delivery-numbers-index')->name('delivery-numbers.index');
             Route::get('delivery-numbers/template.xlsx', DownloadPinImportTemplateController::class)->name('delivery-numbers.template.xlsx');
             Route::livewire('finance', 'pages::admin.finance-index')->name('finance.index');

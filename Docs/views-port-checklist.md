@@ -1,6 +1,6 @@
 # docs/views → Now: sıralı port kontrol listesi
 
-Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2 + `config/logistics.php` modülleri.
+Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** Bu repoda `config/logistics.php` veya `companies` admin modülü yok; referanstaki modül listesi **aspirasyonel**. Gerçek admin yüzeyi `routes/web.php` ile hizalıdır (`admin.customers.*`, `vehicles`, `employees`, `orders`, `orders.show`, `shipments`, `shipments.show`, `delivery-numbers`, `finance` + `track.shipment` kamu rotası).
 
 **Durum kodları:** `VAR` tam veya işlevsel karşılık · `KISMI` iskelet / tek tip CRUD / placeholder · `YOK` karşılık yok.
 
@@ -32,7 +32,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2 + `config/l
 
 ## Faz 1 — Ana veri
 
-*(Güncelleme: `customers`, `business-partners`, `current-accounts`, `pricing-conditions`, `documents` için `config/logistics.php` şeması + çok sütunlu liste + `resource-show` ile tam alan formları ve detay sayfası eklendi.)*
+*(Referans `docs/views` içinde `config/logistics.php` şeması geçebilir; Now deposunda bu dosya yok — aşağıdaki tablolar mevcut Livewire/rotalarla eşlenir.)*
 
 ### admin/companies
 
@@ -92,13 +92,19 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2 + `config/l
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `pages::admin.orders-index` | KISMI _(liste + oluştur + `sas_no`; import yok)_ _(2026-03-30)_ |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.orders-index` + `pages::admin.order-show` (`admin.orders.show`) | KISMI _(lifecycle stepper, sipariş düzenleme, CSV/XLSX import; imza/PDF yok)_ _(2026-03-29)_ |
 
 ### admin/shipments
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `pages::admin.shipments-index` | KISMI _(durum geçişleri: Dispatch / Delivered / Cancel; 2026-03-30)_ |
+| `index`, `create`, `edit`, `show` | `pages::admin.shipments-index` + `pages::admin.shipment-show` | KISMI _(durum geçişleri; POD iskeleti; admin QR SVG `admin.shipments.qr.svg`; kamu izleme `track.shipment`)_ _(2026-03-29)_ |
+
+### Kamu — sevkiyat izleme (QR hedef URL)
+
+| Referans | Now | Durum |
+|----------|------|--------|
+| Mobil/salt okunur özet | `GET /track/shipment/{token}` → `track.shipment` | VAR _(token: `shipments.public_reference_token`)_ |
 
 ### PIN havuzu / delivery numbers
 

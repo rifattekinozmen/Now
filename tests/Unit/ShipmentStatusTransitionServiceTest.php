@@ -3,7 +3,10 @@
 use App\Contracts\Operations\OperationalNotifier;
 use App\Enums\ShipmentStatus;
 use App\Events\Logistics\ShipmentDispatched;
+use App\Models\Customer;
+use App\Models\Order;
 use App\Models\Shipment;
+use App\Models\User;
 use App\Services\Logistics\ShipmentStatusTransitionService;
 use Illuminate\Support\Facades\Event;
 
@@ -25,7 +28,31 @@ test('planned shipment can be dispatched then delivered', function () {
     $svc->markDelivered($shipment);
     $shipment->refresh();
     expect($shipment->status)->toBe(ShipmentStatus::Delivered)
-        ->and($shipment->delivered_at)->not->toBeNull();
+        ->and($shipment->delivered_at)->not->toBeNull()
+        ->and($shipment->pod_payload)->toBeNull();
+});
+
+test('mark delivered stores pod when user authenticated', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
+    $order = Order::factory()->create([
+        'tenant_id' => $user->tenant_id,
+        'customer_id' => $customer->id,
+    ]);
+    $shipment = Shipment::factory()->create([
+        'order_id' => $order->id,
+        'status' => ShipmentStatus::Dispatched,
+    ]);
+    $svc = new ShipmentStatusTransitionService;
+
+    $svc->markDelivered($shipment, ['note' => 'Tamam', 'received_by' => 'Depo']);
+
+    $shipment->refresh();
+    expect($shipment->pod_payload['note'])->toBe('Tamam')
+        ->and($shipment->pod_payload['received_by'])->toBe('Depo')
+        ->and($shipment->pod_payload['recorded_by_user_id'])->toBe($user->id);
 });
 
 test('cannot dispatch non planned shipment', function () {

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 #[Fillable([
     'tenant_id',
@@ -19,6 +20,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'dispatched_at',
     'delivered_at',
     'meta',
+    'public_reference_token',
+    'pod_payload',
 ])]
 class Shipment extends Model
 {
@@ -30,21 +33,21 @@ class Shipment extends Model
     protected static function booted(): void
     {
         static::creating(function (Shipment $shipment): void {
-            if ($shipment->getAttribute('tenant_id') !== null) {
-                return;
+            if ($shipment->getAttribute('tenant_id') === null) {
+                $orderId = $shipment->getAttribute('order_id');
+                if ($orderId !== null) {
+                    $tenantId = Order::query()->withoutGlobalScopes()
+                        ->whereKey($orderId)
+                        ->value('tenant_id');
+
+                    if ($tenantId !== null) {
+                        $shipment->setAttribute('tenant_id', $tenantId);
+                    }
+                }
             }
 
-            $orderId = $shipment->getAttribute('order_id');
-            if ($orderId === null) {
-                return;
-            }
-
-            $tenantId = Order::query()->withoutGlobalScopes()
-                ->whereKey($orderId)
-                ->value('tenant_id');
-
-            if ($tenantId !== null) {
-                $shipment->setAttribute('tenant_id', $tenantId);
+            if (blank($shipment->getAttribute('public_reference_token'))) {
+                $shipment->setAttribute('public_reference_token', Str::random(48));
             }
         });
     }
@@ -59,6 +62,7 @@ class Shipment extends Model
             'dispatched_at' => 'datetime',
             'delivered_at' => 'datetime',
             'meta' => 'array',
+            'pod_payload' => 'array',
         ];
     }
 

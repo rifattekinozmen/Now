@@ -4,13 +4,24 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ## Current Focus
 
-- Faz 1 tamamlanmış sayılanlar: `Employee` + `logistics.employees.write` + `logistics-hr` rolü, belge vade tarama (`logistics:scan-document-expiry`). Sonraki: QR/mobil POD, TotalEnergies gerçek API, tam sipariş stepper.
+- Plan dalgaları 1–7 uygulandı: sipariş stepper + `order-show`, sevkiyat token + QR + `track.shipment`, POD iskeleti, TotalEnergies HTTP, import + düzenleme (sipariş/araç/personel), `CustomerEngagementNotifier` iskeleti, Faz 3 servis iskeletleri. Dokümantasyon: `Docs/views-port-checklist.md`, `Docs/roadmap.md` güncellendi.
+
+## Rol matrisi (özet)
+
+| Rol / izin (örnek) | Salt okuma | Yazma alanı |
+|--------------------|------------|-------------|
+| `logistics-viewer` + `logistics.view` | Admin listeler/detaylar | — |
+| `logistics-order-clerk` | — | `logistics.orders.write`, `logistics.shipments.write` (PIN hariç örnek) |
+| `logistics-hr` | — | `logistics.employees.write` |
+| `logistics.admin` | Tam panel | Tüm `logistics.*.write` |
+
+Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ## Pending Work
 
-- Ayrıntılı rol matrisi, `.xlsx` şablon dışa aktarma, tam Excel raporları.
-- TotalEnergies API, tam sayfa sevkiyat stepper; BI / Chart.js veya rapor export.
-- Üretimde `schedule:run` + kuyruk.
+- TotalEnergies yanıt şeması müşteri API’sine göre netleştirme; POD dijital imza/PDF.
+- Gerçek SMS/WhatsApp sağlayıcısı (`CustomerEngagementNotifier` uygulaması).
+- Faz 3: banka OCR, Logo, vade takvimi UI, AuditAI iş kuralları.
 
 ## Safe Next Actions
 
@@ -37,5 +48,4 @@ Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederke
 
 ---
 
-*Son güncelleme: 2026-03-29 (Employee, belge vade prototipi, HR izinleri)*
-
+*Son güncelleme: 2026-03-29 (plan dalgaları: stepper, QR, POD, TotalEnergies HTTP, import/CRUD, engagement iskeleti, Faz 3 sınıf iskeletleri, docs senkronu)*

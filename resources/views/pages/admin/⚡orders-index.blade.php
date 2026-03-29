@@ -5,21 +5,45 @@ use App\Enums\OrderStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Services\Logistics\ExcelImportService;
 use App\Services\Logistics\FreightCalculationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Title('Orders')] class extends Component
 {
     use RequiresLogisticsAdmin;
+    use WithFileUploads;
     use WithPagination;
+
+    public $importFile = null;
+
+    public ?int $editingOrderId = null;
+
+    public string $edit_sas_no = '';
+
+    public string $edit_loading_site = '';
+
+    public string $edit_unloading_site = '';
+
+    public string $edit_currency_code = 'TRY';
+
+    public string $edit_freight_amount = '';
+
+    public string $edit_distance_km = '';
+
+    public string $edit_tonnage = '';
+
+    public string $edit_status = '';
 
     public string $customer_id = '';
 
@@ -243,7 +267,7 @@ new #[Title('Orders')] class extends Component
 
     public function saveOrder(): void
     {
-        $this->ensureLogisticsAdmin();
+        $this->ensureLogisticsWrite(LogisticsPermission::ORDERS_WRITE);
 
         Gate::authorize('create', Order::class);
 
@@ -311,6 +335,100 @@ new #[Title('Orders')] class extends Component
         $this->tonnage = '26';
     }
 
+    public function startEditOrder(int $orderId): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::ORDERS_WRITE);
+
+        $order = Order::query()->findOrFail($orderId);
+        Gate::authorize('update', $order);
+
+        $this->editingOrderId = $order->id;
+        $this->edit_sas_no = $order->sas_no ?? '';
+        $this->edit_loading_site = $order->loading_site ?? '';
+        $this->edit_unloading_site = $order->unloading_site ?? '';
+        $this->edit_currency_code = $order->currency_code;
+        $this->edit_freight_amount = $order->freight_amount !== null ? (string) $order->freight_amount : '';
+        $this->edit_distance_km = $order->distance_km !== null ? (string) $order->distance_km : '';
+        $this->edit_tonnage = $order->tonnage !== null ? (string) $order->tonnage : '';
+        $this->edit_status = $order->status->value;
+    }
+
+    public function cancelOrderEdit(): void
+    {
+        $this->editingOrderId = null;
+        $this->reset(
+            'edit_sas_no',
+            'edit_loading_site',
+            'edit_unloading_site',
+            'edit_currency_code',
+            'edit_freight_amount',
+            'edit_distance_km',
+            'edit_tonnage',
+            'edit_status',
+        );
+        $this->edit_currency_code = 'TRY';
+    }
+
+    public function updateOrder(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::ORDERS_WRITE);
+
+        if ($this->editingOrderId === null) {
+            return;
+        }
+
+        $order = Order::query()->findOrFail($this->editingOrderId);
+        Gate::authorize('update', $order);
+
+        $validated = $this->validate([
+            'edit_sas_no' => ['nullable', 'string', 'max:64'],
+            'edit_loading_site' => ['nullable', 'string', 'max:5000'],
+            'edit_unloading_site' => ['nullable', 'string', 'max:5000'],
+            'edit_currency_code' => ['required', 'string', 'size:3', Rule::in(['TRY', 'EUR', 'USD'])],
+            'edit_freight_amount' => ['nullable', 'numeric', 'min:0'],
+            'edit_distance_km' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'edit_tonnage' => ['nullable', 'numeric', 'min:0.1', 'max:999'],
+            'edit_status' => ['required', 'string', Rule::enum(OrderStatus::class)],
+        ]);
+
+        $order->update([
+            'sas_no' => $validated['edit_sas_no'] ?: null,
+            'loading_site' => $validated['edit_loading_site'] ?: null,
+            'unloading_site' => $validated['edit_unloading_site'] ?: null,
+            'currency_code' => strtoupper($validated['edit_currency_code']),
+            'freight_amount' => $validated['edit_freight_amount'] !== '' ? $validated['edit_freight_amount'] : null,
+            'distance_km' => $validated['edit_distance_km'] !== '' ? $validated['edit_distance_km'] : null,
+            'tonnage' => $validated['edit_tonnage'] !== '' ? $validated['edit_tonnage'] : null,
+            'status' => OrderStatus::from($validated['edit_status']),
+        ]);
+
+        $this->cancelOrderEdit();
+    }
+
+    public function importOrders(ExcelImportService $excelImport): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::ORDERS_WRITE);
+
+        $tenantId = auth()->user()?->tenant_id;
+        if ($tenantId === null) {
+            abort(403);
+        }
+
+        $this->validate([
+            'importFile' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $stored = $this->importFile->store('imports', 'local');
+        $path = Storage::disk('local')->path($stored);
+        $result = $excelImport->importOrdersFromPath($path, (int) $tenantId);
+        Storage::disk('local')->delete($stored);
+
+        session()->flash('import_created', $result['created']);
+        session()->flash('import_errors', $result['errors']);
+        $this->reset('importFile');
+        $this->resetPage();
+    }
+
     private function uniqueOrderNumber(): string
     {
         do {
@@ -336,6 +454,23 @@ new #[Title('Orders')] class extends Component
         </flux:callout>
     @endif
 
+    @if (session()->has('import_created'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('import_errors') && count(session('import_errors')) > 0)
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:heading size="sm" class="mb-2">{{ __('Import errors') }}</flux:heading>
+            <ul class="list-inside list-disc text-sm">
+                @foreach (session('import_errors') as $err)
+                    <li>{{ __('Row :row: :message', ['row' => $err['row'], 'message' => $err['message']]) }}</li>
+                @endforeach
+            </ul>
+        </flux:callout>
+    @endif
+
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total orders') }}</flux:text>
@@ -355,7 +490,44 @@ new #[Title('Orders')] class extends Component
         </flux:card>
     </div>
 
-    @if ($canWriteOrders)
+    @if ($canWriteOrders && $editingOrderId !== null)
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Edit order') }}</flux:heading>
+            <form wire:submit="updateOrder" class="flex max-w-2xl flex-col gap-4">
+                <flux:field :label="__('Status')">
+                    <select
+                        wire:model="edit_status"
+                        required
+                        class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                    >
+                        @foreach (\App\Enums\OrderStatus::cases() as $case)
+                            <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
+                        @endforeach
+                    </select>
+                </flux:field>
+                <flux:input wire:model="edit_sas_no" :label="__('SAS / PO reference')" />
+                <flux:textarea wire:model="edit_loading_site" :label="__('Loading site')" rows="2" />
+                <flux:textarea wire:model="edit_unloading_site" :label="__('Unloading site')" rows="2" />
+                <flux:field :label="__('Currency')">
+                    <select
+                        wire:model="edit_currency_code"
+                        class="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100"
+                    >
+                        <option value="TRY">TRY</option>
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </flux:field>
+                <flux:input wire:model="edit_freight_amount" :label="__('Freight amount')" />
+                <flux:input wire:model="edit_distance_km" type="number" step="0.01" :label="__('Distance (km)')" />
+                <flux:input wire:model="edit_tonnage" type="number" step="0.001" :label="__('Tonnage')" />
+                <div class="flex flex-wrap gap-2">
+                    <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                    <flux:button type="button" variant="ghost" wire:click="cancelOrderEdit">{{ __('Cancel') }}</flux:button>
+                </div>
+            </form>
+        </flux:card>
+    @elseif ($canWriteOrders)
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('New order') }}</flux:heading>
             <form wire:submit="saveOrder" class="flex flex-col gap-4">
@@ -415,6 +587,17 @@ new #[Title('Orders')] class extends Component
 
                 <flux:button type="submit" variant="primary">{{ __('Save order') }}</flux:button>
             </form>
+        </flux:card>
+
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Import orders (CSV / Excel)') }}</flux:heading>
+            <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Headers: Ünvan (müşteri), Para Birimi, SAS, Yükleme, Boşaltma, Mesafe (km), Tonaj') }}
+            </flux:text>
+            <div class="flex max-w-xl flex-col gap-3">
+                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
+                <flux:button type="button" wire:click="importOrders" variant="ghost">{{ __('Import') }}</flux:button>
+            </div>
         </flux:card>
     @endif
 
@@ -486,6 +669,9 @@ new #[Title('Orders')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
+                @if ($canWriteOrders)
+                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
+                @endif
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('order_number')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                         {{ __('Order #') }}
@@ -545,7 +731,11 @@ new #[Title('Orders')] class extends Component
                             </flux:table.cell>
                         @endif
                         <flux:table.cell>{{ $order->id }}</flux:table.cell>
-                        <flux:table.cell>{{ $order->order_number }}</flux:table.cell>
+                        <flux:table.cell>
+                            <flux:link :href="route('admin.orders.show', $order)" wire:navigate class="font-medium">
+                                {{ $order->order_number }}
+                            </flux:link>
+                        </flux:table.cell>
                         <flux:table.cell>{{ $order->sas_no ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $order->customer?->legal_name ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $this->orderStatusLabel($order->status) }}</flux:table.cell>
@@ -555,7 +745,7 @@ new #[Title('Orders')] class extends Component
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteOrders ? 9 : 8 }}">{{ __('No orders yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteOrders ? 10 : 8 }}">{{ __('No orders yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

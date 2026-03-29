@@ -3,18 +3,26 @@
 use App\Authorization\LogisticsPermission;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Vehicle;
+use App\Services\Logistics\ExcelImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Title('Vehicles')] class extends Component
 {
     use RequiresLogisticsAdmin;
+    use WithFileUploads;
     use WithPagination;
+
+    public $importFile = null;
+
+    public ?int $editingVehicleId = null;
 
     public string $plate = '';
 
@@ -197,6 +205,78 @@ new #[Title('Vehicles')] class extends Component
 
         $this->reset('plate', 'brand', 'model', 'inspection_valid_until');
     }
+
+    public function startEdit(int $vehicleId): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
+
+        $vehicle = Vehicle::query()->findOrFail($vehicleId);
+        Gate::authorize('update', $vehicle);
+
+        $this->editingVehicleId = $vehicle->id;
+        $this->plate = $vehicle->plate;
+        $this->brand = $vehicle->brand ?? '';
+        $this->model = $vehicle->model ?? '';
+        $this->inspection_valid_until = $vehicle->inspection_valid_until?->format('Y-m-d');
+    }
+
+    public function cancelVehicleEdit(): void
+    {
+        $this->editingVehicleId = null;
+        $this->reset('plate', 'brand', 'model', 'inspection_valid_until');
+    }
+
+    public function updateVehicle(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
+
+        if ($this->editingVehicleId === null) {
+            return;
+        }
+
+        $vehicle = Vehicle::query()->findOrFail($this->editingVehicleId);
+        Gate::authorize('update', $vehicle);
+
+        $validated = $this->validate([
+            'plate' => ['required', 'string', 'max:32'],
+            'brand' => ['nullable', 'string', 'max:100'],
+            'model' => ['nullable', 'string', 'max:100'],
+            'inspection_valid_until' => ['nullable', 'date'],
+        ]);
+
+        $vehicle->update([
+            'plate' => strtoupper($validated['plate']),
+            'brand' => $validated['brand'] ?: null,
+            'model' => $validated['model'] ?: null,
+            'inspection_valid_until' => $validated['inspection_valid_until'],
+        ]);
+
+        $this->cancelVehicleEdit();
+    }
+
+    public function importVehicles(ExcelImportService $excelImport): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
+
+        $tenantId = auth()->user()?->tenant_id;
+        if ($tenantId === null) {
+            abort(403);
+        }
+
+        $this->validate([
+            'importFile' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $stored = $this->importFile->store('imports', 'local');
+        $path = Storage::disk('local')->path($stored);
+        $result = $excelImport->importVehiclesFromPath($path, (int) $tenantId);
+        Storage::disk('local')->delete($stored);
+
+        session()->flash('import_created', $result['created']);
+        session()->flash('import_errors', $result['errors']);
+        $this->reset('importFile');
+        $this->resetPage();
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
@@ -211,6 +291,23 @@ new #[Title('Vehicles')] class extends Component
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
             {{ __('Deleted :count records.', ['count' => session('bulk_deleted')]) }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('import_created'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('import_errors') && count(session('import_errors')) > 0)
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:heading size="sm" class="mb-2">{{ __('Import errors') }}</flux:heading>
+            <ul class="list-inside list-disc text-sm">
+                @foreach (session('import_errors') as $err)
+                    <li>{{ __('Row :row: :message', ['row' => $err['row'], 'message' => $err['message']]) }}</li>
+                @endforeach
+            </ul>
         </flux:callout>
     @endif
 
@@ -233,16 +330,43 @@ new #[Title('Vehicles')] class extends Component
         </flux:card>
     </div>
 
-    @can(\App\Authorization\LogisticsPermission::ADMIN)
+    @if ($canWriteVehicles)
+        @if ($editingVehicleId !== null)
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('Edit vehicle') }}</flux:heading>
+                <form wire:submit="updateVehicle" class="flex max-w-xl flex-col gap-4">
+                    <flux:input wire:model="plate" :label="__('Plate')" required />
+                    <flux:input wire:model="brand" :label="__('Brand')" />
+                    <flux:input wire:model="model" :label="__('Model')" />
+                    <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                    <div class="flex flex-wrap gap-2">
+                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                        <flux:button type="button" variant="ghost" wire:click="cancelVehicleEdit">{{ __('Cancel') }}</flux:button>
+                    </div>
+                </form>
+            </flux:card>
+        @else
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('New vehicle') }}</flux:heading>
+                <form wire:submit="saveVehicle" class="flex max-w-xl flex-col gap-4">
+                    <flux:input wire:model="plate" :label="__('Plate')" required />
+                    <flux:input wire:model="brand" :label="__('Brand')" />
+                    <flux:input wire:model="model" :label="__('Model')" />
+                    <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                    <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                </form>
+            </flux:card>
+        @endif
+
         <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('New vehicle') }}</flux:heading>
-            <form wire:submit="saveVehicle" class="flex max-w-xl flex-col gap-4">
-                <flux:input wire:model="plate" :label="__('Plate')" required />
-                <flux:input wire:model="brand" :label="__('Brand')" />
-                <flux:input wire:model="model" :label="__('Model')" />
-                <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
-                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-            </form>
+            <flux:heading size="lg" class="mb-4">{{ __('Import vehicles (CSV / Excel)') }}</flux:heading>
+            <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Headers: Plaka, Marka, Model, Muayene') }}
+            </flux:text>
+            <div class="flex max-w-xl flex-col gap-3">
+                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
+                <flux:button type="button" wire:click="importVehicles" variant="ghost">{{ __('Import') }}</flux:button>
+            </div>
         </flux:card>
     @endif
 
@@ -283,7 +407,7 @@ new #[Title('Vehicles')] class extends Component
         <flux:heading size="lg" class="mb-4">{{ __('Fleet') }}</flux:heading>
         <flux:table>
             <flux:table.columns>
-                @can(\App\Authorization\LogisticsPermission::ADMIN)
+                @if ($canWriteVehicles)
                     <flux:table.column class="w-12">
                         <span class="sr-only">{{ __('Select page') }}</span>
                         <input
@@ -294,6 +418,9 @@ new #[Title('Vehicles')] class extends Component
                             wire:key="select-page-vehicles"
                         />
                     </flux:table.column>
+                @endif
+                @if ($canWriteVehicles)
+                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
                 @endif
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
@@ -339,9 +466,16 @@ new #[Title('Vehicles')] class extends Component
             <flux:table.rows>
                 @forelse ($this->paginatedVehicles as $vehicle)
                     <flux:table.row :key="$vehicle->id">
-                        @can(\App\Authorization\LogisticsPermission::ADMIN)
+                        @if ($canWriteVehicles)
                             <flux:table.cell>
                                 <flux:checkbox wire:model.live="selectedIds" value="{{ $vehicle->id }}" />
+                            </flux:table.cell>
+                        @endif
+                        @if ($canWriteVehicles)
+                            <flux:table.cell>
+                                <flux:button type="button" size="sm" variant="ghost" wire:click="startEdit({{ $vehicle->id }})">
+                                    {{ __('Edit') }}
+                                </flux:button>
                             </flux:table.cell>
                         @endif
                         <flux:table.cell>{{ $vehicle->id }}</flux:table.cell>
@@ -354,7 +488,7 @@ new #[Title('Vehicles')] class extends Component
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteVehicles ? 6 : 5 }}">{{ __('No vehicles yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteVehicles ? 8 : 5 }}">{{ __('No vehicles yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

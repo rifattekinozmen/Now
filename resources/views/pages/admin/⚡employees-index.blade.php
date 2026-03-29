@@ -3,18 +3,27 @@
 use App\Authorization\LogisticsPermission;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Employee;
+use App\Services\Logistics\ExcelImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Title('Employees')] class extends Component
 {
     use RequiresLogisticsAdmin;
+    use WithFileUploads;
     use WithPagination;
+
+    public $importFile = null;
+
+    public ?int $editingEmployeeId = null;
 
     public string $first_name = '';
 
@@ -245,6 +254,125 @@ new #[Title('Employees')] class extends Component
             'email',
         );
     }
+
+    public function startEditEmployee(int $employeeId): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::EMPLOYEES_WRITE);
+
+        $employee = Employee::query()->findOrFail($employeeId);
+        Gate::authorize('update', $employee);
+
+        $this->editingEmployeeId = $employee->id;
+        $this->first_name = $employee->first_name;
+        $this->last_name = $employee->last_name;
+        $this->national_id = $employee->national_id ?? '';
+        $this->blood_group = $employee->blood_group ?? '';
+        $this->is_driver = $employee->is_driver;
+        $this->license_class = $employee->license_class ?? '';
+        $this->license_valid_until = $employee->license_valid_until?->format('Y-m-d');
+        $this->src_valid_until = $employee->src_valid_until?->format('Y-m-d');
+        $this->psychotechnical_valid_until = $employee->psychotechnical_valid_until?->format('Y-m-d');
+        $this->phone = $employee->phone ?? '';
+        $this->email = $employee->email ?? '';
+    }
+
+    public function cancelEmployeeEdit(): void
+    {
+        $this->editingEmployeeId = null;
+        $this->reset(
+            'first_name',
+            'last_name',
+            'national_id',
+            'blood_group',
+            'is_driver',
+            'license_class',
+            'license_valid_until',
+            'src_valid_until',
+            'psychotechnical_valid_until',
+            'phone',
+            'email',
+        );
+    }
+
+    public function updateEmployee(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::EMPLOYEES_WRITE);
+
+        if ($this->editingEmployeeId === null) {
+            return;
+        }
+
+        $employee = Employee::query()->findOrFail($this->editingEmployeeId);
+        Gate::authorize('update', $employee);
+
+        $tenantId = auth()->user()?->tenant_id;
+        if ($tenantId === null) {
+            abort(403);
+        }
+
+        $nationalRules = ['nullable', 'string'];
+        if ($this->national_id !== '') {
+            $nationalRules[] = 'size:11';
+            $nationalRules[] = 'regex:/^[0-9]+$/';
+            $nationalRules[] = Rule::unique('employees', 'national_id')->ignore($employee->id)->where('tenant_id', $tenantId);
+        }
+
+        $validated = $this->validate([
+            'first_name' => ['required', 'string', 'max:100'],
+            'last_name' => ['required', 'string', 'max:100'],
+            'national_id' => $nationalRules,
+            'blood_group' => ['nullable', 'string', 'max:8'],
+            'is_driver' => ['boolean'],
+            'license_class' => ['nullable', 'string', 'max:16'],
+            'license_valid_until' => ['nullable', 'date'],
+            'src_valid_until' => ['nullable', 'date'],
+            'psychotechnical_valid_until' => ['nullable', 'date'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        $nid = $validated['national_id'] !== '' ? $validated['national_id'] : null;
+
+        $employee->update([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'national_id' => $nid,
+            'blood_group' => $validated['blood_group'] ?: null,
+            'is_driver' => $validated['is_driver'],
+            'license_class' => $validated['license_class'] ?: null,
+            'license_valid_until' => $validated['license_valid_until'],
+            'src_valid_until' => $validated['src_valid_until'],
+            'psychotechnical_valid_until' => $validated['psychotechnical_valid_until'],
+            'phone' => $validated['phone'] ?: null,
+            'email' => $validated['email'] ?: null,
+        ]);
+
+        $this->cancelEmployeeEdit();
+    }
+
+    public function importEmployees(ExcelImportService $excelImport): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::EMPLOYEES_WRITE);
+
+        $tenantId = auth()->user()?->tenant_id;
+        if ($tenantId === null) {
+            abort(403);
+        }
+
+        $this->validate([
+            'importFile' => ['required', 'file', 'mimes:xlsx,xls,csv', 'max:10240'],
+        ]);
+
+        $stored = $this->importFile->store('imports', 'local');
+        $path = Storage::disk('local')->path($stored);
+        $result = $excelImport->importEmployeesFromPath($path, (int) $tenantId);
+        Storage::disk('local')->delete($stored);
+
+        session()->flash('import_created', $result['created']);
+        session()->flash('import_errors', $result['errors']);
+        $this->reset('importFile');
+        $this->resetPage();
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
@@ -259,6 +387,23 @@ new #[Title('Employees')] class extends Component
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
             {{ __('Deleted :count records.', ['count' => session('bulk_deleted')]) }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('import_created'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Imported rows: :count', ['count' => session('import_created')]) }}
+        </flux:callout>
+    @endif
+
+    @if (session()->has('import_errors') && count(session('import_errors')) > 0)
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:heading size="sm" class="mb-2">{{ __('Import errors') }}</flux:heading>
+            <ul class="list-inside list-disc text-sm">
+                @foreach (session('import_errors') as $err)
+                    <li>{{ __('Row :row: :message', ['row' => $err['row'], 'message' => $err['message']]) }}</li>
+                @endforeach
+            </ul>
         </flux:callout>
     @endif
 
@@ -282,32 +427,76 @@ new #[Title('Employees')] class extends Component
     </div>
 
     @if ($canWriteEmployees)
+        @if ($editingEmployeeId !== null)
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('Edit employee') }}</flux:heading>
+                <form wire:submit="updateEmployee" class="flex max-w-2xl flex-col gap-4">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="first_name" :label="__('First name')" required />
+                        <flux:input wire:model="last_name" :label="__('Last name')" required />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="national_id" :label="__('National ID')" maxlength="11" />
+                        <flux:input wire:model="blood_group" :label="__('Blood group')" />
+                    </div>
+                    <flux:checkbox wire:model="is_driver" :label="__('Driver')" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="license_class" :label="__('License class')" />
+                        <flux:input wire:model="license_valid_until" type="date" :label="__('License valid until')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="src_valid_until" type="date" :label="__('SRC valid until')" />
+                        <flux:input wire:model="psychotechnical_valid_until" type="date" :label="__('Psychotechnical valid until')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="phone" :label="__('Phone')" />
+                        <flux:input wire:model="email" type="email" :label="__('Email')" />
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                        <flux:button type="button" variant="ghost" wire:click="cancelEmployeeEdit">{{ __('Cancel') }}</flux:button>
+                    </div>
+                </form>
+            </flux:card>
+        @else
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('New employee') }}</flux:heading>
+                <form wire:submit="saveEmployee" class="flex max-w-2xl flex-col gap-4">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="first_name" :label="__('First name')" required />
+                        <flux:input wire:model="last_name" :label="__('Last name')" required />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="national_id" :label="__('National ID')" maxlength="11" />
+                        <flux:input wire:model="blood_group" :label="__('Blood group')" />
+                    </div>
+                    <flux:checkbox wire:model="is_driver" :label="__('Driver')" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="license_class" :label="__('License class')" />
+                        <flux:input wire:model="license_valid_until" type="date" :label="__('License valid until')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="src_valid_until" type="date" :label="__('SRC valid until')" />
+                        <flux:input wire:model="psychotechnical_valid_until" type="date" :label="__('Psychotechnical valid until')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="phone" :label="__('Phone')" />
+                        <flux:input wire:model="email" type="email" :label="__('Email')" />
+                    </div>
+                    <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                </form>
+            </flux:card>
+        @endif
+
         <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('New employee') }}</flux:heading>
-            <form wire:submit="saveEmployee" class="flex max-w-2xl flex-col gap-4">
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <flux:input wire:model="first_name" :label="__('First name')" required />
-                    <flux:input wire:model="last_name" :label="__('Last name')" required />
-                </div>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <flux:input wire:model="national_id" :label="__('National ID')" maxlength="11" />
-                    <flux:input wire:model="blood_group" :label="__('Blood group')" />
-                </div>
-                <flux:checkbox wire:model="is_driver" :label="__('Driver')" />
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <flux:input wire:model="license_class" :label="__('License class')" />
-                    <flux:input wire:model="license_valid_until" type="date" :label="__('License valid until')" />
-                </div>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <flux:input wire:model="src_valid_until" type="date" :label="__('SRC valid until')" />
-                    <flux:input wire:model="psychotechnical_valid_until" type="date" :label="__('Psychotechnical valid until')" />
-                </div>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <flux:input wire:model="phone" :label="__('Phone')" />
-                    <flux:input wire:model="email" type="email" :label="__('Email')" />
-                </div>
-                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-            </form>
+            <flux:heading size="lg" class="mb-4">{{ __('Import employees (CSV / Excel)') }}</flux:heading>
+            <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Headers: Ad, Soyad, T.C., Kan, Telefon') }}
+            </flux:text>
+            <div class="flex max-w-xl flex-col gap-3">
+                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
+                <flux:button type="button" wire:click="importEmployees" variant="ghost">{{ __('Import') }}</flux:button>
+            </div>
         </flux:card>
     @endif
 
@@ -357,6 +546,7 @@ new #[Title('Employees')] class extends Component
                             wire:key="select-page-employees"
                         />
                     </flux:table.column>
+                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
                 @endif
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
@@ -406,6 +596,11 @@ new #[Title('Employees')] class extends Component
                             <flux:table.cell>
                                 <flux:checkbox wire:model.live="selectedIds" value="{{ $employee->id }}" />
                             </flux:table.cell>
+                            <flux:table.cell>
+                                <flux:button type="button" size="sm" variant="ghost" wire:click="startEditEmployee({{ $employee->id }})">
+                                    {{ __('Edit') }}
+                                </flux:button>
+                            </flux:table.cell>
                         @endif
                         <flux:table.cell>{{ $employee->id }}</flux:table.cell>
                         <flux:table.cell>{{ $employee->first_name }}</flux:table.cell>
@@ -415,7 +610,7 @@ new #[Title('Employees')] class extends Component
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteEmployees ? 6 : 5 }}">{{ __('No employees yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteEmployees ? 8 : 5 }}">{{ __('No employees yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

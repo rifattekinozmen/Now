@@ -14,8 +14,10 @@ test('guests cannot access admin logistics routes', function () {
     $this->get(route('admin.vehicles.index'))->assertRedirect(route('login'));
     $this->get(route('admin.employees.index'))->assertRedirect(route('login'));
     $this->get(route('admin.orders.index'))->assertRedirect(route('login'));
+    $this->get(route('admin.orders.show', 1))->assertRedirect(route('login'));
     $this->get(route('admin.shipments.index'))->assertRedirect(route('login'));
     $this->get(route('admin.shipments.show', 1))->assertRedirect(route('login'));
+    $this->get(route('admin.shipments.qr.svg', 1))->assertRedirect(route('login'));
     $this->get(route('admin.delivery-numbers.index'))->assertRedirect(route('login'));
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertRedirect(route('login'));
     $this->get(route('admin.finance.index'))->assertRedirect(route('login'));
@@ -45,14 +47,16 @@ test('authenticated users can access admin logistics routes', function () {
     $this->get(route('admin.vehicles.index'))->assertSuccessful();
     $this->get(route('admin.employees.index'))->assertSuccessful();
     $this->get(route('admin.orders.index'))->assertSuccessful();
-    $this->get(route('admin.shipments.index'))->assertSuccessful();
     $customer = Customer::factory()->create(['tenant_id' => $user->tenant_id]);
     $order = Order::factory()->create([
         'tenant_id' => $user->tenant_id,
         'customer_id' => $customer->id,
     ]);
+    $this->get(route('admin.orders.show', $order))->assertSuccessful();
+    $this->get(route('admin.shipments.index'))->assertSuccessful();
     $shipment = Shipment::factory()->create(['order_id' => $order->id]);
     $this->get(route('admin.shipments.show', $shipment))->assertSuccessful();
+    $this->get(route('admin.shipments.qr.svg', $shipment))->assertSuccessful();
     $this->get(route('admin.delivery-numbers.index'))->assertSuccessful();
     $this->get(route('admin.delivery-numbers.template.xlsx'))->assertSuccessful();
     $this->get(route('admin.finance.index'))->assertSuccessful();

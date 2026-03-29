@@ -15,6 +15,10 @@ new #[Title('Shipment detail')] class extends Component
 
     public Shipment $shipment;
 
+    public string $pod_note = '';
+
+    public string $pod_received_by = '';
+
     public function mount(Shipment $shipment): void
     {
         Gate::authorize('view', $shipment);
@@ -57,13 +61,17 @@ new #[Title('Shipment detail')] class extends Component
         Gate::authorize('update', $s);
 
         try {
-            $transitions->markDelivered($s);
+            $transitions->markDelivered($s, [
+                'note' => $this->pod_note,
+                'received_by' => $this->pod_received_by,
+            ]);
         } catch (\InvalidArgumentException $e) {
             session()->flash('error', $e->getMessage());
 
             return;
         }
 
+        $this->reset('pod_note', 'pod_received_by');
         $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
     }
 
@@ -86,7 +94,7 @@ new #[Title('Shipment detail')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-3xl flex-col gap-8 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-5xl flex-col gap-8 p-4 lg:p-8">
     @php
         $authUser = auth()->user();
         $canWriteShipments =
@@ -105,13 +113,58 @@ new #[Title('Shipment detail')] class extends Component
                 @endif
             </flux:text>
         </div>
-        <flux:button :href="route('admin.shipments.index')" variant="ghost" wire:navigate>
-            {{ __('Back to shipments') }}
-        </flux:button>
+        <div class="flex flex-wrap gap-2">
+            @if ($s->order_id)
+                <flux:button :href="route('admin.orders.show', $s->order_id)" variant="ghost" wire:navigate>
+                    {{ __('Order detail') }}
+                </flux:button>
+            @endif
+            <flux:button :href="route('admin.shipments.index')" variant="ghost" wire:navigate>
+                {{ __('Back to shipments') }}
+            </flux:button>
+        </div>
     </div>
 
     @if (session()->has('error'))
         <flux:callout variant="danger" icon="exclamation-triangle">{{ session('error') }}</flux:callout>
+    @endif
+
+    <flux:card>
+        <flux:heading size="lg" class="mb-4">{{ __('Public tracking QR') }}</flux:heading>
+        <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
+            {{ __('Scan opens a read-only status page (no login).') }}
+        </flux:text>
+        <div class="flex flex-wrap items-start gap-6">
+            <div class="rounded-lg border border-zinc-200 bg-white p-2 dark:border-zinc-600 dark:bg-zinc-900">
+                <img
+                    src="{{ route('admin.shipments.qr.svg', $s) }}"
+                    alt="{{ __('Tracking QR') }}"
+                    class="size-40 max-w-full"
+                    width="160"
+                    height="160"
+                />
+            </div>
+            <div class="min-w-0 flex-1">
+                <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Tracking link') }}</flux:text>
+                <code class="mt-1 block break-all text-sm text-zinc-800 dark:text-zinc-200">{{ route('track.shipment', ['token' => $s->public_reference_token]) }}</code>
+            </div>
+        </div>
+    </flux:card>
+
+    @if ($s->status === \App\Enums\ShipmentStatus::Delivered && is_array($s->pod_payload) && $s->pod_payload !== [])
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Proof of delivery (POD)') }}</flux:heading>
+            <dl class="grid gap-2 text-sm sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Received by') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['received_by'] ?? '—' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Note') }}</dt>
+                    <dd class="whitespace-pre-wrap font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['note'] ?? '—' }}</dd>
+                </div>
+            </dl>
+        </flux:card>
     @endif
 
     <flux:card>
@@ -203,9 +256,13 @@ new #[Title('Shipment detail')] class extends Component
                         {{ __('Cancel') }}
                     </flux:button>
                 @elseif ($s->status === \App\Enums\ShipmentStatus::Dispatched)
-                    <flux:button type="button" variant="primary" wire:click="markDelivered">
-                        {{ __('Mark delivered') }}
-                    </flux:button>
+                    <div class="flex w-full min-w-0 flex-col gap-4 sm:max-w-md">
+                        <flux:input wire:model="pod_received_by" :label="__('Received by (optional)')" />
+                        <flux:textarea wire:model="pod_note" :label="__('POD note (optional)')" rows="2" />
+                        <flux:button type="button" variant="primary" wire:click="markDelivered">
+                            {{ __('Mark delivered') }}
+                        </flux:button>
+                    </div>
                     <flux:button type="button" variant="ghost" wire:click="cancelShipment" wire:confirm="{{ __('Cancel this shipment?') }}">
                         {{ __('Cancel') }}
                     </flux:button>
