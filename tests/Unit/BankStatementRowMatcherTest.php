@@ -44,3 +44,44 @@ test('matcher matches iban from customer meta', function () {
     expect($rows[0]['match_candidates'] ?? [])->not->toBeEmpty()
         ->and($rows[0]['match_candidates'][0]['reason'])->toBe('iban');
 });
+
+test('matcher matches spaced iban in description', function () {
+    $tenant = Tenant::factory()->create();
+    $iban = 'TR330006100519786457841326';
+    Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'tax_id' => null,
+        'legal_name' => 'Spaced Iban Co',
+        'meta' => ['iban' => $iban],
+    ]);
+
+    $matcher = new BankStatementRowMatcher;
+    $spaced = 'TR33 0006 1005 1978 6457 8413 26';
+    $rows = $matcher->enrichRowsForTenant((int) $tenant->id, [[
+        'booked_at' => '2026-01-03',
+        'amount' => '2.00',
+        'description' => 'Ödeme '.$spaced.' ref',
+    ]]);
+
+    expect($rows[0]['match_candidates'] ?? [])->not->toBeEmpty()
+        ->and($rows[0]['match_candidates'][0]['reason'])->toBe('iban');
+});
+
+test('matcher matches partner number substring in description', function () {
+    $tenant = Tenant::factory()->create();
+    Customer::factory()->create([
+        'tenant_id' => $tenant->id,
+        'partner_number' => 'SAP-BP-9911',
+        'legal_name' => 'Partner Match Ltd',
+    ]);
+
+    $matcher = new BankStatementRowMatcher;
+    $rows = $matcher->enrichRowsForTenant((int) $tenant->id, [[
+        'booked_at' => '2026-01-04',
+        'amount' => '3.00',
+        'description' => 'Havale SAP-BP-9911 müşteri ödemesi',
+    ]]);
+
+    expect($rows[0]['match_candidates'] ?? [])->not->toBeEmpty()
+        ->and($rows[0]['match_candidates'][0]['reason'])->toBe('partner_number');
+});

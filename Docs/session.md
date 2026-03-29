@@ -22,11 +22,19 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ## Pending Work
 
-- TotalEnergies canlı API gövdesi ile uçtan uca doğrulama (`config/totalenergies.php` yolları + `schema_version`).
-- Gerçek SMS/WhatsApp üretim uçları (HTTP endpoint’ler; `driver=composite` ile log + webhook birlikte).
-- Banka ekstresi otomatik cari eşleştirme; görüntü-only PDF için harici OCR (şu an yalnızca metin katmanı).
-- Logo XML alan şemasının canlı Logo Connect dokümantasyonuna göre genişletilmesi.
+- TotalEnergies: üretim ortamında müşteri sözleşmesindeki gerçek endpoint/gövde ile doğrulama (yer tutucu URL dışı; `tests/Feature/TotalEnergiesFuelQuoteIntegrationTest.php` mock HTTP + başlık/sorgu kontrolü mevcut).
+- Gerçek SMS/WhatsApp üretim uçları (HTTP endpoint’ler; `driver=composite` ile log + webhook birlikte — `.env.example` notları).
+- Banka ekstresi: görüntü-only PDF için harici OCR (şu an yalnızca metin katmanı; `BankStatementOcrService` sınıf yorumu).
+- Logo XML: canlı Logo Connect dokümantasyonuna göre ek alanlar (`CustomerPartnerNo` + `partner_number` birleşik XML’de).
 - Resmi yasal bilanço / denetim çıktısı (TFRS, dönem kapanış; operasyonel açılış birleştirmesi UI tamamlandı).
+
+## Son teslim (plan — 2026-03-29)
+
+- `ShipmentDispatchComplianceGate` + `ShipmentStatusTransitionService`: araç muayenesi zorunlu (araç atanmışsa); `shipments.meta.driver_employee_id` ile şoför ehliyet/SRC/psiko süresi dolmuşsa gönderim engeli.
+- `BankStatementRowMatcher`: `partner_number` eşlemesi; `partner_number` seçim alanı; kiracı sızıntısına karşı `withoutGlobalScopes` + açık `tenant_id` sorgusu.
+- `LogoErpExportService`: `CustomerPartnerNo` XML alt öğesi.
+- UI: `x-admin.page-header`, `x-admin.filter-bar`; müşteri liste sayfası; sipariş/sevkiyat detay sekmeleri; müşteri cari sekmesinde finans raporları bağlantısı.
+- Testler: `TotalEnergiesFuelQuoteIntegrationTest`, `ShipmentDispatchComplianceGateTest`, Logo/banka birim testleri güncellendi.
 
 ## Safe Next Actions
 
@@ -53,4 +61,4 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ---
 
-*Son güncelleme: 2026-03-30 (Fiscal opening admin UI + bilanço özeti açılış seçeneği; TotalEnergies schema_version; banka PDF metin sınırı; CompositeCustomerEngagementNotifier; Logistics Faz 3 doküman senkronu.)*
+*Son güncelleme: 2026-03-29 (Lojistik ERP devam planı: sevkiyat uyumluluk kapısı, banka/Logo genişlemesi, admin ortak başlık/filtre, sipariş-sevkiyat sekmeleri, TotalEnergies entegrasyon testi.)*

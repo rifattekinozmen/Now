@@ -44,6 +44,11 @@ final class LogoErpExportService
             ? (string) $order->customer->legal_name
             : '';
         $this->appendTextChild($dom, $el, 'CustomerLegalName', $customerName);
+        $partnerNo = '';
+        if ($order->relationLoaded('customer') && $order->customer !== null && $order->customer->partner_number !== null) {
+            $partnerNo = (string) $order->customer->partner_number;
+        }
+        $this->appendTextChild($dom, $el, 'CustomerPartnerNo', $partnerNo);
         $this->appendConfiguredOrderFields($dom, $el, $order);
 
         return $el;

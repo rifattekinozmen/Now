@@ -23,4 +23,8 @@ return [
         'ExchangeRate' => 'exchange_rate',
     ],
 
+    /*
+    | CustomerPartnerNo XML etiketi LogoErpExportService içinde müşteri partner_number alanından üretilir.
+    */
+
 ];

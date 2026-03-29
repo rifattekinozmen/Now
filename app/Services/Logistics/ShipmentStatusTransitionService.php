@@ -12,11 +12,17 @@ use Illuminate\Support\Facades\Auth;
  */
 final class ShipmentStatusTransitionService
 {
+    public function __construct(
+        private ShipmentDispatchComplianceGate $dispatchComplianceGate,
+    ) {}
+
     public function markDispatched(Shipment $shipment): void
     {
         if ($shipment->status !== ShipmentStatus::Planned) {
             throw new \InvalidArgumentException(__('Only planned shipments can be dispatched.'));
         }
+
+        $this->dispatchComplianceGate->assertDispatchAllowed($shipment);
 
         $shipment->update([
             'status' => ShipmentStatus::Dispatched,

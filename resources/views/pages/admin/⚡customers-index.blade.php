@@ -248,13 +248,15 @@ new #[Title('Customers')] class extends Component
             $authUser instanceof \App\Models\User
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::CUSTOMERS_WRITE);
     @endphp
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <flux:heading size="xl">{{ __('Customers') }}</flux:heading>
-        <div class="flex flex-wrap gap-2">
+    <x-admin.page-header :heading="__('Customers')">
+        <x-slot name="breadcrumb">
+            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Customers') }}</span>
+        </x-slot>
+        <x-slot name="actions">
             <flux:button :href="route('admin.customers.export.csv')" variant="outline">{{ __('Export CSV') }}</flux:button>
             <flux:button :href="route('admin.customers.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
-        </div>
-    </div>
+        </x-slot>
+    </x-admin.page-header>
 
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
@@ -325,22 +327,19 @@ new #[Title('Customers')] class extends Component
         </div>
     @endif
 
-    <div class="flex flex-col gap-3">
+    <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:heading size="lg">{{ __('Advanced filters') }}</flux:heading>
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
                 {{ $filtersOpen ? __('Hide') : __('Show') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:card class="!p-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (name, tax ID, trade name)')"
-                />
-            </flux:card>
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :label="__('Search (name, tax ID, trade name)')"
+            />
         @endif
-    </div>
+    </x-admin.filter-bar>
 
     @if ($canWriteCustomers)
         @if (count($selectedIds) > 0)

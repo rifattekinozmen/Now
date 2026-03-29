@@ -9,6 +9,7 @@ use Throwable;
  * Banka ekstresi: PDF metin çıkarımı (Smalot PdfParser) ve CSV satır çıkarımı.
  *
  * Görüntü tabanlı taranmış PDF’ler için OCR ayrıca gerekir; bu sınıf metin katmanını okur.
+ * Taranmış PDF kullanıcı mesajı: {@see self::pdfImportDiagnosticMessage()} ve `empty_text` anahtarı.
  */
 class BankStatementOcrService
 {

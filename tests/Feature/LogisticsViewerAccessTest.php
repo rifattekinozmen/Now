@@ -49,7 +49,8 @@ test('logistics viewer can open shipment detail page', function () {
     $this->actingAs($user)
         ->get(route('admin.shipments.show', $shipment))
         ->assertSuccessful()
-        ->assertSee(__('Lifecycle timeline'), false);
+        ->assertSee(__('Shipment overview'), false)
+        ->assertSee(__('Timeline'), false);
 });
 
 test('logistics viewer cannot dispatch from shipment detail page', function () {

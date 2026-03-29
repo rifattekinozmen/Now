@@ -19,8 +19,9 @@ class BankStatementRowMatcher
     public function enrichRowsForTenant(int $tenantId, array $rows): array
     {
         $customers = Customer::query()
+            ->withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
-            ->get(['id', 'legal_name', 'trade_name', 'tax_id', 'meta']);
+            ->get(['id', 'legal_name', 'trade_name', 'tax_id', 'partner_number', 'meta']);
 
         $out = [];
         foreach ($rows as $row) {
@@ -82,6 +83,17 @@ class BankStatementRowMatcher
 
                             break;
                         }
+                    }
+                }
+            }
+
+            if ($score === 0) {
+                $partnerNo = trim((string) ($customer->partner_number ?? ''));
+                if ($partnerNo !== '' && mb_strlen($partnerNo, 'UTF-8') >= 4) {
+                    $partnerNorm = mb_strtolower($partnerNo, 'UTF-8');
+                    if (str_contains($normDesc, $partnerNorm) || str_contains($desc, $partnerNo)) {
+                        $reason = 'partner_number';
+                        $score = 90;
                     }
                 }
             }

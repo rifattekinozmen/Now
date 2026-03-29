@@ -51,3 +51,25 @@ test('builds xml with order fields', function () {
         ->and($xml)->toContain('<ExchangeRate>')
         ->and($xml)->toContain('34.567800');
 });
+
+test('builds xml with customer partner number when present', function () {
+    $customer = Customer::factory()->make([
+        'legal_name' => 'Partner A.Ş.',
+        'partner_number' => 'BP-000556677',
+    ]);
+    $order = Order::factory()->make([
+        'order_number' => 'ORD-PN-1',
+        'sas_no' => null,
+        'currency_code' => 'TRY',
+        'freight_amount' => 100,
+        'status' => OrderStatus::Draft,
+        'ordered_at' => now(),
+    ]);
+    $order->setRelation('customer', $customer);
+
+    $svc = new LogoErpExportService;
+    $xml = $svc->buildOrdersConnectXml([$order]);
+
+    expect($xml)->toContain('<CustomerPartnerNo>')
+        ->and($xml)->toContain('BP-000556677');
+});

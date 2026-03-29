@@ -135,9 +135,14 @@ new #[Title('Customer profile')] class extends Component
     @elseif ($activeTab === 'accounts')
         <flux:card>
             <flux:heading size="lg" class="mb-2">{{ __('Current account') }}</flux:heading>
-            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Statement and open invoices will appear here in a later iteration.') }}
+            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('Finance summary and aging reports are under Finance.') }}
             </flux:text>
+            @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                <flux:button :href="route('admin.finance.reports')" variant="outline" wire:navigate>
+                    {{ __('Open finance reports') }}
+                </flux:button>
+            @endcanany
         </flux:card>
     @elseif ($activeTab === 'locations')
         <flux:card>

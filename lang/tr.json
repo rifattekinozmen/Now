@@ -303,5 +303,22 @@
     "Fiscal opening balances applied": "Mali yıl açılış bakiyeleri uygulandı",
     "Balance sheet sections include opening balances for fiscal year :year.": "Bilanço bölümleri :year mali yılı açılış bakiyelerini içerir.",
     "No opening balances for this fiscal year": "Bu mali yıl için açılış bakiyesi yok",
-    "Add rows under Fiscal opening balances or pick another year.": "Mali yıl açılış bakiyeleri ekranından satır ekleyin veya başka bir yıl seçin."
+    "Add rows under Fiscal opening balances or pick another year.": "Mali yıl açılış bakiyeleri ekranından satır ekleyin veya başka bir yıl seçin.",
+    "Cannot dispatch: vehicle :plate has no inspection valid-until date.": "Sevkiyat başlatılamaz: :plate plakalı araç için muayene geçerlilik tarihi yok.",
+    "Cannot dispatch: vehicle :plate inspection expired on :date.": "Sevkiyat başlatılamaz: :plate plakalı aracın muayenesi :date tarihinde dolmuş.",
+    "Cannot dispatch: driver :name has an expired driving license.": "Sevkiyat başlatılamaz: şoför :name için ehliyet süresi dolmuş.",
+    "Cannot dispatch: driver :name has an expired SRC certificate.": "Sevkiyat başlatılamaz: şoför :name için SRC belgesi süresi dolmuş.",
+    "Cannot dispatch: driver :name has an expired psychotechnical certificate.": "Sevkiyat başlatılamaz: şoför :name için psikoteknik belgesi süresi dolmuş.",
+    "Order overview": "Sipariş özeti",
+    "Freight and sites": "Navlun ve tesisler",
+    "Documents": "Evraklar",
+    "Shipment overview": "Sevkiyat özeti",
+    "Tracking and QR": "İzleme ve QR",
+    "Timeline": "Zaman çizelgesi",
+    "Finance summary and aging reports are under Finance.": "Finans özeti ve yaşlandırma raporları Finans menüsündedir.",
+    "Open finance reports": "Finans raporlarını aç",
+    "Breadcrumb": "İçerik yolu",
+    "POD files and scanned waybills will be listed here in a later iteration.": "POD dosyaları ve taranmış irsaliyeler sonraki iterasyonda burada listelenecek.",
+    "Operations": "Operasyon",
+    "Shipment overview": "Sevkiyat özeti"
 }

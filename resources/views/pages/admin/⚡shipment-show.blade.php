@@ -15,6 +15,8 @@ new #[Title('Shipment detail')] class extends Component
 
     public Shipment $shipment;
 
+    public string $activeTab = 'overview';
+
     public string $pod_note = '';
 
     public string $pod_received_by = '';
@@ -104,6 +106,14 @@ new #[Title('Shipment detail')] class extends Component
 
         $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
     }
+
+    public function setShipmentTab(string $tab): void
+    {
+        $allowed = ['overview', 'tracking', 'timeline', 'operations'];
+        if (in_array($tab, $allowed, true)) {
+            $this->activeTab = $tab;
+        }
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-8 p-4 lg:p-8">
@@ -141,6 +151,27 @@ new #[Title('Shipment detail')] class extends Component
         <flux:callout variant="danger" icon="exclamation-triangle">{{ session('error') }}</flux:callout>
     @endif
 
+    <div class="flex flex-wrap gap-2 border-b border-border pb-2">
+        <flux:button
+            type="button"
+            size="sm"
+            :variant="$activeTab === 'overview' ? 'primary' : 'ghost'"
+            wire:click="setShipmentTab('overview')"
+        >
+            {{ __('Shipment overview') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'tracking' ? 'primary' : 'ghost'" wire:click="setShipmentTab('tracking')">
+            {{ __('Tracking and QR') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'timeline' ? 'primary' : 'ghost'" wire:click="setShipmentTab('timeline')">
+            {{ __('Timeline') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'operations' ? 'primary' : 'ghost'" wire:click="setShipmentTab('operations')">
+            {{ __('Operations') }}
+        </flux:button>
+    </div>
+
+    @if ($activeTab === 'tracking')
     <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Public tracking QR') }}</flux:heading>
         <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
@@ -162,49 +193,7 @@ new #[Title('Shipment detail')] class extends Component
             </div>
         </div>
     </flux:card>
-
-    @if ($s->status === \App\Enums\ShipmentStatus::Delivered && is_array($s->pod_payload) && $s->pod_payload !== [])
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Proof of delivery (POD)') }}</flux:heading>
-            <div class="mb-4 flex flex-wrap gap-2">
-                <flux:button :href="route('admin.shipments.pod.print', $s)" variant="outline" target="_blank">
-                    {{ __('Print POD') }}
-                </flux:button>
-                @if (! empty($s->pod_payload['signature_storage_path']))
-                    <flux:button :href="route('admin.shipments.pod.signature', $s)" variant="ghost" download>
-                        {{ __('Download signature (PNG)') }}
-                    </flux:button>
-                @endif
-            </div>
-            <dl class="grid gap-2 text-sm sm:grid-cols-2">
-                <div class="sm:col-span-2">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Received by') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['received_by'] ?? '—' }}</dd>
-                </div>
-                <div class="sm:col-span-2">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Note') }}</dt>
-                    <dd class="whitespace-pre-wrap font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['note'] ?? '—' }}</dd>
-                </div>
-                @if (! empty($s->pod_payload['signed_at']))
-                    <div class="sm:col-span-2">
-                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Signed at') }}</dt>
-                        <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['signed_at'] }}</dd>
-                    </div>
-                @endif
-            </dl>
-            @if (! empty($s->pod_payload['signature_storage_path']))
-                <div class="mt-4">
-                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Signature') }}</flux:text>
-                    <img
-                        src="{{ route('admin.shipments.pod.signature', $s) }}"
-                        alt="{{ __('Signature') }}"
-                        class="mt-2 max-h-48 max-w-full rounded border border-zinc-200 dark:border-zinc-600"
-                    />
-                </div>
-            @endif
-        </flux:card>
-    @endif
-
+    @elseif ($activeTab === 'overview')
     <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Summary') }}</flux:heading>
         <dl class="grid gap-3 text-sm sm:grid-cols-2">
@@ -222,7 +211,7 @@ new #[Title('Shipment detail')] class extends Component
             </div>
         </dl>
     </flux:card>
-
+    @elseif ($activeTab === 'timeline')
     <flux:card>
         <flux:heading size="lg" class="mb-6">{{ __('Lifecycle timeline') }}</flux:heading>
 
@@ -281,8 +270,50 @@ new #[Title('Shipment detail')] class extends Component
             </ol>
         @endif
     </flux:card>
+    @elseif ($activeTab === 'operations')
+        @if ($s->status === \App\Enums\ShipmentStatus::Delivered && is_array($s->pod_payload) && $s->pod_payload !== [])
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Proof of delivery (POD)') }}</flux:heading>
+            <div class="mb-4 flex flex-wrap gap-2">
+                <flux:button :href="route('admin.shipments.pod.print', $s)" variant="outline" target="_blank">
+                    {{ __('Print POD') }}
+                </flux:button>
+                @if (! empty($s->pod_payload['signature_storage_path']))
+                    <flux:button :href="route('admin.shipments.pod.signature', $s)" variant="ghost" download>
+                        {{ __('Download signature (PNG)') }}
+                    </flux:button>
+                @endif
+            </div>
+            <dl class="grid gap-2 text-sm sm:grid-cols-2">
+                <div class="sm:col-span-2">
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Received by') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['received_by'] ?? '—' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Note') }}</dt>
+                    <dd class="whitespace-pre-wrap font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['note'] ?? '—' }}</dd>
+                </div>
+                @if (! empty($s->pod_payload['signed_at']))
+                    <div class="sm:col-span-2">
+                        <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Signed at') }}</dt>
+                        <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->pod_payload['signed_at'] }}</dd>
+                    </div>
+                @endif
+            </dl>
+            @if (! empty($s->pod_payload['signature_storage_path']))
+                <div class="mt-4">
+                    <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Signature') }}</flux:text>
+                    <img
+                        src="{{ route('admin.shipments.pod.signature', $s) }}"
+                        alt="{{ __('Signature') }}"
+                        class="mt-2 max-h-48 max-w-full rounded border border-zinc-200 dark:border-zinc-600"
+                    />
+                </div>
+            @endif
+        </flux:card>
+        @endif
 
-    @if ($canWriteShipments && $s->status !== \App\Enums\ShipmentStatus::Delivered && $s->status !== \App\Enums\ShipmentStatus::Cancelled)
+        @if ($canWriteShipments && $s->status !== \App\Enums\ShipmentStatus::Delivered && $s->status !== \App\Enums\ShipmentStatus::Cancelled)
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('Actions') }}</flux:heading>
             <div class="flex flex-wrap gap-2">
@@ -384,5 +415,6 @@ new #[Title('Shipment detail')] class extends Component
                 @endif
             </div>
         </flux:card>
+        @endif
     @endif
 </div>

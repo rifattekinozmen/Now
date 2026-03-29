@@ -27,7 +27,8 @@ test('user can view shipment detail page', function () {
         ->get(route('admin.shipments.show', $shipment))
         ->assertSuccessful()
         ->assertSee((string) $shipment->id, false)
-        ->assertSee(__('Lifecycle timeline'), false);
+        ->assertSee(__('Shipment overview'), false)
+        ->assertSee(__('Timeline'), false);
 });
 
 test('user cannot view shipment from another tenant', function () {

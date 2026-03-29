@@ -13,6 +13,8 @@ new #[Title('Order detail')] class extends Component
 
     public Order $order;
 
+    public string $activeTab = 'overview';
+
     public function mount(Order $order): void
     {
         Gate::authorize('view', $order);
@@ -47,6 +49,14 @@ new #[Title('Order detail')] class extends Component
     {
         return OrderLifecyclePresentation::forOrder($this->order);
     }
+
+    public function setOrderTab(string $tab): void
+    {
+        $allowed = ['overview', 'freight', 'documents'];
+        if (in_array($tab, $allowed, true)) {
+            $this->activeTab = $tab;
+        }
+    }
 }; ?>
 
 @php
@@ -76,6 +86,24 @@ new #[Title('Order detail')] class extends Component
         </flux:callout>
     @endif
 
+    <div class="flex flex-wrap gap-2 border-b border-border pb-2">
+        <flux:button
+            type="button"
+            size="sm"
+            :variant="$activeTab === 'overview' ? 'primary' : 'ghost'"
+            wire:click="setOrderTab('overview')"
+        >
+            {{ __('Order overview') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'freight' ? 'primary' : 'ghost'" wire:click="setOrderTab('freight')">
+            {{ __('Freight and sites') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'documents' ? 'primary' : 'ghost'" wire:click="setOrderTab('documents')">
+            {{ __('Documents') }}
+        </flux:button>
+    </div>
+
+    @if ($activeTab === 'overview')
     <flux:card>
         <flux:heading size="lg" class="mb-6">{{ __('Order lifecycle') }}</flux:heading>
         <ol class="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-start sm:gap-4">
@@ -107,36 +135,6 @@ new #[Title('Order detail')] class extends Component
     </flux:card>
 
     <flux:card>
-        <flux:heading size="lg" class="mb-4">{{ __('Summary') }}</flux:heading>
-        <dl class="grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}</dt>
-                <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $this->orderStatusLabel($o->status) }}</dd>
-            </div>
-            <div>
-                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('SAS / PO reference') }}</dt>
-                <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->sas_no ?? '—' }}</dd>
-            </div>
-            <div>
-                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Currency') }}</dt>
-                <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->currency_code }}</dd>
-            </div>
-            <div>
-                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Freight amount') }}</dt>
-                <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->freight_amount ?? '—' }}</dd>
-            </div>
-            <div class="sm:col-span-2">
-                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Loading site') }}</dt>
-                <dd class="font-medium text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd>
-            </div>
-            <div class="sm:col-span-2">
-                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Unloading site') }}</dt>
-                <dd class="font-medium text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd>
-            </div>
-        </dl>
-    </flux:card>
-
-    <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Shipments') }}</flux:heading>
         @if ($o->shipments->isEmpty())
             <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No shipments for this order yet.') }}</flux:text>
@@ -165,4 +163,42 @@ new #[Title('Order detail')] class extends Component
             </flux:table>
         @endif
     </flux:card>
+    @elseif ($activeTab === 'freight')
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Summary') }}</flux:heading>
+            <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $this->orderStatusLabel($o->status) }}</dd>
+                </div>
+                <div>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('SAS / PO reference') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->sas_no ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Currency') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->currency_code }}</dd>
+                </div>
+                <div>
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Freight amount') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->freight_amount ?? '—' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Loading site') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd>
+                </div>
+                <div class="sm:col-span-2">
+                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Unloading site') }}</dt>
+                    <dd class="font-medium text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd>
+                </div>
+            </dl>
+        </flux:card>
+    @else
+        <flux:card>
+            <flux:heading size="lg" class="mb-2">{{ __('Documents') }}</flux:heading>
+            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                {{ __('POD files and scanned waybills will be listed here in a later iteration.') }}
+            </flux:text>
+        </flux:card>
+    @endif
 </div>
