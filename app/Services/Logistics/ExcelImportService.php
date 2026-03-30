@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\DeliveryNumber;
 use App\Models\Employee;
 use App\Models\FuelIntake;
+use App\Models\FuelPrice;
 use App\Models\Order;
 use App\Models\Vehicle;
 use Carbon\Carbon;
@@ -862,6 +863,130 @@ class ExcelImportService
                     'liters' => $liters,
                     'odometer_km' => $odometerVal,
                     'recorded_at' => $recordedAt,
+                ]);
+                $created++;
+            } catch (ValidationException $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->validator->errors()->first() ?? $e->getMessage(),
+                ];
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['created' => $created, 'errors' => $errors];
+    }
+
+    /**
+     * Yakıt fiyatı CSV/XLSX; başlıklar şablon ile uyumlu (`FuelPriceImportTemplateExport`).
+     *
+     * @return array<string, string>
+     */
+    public function getFuelPriceImportMapping(): array
+    {
+        return [
+            'Yakıt Tipi' => 'fuel_type',
+            'Fuel Type' => 'fuel_type',
+            'Type' => 'fuel_type',
+            'Fiyat' => 'price',
+            'Price' => 'price',
+            'Para Birimi' => 'currency',
+            'Currency' => 'currency',
+            'Kayıt Tarihi' => 'recorded_at',
+            'Recorded at' => 'recorded_at',
+            'Date' => 'recorded_at',
+            'Kaynak' => 'source',
+            'Source' => 'source',
+            'Bölge' => 'region',
+            'Region' => 'region',
+        ];
+    }
+
+    /**
+     * @return array{created: int, errors: list<array{row: int, message: string}>}
+     */
+    public function importFuelPricesFromPath(string $path, int $tenantId): array
+    {
+        $mapping = $this->getFuelPriceImportMapping();
+        $matrix = $this->loadMatrixFromFile($path);
+        if ($matrix === []) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        $headerRow = array_shift($matrix);
+        if (! is_array($headerRow)) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        /** @var list<string> $headers */
+        $headers = array_map(function (mixed $cell): string {
+            if ($cell === null) {
+                return '';
+            }
+
+            return is_string($cell) ? trim($cell) : trim((string) $cell);
+        }, $headerRow);
+
+        $created = 0;
+        /** @var list<array{row: int, message: string}> $errors */
+        $errors = [];
+
+        foreach ($matrix as $offset => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowNumber = $offset + 2;
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = $row[$index] ?? null;
+            }
+
+            try {
+                $raw = $this->normalizeRow($assoc, $mapping);
+
+                $fuelType = strtolower(trim((string) ($raw['fuel_type'] ?? '')));
+                if (! in_array($fuelType, ['diesel', 'gasoline', 'lpg'], true)) {
+                    throw new \InvalidArgumentException(__('Fuel type must be diesel, gasoline, or lpg.'));
+                }
+
+                $price = $raw['price'] ?? null;
+                if ($price === null || $price === '' || ! is_numeric($price)) {
+                    throw new \InvalidArgumentException(__('Price is required and must be numeric.'));
+                }
+
+                $recordedAt = $raw['recorded_at'] ?? null;
+                if ($recordedAt === null || $recordedAt === '') {
+                    throw new \InvalidArgumentException(__('Recorded at is required.'));
+                }
+
+                $currency = strtoupper(trim((string) ($raw['currency'] ?? 'TRY')));
+                if (! in_array($currency, ['TRY', 'EUR', 'USD'], true)) {
+                    $currency = 'TRY';
+                }
+
+                $source = trim((string) ($raw['source'] ?? ''));
+                $region = trim((string) ($raw['region'] ?? ''));
+
+                FuelPrice::query()->create([
+                    'tenant_id' => $tenantId,
+                    'fuel_type' => $fuelType,
+                    'price' => $price,
+                    'currency' => $currency,
+                    'recorded_at' => $recordedAt,
+                    'source' => $source !== '' ? $source : null,
+                    'region' => $region !== '' ? $region : null,
                 ]);
                 $created++;
             } catch (ValidationException $e) {

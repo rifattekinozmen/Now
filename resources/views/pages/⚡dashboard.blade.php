@@ -1,10 +1,11 @@
 <?php
 
 use App\Authorization\LogisticsPermission;
+use App\Enums\DeliveryNumberStatus;
 use App\Enums\ShipmentStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
-use App\Enums\DeliveryNumberStatus;
 use App\Models\Shipment;
+use App\Services\Logistics\FleetSummaryService;
 use App\Services\Logistics\TcmbExchangeRateService;
 use App\Support\TenantContext;
 use Illuminate\Support\Facades\DB;
@@ -131,6 +132,20 @@ new #[Title('Dashboard')] class extends Component
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array{total_vehicles: int, inspection_due_30d: int, active_shipments: int}
+     */
+    #[Computed]
+    public function fleetKpi(): array
+    {
+        $tenantId = TenantContext::id();
+        if ($tenantId === null) {
+            return ['total_vehicles' => 0, 'inspection_due_30d' => 0, 'active_shipments' => 0];
+        }
+
+        return app(FleetSummaryService::class)->getFleetKpi($tenantId);
     }
 
     /**
@@ -279,6 +294,32 @@ new #[Title('Dashboard')] class extends Component
         </div>
 
         @canany([LogisticsPermission::ADMIN, LogisticsPermission::VIEW])
+            <flux:card>
+                <div class="mb-3 flex items-center justify-between gap-2">
+                    <flux:heading size="lg">{{ __('Fleet summary') }}</flux:heading>
+                    <flux:button :href="route('admin.vehicles.index')" variant="ghost" size="sm" wire:navigate>{{ __('All vehicles') }}</flux:button>
+                </div>
+                <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    {{ __('Vehicles, upcoming inspections, and active shipments (tenant scope).') }}
+                </flux:text>
+                <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Total vehicles') }}</flux:text>
+                        <flux:heading size="xl">{{ $this->fleetKpi['total_vehicles'] }}</flux:heading>
+                    </div>
+                    <div @class(['rounded-lg border p-3', 'border-amber-400 dark:border-amber-500' => $this->fleetKpi['inspection_due_30d'] > 0, 'border-zinc-200 dark:border-zinc-700' => $this->fleetKpi['inspection_due_30d'] === 0])>
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Inspection due (30 d)') }}</flux:text>
+                        <flux:heading size="xl" @class(['text-amber-600 dark:text-amber-400' => $this->fleetKpi['inspection_due_30d'] > 0])>
+                            {{ $this->fleetKpi['inspection_due_30d'] }}
+                        </flux:heading>
+                    </div>
+                    <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                        <flux:text class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Active shipments') }}</flux:text>
+                        <flux:heading size="xl">{{ $this->fleetKpi['active_shipments'] }}</flux:heading>
+                    </div>
+                </div>
+            </flux:card>
+
             <div class="flex flex-wrap gap-3">
                 <flux:button :href="route('admin.orders.index')" variant="primary" wire:navigate>{{ __('Orders') }}</flux:button>
                 <flux:button :href="route('admin.shipments.index')" variant="filled" wire:navigate>{{ __('Shipments') }}</flux:button>

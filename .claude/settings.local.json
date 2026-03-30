@@ -8,7 +8,10 @@
       "mcp__laravel-boost__last-error",
       "mcp__laravel-boost__read-log-entries",
       "Bash(docker compose:*)",
-      "mcp__laravel-boost__database-schema"
+      "mcp__laravel-boost__database-schema",
+      "Bash(ls /c/Users/TekinOzmen/Desktop/Now/tests/Feature/CustomerEngagement*)",
+      "Bash(ls /c/Users/TekinOzmen/Desktop/Now/tests/Unit/CustomerEngagement*)",
+      "mcp__laravel-boost__search-docs"
     ]
   }
 }

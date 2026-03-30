@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DownloadCustomerImportTemplateController;
 use App\Http\Controllers\Admin\DownloadEmployeeImportTemplateController;
 use App\Http\Controllers\Admin\DownloadFuelIntakeImportTemplateController;
+use App\Http\Controllers\Admin\DownloadFuelPriceImportTemplateController;
 use App\Http\Controllers\Admin\DownloadPinImportTemplateController;
 use App\Http\Controllers\Admin\DownloadVehicleImportTemplateController;
 use App\Http\Controllers\Admin\ExportCustomerCsvController;
@@ -51,6 +52,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('vehicles/template.xlsx', DownloadVehicleImportTemplateController::class)->name('vehicles.template.xlsx');
             Route::livewire('fuel-intakes', 'pages::admin.fuel-intakes-index')->name('fuel-intakes.index');
             Route::get('fuel-intakes/template.xlsx', DownloadFuelIntakeImportTemplateController::class)->name('fuel-intakes.template.xlsx');
+            Route::livewire('fuel-prices', 'pages::admin.fuel-prices-index')->name('fuel-prices.index');
+            Route::get('fuel-prices/template.xlsx', DownloadFuelPriceImportTemplateController::class)->name('fuel-prices.template.xlsx');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
             Route::get('employees/template.xlsx', DownloadEmployeeImportTemplateController::class)->name('employees.template.xlsx');
             Route::livewire('orders', 'pages::admin.orders-index')->name('orders.index');

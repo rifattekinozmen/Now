@@ -41,6 +41,9 @@
                         <flux:sidebar.item icon="bolt" :href="route('admin.fuel-intakes.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Fuel intakes') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="currency-dollar" :href="route('admin.fuel-prices.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Fuel prices') }}
+                        </flux:sidebar.item>
                         <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="font-medium">
                             {{ __('Employees') }}
                         </flux:sidebar.item>

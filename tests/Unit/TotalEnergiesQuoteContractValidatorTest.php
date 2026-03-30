@@ -31,3 +31,29 @@ test('contract valid when schema version matches config and price present', func
         ->and($r['schema_match'])->toBeTrue()
         ->and($r['issues'])->toBe([]);
 });
+
+test('contract invalid when parsed price is null (missing_price issue)', function () {
+    config(['totalenergies.schema_version' => 1]);
+
+    $r = TotalEnergiesQuoteContractValidator::validate(['schema_version' => 1], null);
+
+    expect($r['contract_valid'])->toBeFalse()
+        ->and($r['issues'])->toContain('missing_price');
+});
+
+test('schema_version resolved from nested meta key', function () {
+    config(['totalenergies.schema_version' => 1]);
+
+    $r = TotalEnergiesQuoteContractValidator::validate(['meta' => ['schema_version' => 1], 'price_try_per_liter' => 35.0], 35.0);
+
+    expect($r['schema_match'])->toBeTrue()
+        ->and($r['contract_valid'])->toBeTrue();
+});
+
+test('schema_version resolved from camel case schemaVersion key', function () {
+    config(['totalenergies.schema_version' => 1]);
+
+    $r = TotalEnergiesQuoteContractValidator::validate(['schemaVersion' => 1, 'price_try_per_liter' => 35.0], 35.0);
+
+    expect($r['schema_match'])->toBeTrue();
+});

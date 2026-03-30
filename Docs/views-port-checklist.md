@@ -128,7 +128,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `pages::admin.warehouse-index` — depolar + stok kartları + depo bakiyeleri (tek sayfa MVP) | KISMI _(ayrı show yok; 2026-03-29)_ |
+| `index`, `create`, `edit`, `show` | `pages::admin.warehouse-index` + `pages::admin.warehouse-show` (`admin.warehouse.show`) | KISMI _(show VAR: `⚡warehouse-show.blade.php`; güncellendi: 2026-03-30)_ |
 
 ### admin/inventory
 
@@ -273,7 +273,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `fuel-prices` **index_only** | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.fuel-prices-index` — liste + form (inline modal) + CSV/XLSX import + şablon | KISMI _(tam CRUD + import; ayrı show yok; 2026-03-30)_ |
 
 ### admin/fuel-intakes
 

@@ -31,7 +31,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(ScannedPdfOcrAdapter::class, fn (): ScannedPdfOcrAdapter => new NullScannedPdfOcrAdapter);
+        $this->app->bind(ScannedPdfOcrAdapter::class, function (): ScannedPdfOcrAdapter {
+            $adapterClass = config('logistics.bank_statement.scanned_pdf_ocr_adapter');
+            if (is_string($adapterClass) && $adapterClass !== '' && class_exists($adapterClass)) {
+                $instance = app($adapterClass);
+                if ($instance instanceof ScannedPdfOcrAdapter) {
+                    return $instance;
+                }
+            }
+
+            return new NullScannedPdfOcrAdapter;
+        });
 
         $this->app->bind(OperationalNotifier::class, fn (): OperationalNotifier => new CompositeOperationalNotifier([
             new LogOperationalNotifier,
