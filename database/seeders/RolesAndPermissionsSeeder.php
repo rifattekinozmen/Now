@@ -53,7 +53,8 @@ class RolesAndPermissionsSeeder extends Seeder
         $permEmployeesWrite = Permission::findOrCreate(LogisticsPermission::EMPLOYEES_WRITE, 'web');
 
         $roleTenant = Role::findOrCreate(self::ROLE_TENANT_USER, 'web');
-        $roleTenant->syncPermissions([$permAdmin]);
+        // ADMIN kullanıcılar VIEW erişimini de kapsar (ADMIN ⊇ VIEW).
+        $roleTenant->syncPermissions([$permAdmin, $permView]);
 
         $roleViewer = Role::findOrCreate(self::ROLE_LOGISTICS_VIEWER, 'web');
         $roleViewer->syncPermissions([$permView]);

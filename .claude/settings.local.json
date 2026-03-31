@@ -13,7 +13,8 @@
       "Bash(ls /c/Users/TekinOzmen/Desktop/Now/tests/Unit/CustomerEngagement*)",
       "mcp__laravel-boost__search-docs",
       "Bash(xargs grep:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Bash(Docs/erp_todos.md:*)"
     ]
   }
 }

@@ -1,9 +1,11 @@
 <?php
 
+use App\Authorization\LogisticsPermission;
 use App\Enums\OrderStatus;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Order;
 use App\Models\Voucher;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +21,29 @@ new #[Title('Customer profile')] class extends Component
 
     public string $activeTab = 'orders';
 
+    // Address book form
+    public ?int $editingAddressId = null;
+
+    public string $addrLabel = '';
+
+    public string $addrAddressLine = '';
+
+    public string $addrCity = '';
+
+    public string $addrDistrict = '';
+
+    public string $addrPostalCode = '';
+
+    public string $addrContactName = '';
+
+    public string $addrContactPhone = '';
+
+    public string $addrNotes = '';
+
+    public bool $addrIsDefault = false;
+
+    public bool $showAddressForm = false;
+
     public function mount(Customer $customer): void
     {
         Gate::authorize('view', $customer);
@@ -26,7 +51,130 @@ new #[Title('Customer profile')] class extends Component
     }
 
     /**
-     * Siparişlerde geçen boşaltma / teslimat metinleri (operasyonel adres defteri öncesi özet).
+     * @return \Illuminate\Database\Eloquent\Collection<int, CustomerAddress>
+     */
+    #[Computed]
+    public function addresses(): \Illuminate\Database\Eloquent\Collection
+    {
+        return CustomerAddress::query()
+            ->where('customer_id', $this->customer->id)
+            ->orderByDesc('is_default')
+            ->orderBy('label')
+            ->get();
+    }
+
+    public function openAddressForm(?int $addressId = null): void
+    {
+        Gate::authorize('update', $this->customer);
+
+        $this->resetAddressForm();
+        $this->showAddressForm = true;
+
+        if ($addressId !== null) {
+            $address = CustomerAddress::findOrFail($addressId);
+            $this->editingAddressId = $address->id;
+            $this->addrLabel        = $address->label;
+            $this->addrAddressLine  = $address->address_line ?? '';
+            $this->addrCity         = $address->city ?? '';
+            $this->addrDistrict     = $address->district ?? '';
+            $this->addrPostalCode   = $address->postal_code ?? '';
+            $this->addrContactName  = $address->contact_name ?? '';
+            $this->addrContactPhone = $address->contact_phone ?? '';
+            $this->addrNotes        = $address->notes ?? '';
+            $this->addrIsDefault    = (bool) $address->is_default;
+        }
+    }
+
+    public function saveAddress(): void
+    {
+        Gate::authorize('update', $this->customer);
+
+        $this->validate([
+            'addrLabel'        => 'required|string|max:100',
+            'addrAddressLine'  => 'nullable|string|max:255',
+            'addrCity'         => 'nullable|string|max:100',
+            'addrDistrict'     => 'nullable|string|max:100',
+            'addrPostalCode'   => 'nullable|string|max:20',
+            'addrContactName'  => 'nullable|string|max:150',
+            'addrContactPhone' => 'nullable|string|max:30',
+            'addrNotes'        => 'nullable|string|max:1000',
+        ]);
+
+        $tenantId = $this->customer->tenant_id;
+
+        if ($this->addrIsDefault) {
+            CustomerAddress::query()
+                ->where('customer_id', $this->customer->id)
+                ->update(['is_default' => false]);
+        }
+
+        $data = [
+            'tenant_id'     => $tenantId,
+            'customer_id'   => $this->customer->id,
+            'label'         => $this->addrLabel,
+            'address_line'  => $this->addrAddressLine ?: null,
+            'city'          => $this->addrCity ?: null,
+            'district'      => $this->addrDistrict ?: null,
+            'postal_code'   => $this->addrPostalCode ?: null,
+            'contact_name'  => $this->addrContactName ?: null,
+            'contact_phone' => $this->addrContactPhone ?: null,
+            'notes'         => $this->addrNotes ?: null,
+            'is_default'    => $this->addrIsDefault,
+        ];
+
+        if ($this->editingAddressId !== null) {
+            CustomerAddress::findOrFail($this->editingAddressId)->update($data);
+        } else {
+            CustomerAddress::create($data);
+        }
+
+        $this->resetAddressForm();
+        unset($this->addresses);
+        $this->dispatch('address-saved');
+    }
+
+    public function deleteAddress(int $addressId): void
+    {
+        Gate::authorize('update', $this->customer);
+
+        CustomerAddress::findOrFail($addressId)->delete();
+        unset($this->addresses);
+    }
+
+    public function setDefaultAddress(int $addressId): void
+    {
+        Gate::authorize('update', $this->customer);
+
+        CustomerAddress::query()
+            ->where('customer_id', $this->customer->id)
+            ->update(['is_default' => false]);
+
+        CustomerAddress::findOrFail($addressId)->update(['is_default' => true]);
+        unset($this->addresses);
+    }
+
+    public function cancelAddressForm(): void
+    {
+        $this->resetAddressForm();
+    }
+
+    private function resetAddressForm(): void
+    {
+        $this->editingAddressId = null;
+        $this->addrLabel        = '';
+        $this->addrAddressLine  = '';
+        $this->addrCity         = '';
+        $this->addrDistrict     = '';
+        $this->addrPostalCode   = '';
+        $this->addrContactName  = '';
+        $this->addrContactPhone = '';
+        $this->addrNotes        = '';
+        $this->addrIsDefault    = false;
+        $this->showAddressForm  = false;
+    }
+
+    /**
+     * Siparişlerde geçen boşaltma / teslimat metinleri (arşiv).
      *
      * @return Collection<int, string>
      */
@@ -103,7 +251,6 @@ new #[Title('Customer profile')] class extends Component
     #[Computed]
     public function accountSummary(): array
     {
-        // Vouchers linked to this customer's orders
         $orderIds = Order::query()->where('customer_id', $this->customer->id)->pluck('id');
 
         $vouchers = Voucher::query()
@@ -190,7 +337,7 @@ new #[Title('Customer profile')] class extends Component
             {{ __('Current account') }}
         </flux:button>
         <flux:button type="button" size="sm" :variant="$activeTab === 'locations' ? 'primary' : 'ghost'" wire:click="setTab('locations')">
-            {{ __('Delivery locations') }}
+            {{ __('Address book') }}
         </flux:button>
         <flux:button type="button" size="sm" :variant="$activeTab === 'contacts' ? 'primary' : 'ghost'" wire:click="setTab('contacts')">
             {{ __('Contacts') }}
@@ -300,19 +447,145 @@ new #[Title('Customer profile')] class extends Component
             </div>
         </flux:card>
     @elseif ($activeTab === 'locations')
+        {{-- Address Book --}}
         <flux:card>
-            <flux:heading size="lg" class="mb-2">{{ __('Delivery locations') }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Distinct unloading / delivery sites from orders (last 50 rows). Use this until a dedicated address book is enabled.') }}
-            </flux:text>
-            @if ($this->recentUnloadingSites->isEmpty())
-                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No unloading site text on orders yet.') }}</flux:text>
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <flux:heading size="lg">{{ __('Address book') }}</flux:heading>
+                    <flux:text class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                        {{ __('Delivery and billing addresses for this customer.') }}
+                    </flux:text>
+                </div>
+                @can(\App\Authorization\LogisticsPermission::CUSTOMERS_WRITE)
+                    @if (!$showAddressForm)
+                        <flux:button size="sm" variant="primary" wire:click="openAddressForm()">
+                            {{ __('Add address') }}
+                        </flux:button>
+                    @endif
+                @endcan
+            </div>
+
+            @if ($showAddressForm)
+                <div class="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                    <flux:heading size="sm" class="mb-4">
+                        {{ $editingAddressId ? __('Edit address') : __('New address') }}
+                    </flux:heading>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:field class="sm:col-span-2">
+                            <flux:label>{{ __('Label') }} <span class="text-red-500">*</span></flux:label>
+                            <flux:input wire:model="addrLabel" placeholder="{{ __('e.g. Main Warehouse, HQ, Site B') }}" />
+                            <flux:error name="addrLabel" />
+                        </flux:field>
+                        <flux:field class="sm:col-span-2">
+                            <flux:label>{{ __('Address line') }}</flux:label>
+                            <flux:input wire:model="addrAddressLine" placeholder="{{ __('Street, building no.') }}" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('City') }}</flux:label>
+                            <flux:input wire:model="addrCity" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('District') }}</flux:label>
+                            <flux:input wire:model="addrDistrict" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('Postal code') }}</flux:label>
+                            <flux:input wire:model="addrPostalCode" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('Contact name') }}</flux:label>
+                            <flux:input wire:model="addrContactName" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('Contact phone') }}</flux:label>
+                            <flux:input wire:model="addrContactPhone" type="tel" />
+                        </flux:field>
+                        <flux:field class="sm:col-span-2">
+                            <flux:label>{{ __('Notes') }}</flux:label>
+                            <flux:textarea wire:model="addrNotes" rows="2" />
+                        </flux:field>
+                        <flux:field class="sm:col-span-2">
+                            <flux:checkbox wire:model="addrIsDefault" :label="__('Set as default address')" />
+                        </flux:field>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                        <flux:button size="sm" variant="primary" wire:click="saveAddress">{{ __('Save') }}</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="cancelAddressForm">{{ __('Cancel') }}</flux:button>
+                    </div>
+                </div>
+            @endif
+
+            @if ($this->addresses->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No addresses saved yet.') }}</flux:text>
             @else
-                <ul class="list-inside list-disc space-y-1 text-sm text-zinc-800 dark:text-zinc-200">
-                    @foreach ($this->recentUnloadingSites as $site)
-                        <li class="break-words">{{ $site }}</li>
+                <div class="grid gap-3 sm:grid-cols-2">
+                    @foreach ($this->addresses as $address)
+                        <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700 {{ $address->is_default ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/20' : '' }}">
+                            <div class="mb-2 flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $address->label }}</span>
+                                    @if ($address->is_default)
+                                        <flux:badge color="blue" size="sm">{{ __('Default') }}</flux:badge>
+                                    @endif
+                                </div>
+                                @can(\App\Authorization\LogisticsPermission::CUSTOMERS_WRITE)
+                                    <div class="flex shrink-0 gap-1">
+                                        @if (!$address->is_default)
+                                            <flux:button size="xs" variant="ghost" wire:click="setDefaultAddress({{ $address->id }})" title="{{ __('Set as default') }}">
+                                                <flux:icon.star class="h-4 w-4" />
+                                            </flux:button>
+                                        @endif
+                                        <flux:button size="xs" variant="ghost" wire:click="openAddressForm({{ $address->id }})">
+                                            <flux:icon.pencil class="h-4 w-4" />
+                                        </flux:button>
+                                        <flux:button size="xs" variant="ghost" wire:click="deleteAddress({{ $address->id }})"
+                                            wire:confirm="{{ __('Delete this address?') }}">
+                                            <flux:icon.trash class="h-4 w-4 text-red-500" />
+                                        </flux:button>
+                                    </div>
+                                @endcan
+                            </div>
+                            <div class="space-y-0.5 text-sm text-zinc-700 dark:text-zinc-300">
+                                @if ($address->address_line)
+                                    <div>{{ $address->address_line }}</div>
+                                @endif
+                                @if ($address->district || $address->city)
+                                    <div>{{ implode(', ', array_filter([$address->district, $address->city])) }}</div>
+                                @endif
+                                @if ($address->postal_code)
+                                    <div>{{ $address->postal_code }}</div>
+                                @endif
+                                @if ($address->contact_name || $address->contact_phone)
+                                    <div class="mt-2 border-t border-zinc-200 pt-2 text-zinc-500 dark:border-zinc-600">
+                                        @if ($address->contact_name)
+                                            <span>{{ $address->contact_name }}</span>
+                                        @endif
+                                        @if ($address->contact_phone)
+                                            @if ($address->contact_name) · @endif
+                                            <span>{{ $address->contact_phone }}</span>
+                                        @endif
+                                    </div>
+                                @endif
+                                @if ($address->notes)
+                                    <div class="mt-1 italic text-zinc-500">{{ $address->notes }}</div>
+                                @endif
+                            </div>
+                        </div>
                     @endforeach
-                </ul>
+                </div>
+            @endif
+
+            @if ($this->recentUnloadingSites->isNotEmpty())
+                <details class="mt-6">
+                    <summary class="cursor-pointer text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300">
+                        {{ __('Sites from past orders (archive)') }}
+                    </summary>
+                    <ul class="mt-2 list-inside list-disc space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+                        @foreach ($this->recentUnloadingSites as $site)
+                            <li class="break-words">{{ $site }}</li>
+                        @endforeach
+                    </ul>
+                </details>
             @endif
         </flux:card>
     @elseif ($activeTab === 'contacts')

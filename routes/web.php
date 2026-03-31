@@ -49,15 +49,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('customers/template.xlsx', DownloadCustomerImportTemplateController::class)->name('customers.template.xlsx');
             Route::livewire('customers/{customer}', 'pages::admin.customer-show')->name('customers.show');
             Route::livewire('vehicles', 'pages::admin.vehicles-index')->name('vehicles.index');
-            Route::livewire('vehicles/{vehicle}', 'pages::admin.vehicle-show')->name('vehicles.show');
             Route::get('vehicles/template.xlsx', DownloadVehicleImportTemplateController::class)->name('vehicles.template.xlsx');
+            Route::livewire('vehicles/{vehicle}', 'pages::admin.vehicle-show')->name('vehicles.show');
             Route::livewire('fuel-intakes', 'pages::admin.fuel-intakes-index')->name('fuel-intakes.index');
             Route::get('fuel-intakes/template.xlsx', DownloadFuelIntakeImportTemplateController::class)->name('fuel-intakes.template.xlsx');
             Route::livewire('fuel-prices', 'pages::admin.fuel-prices-index')->name('fuel-prices.index');
             Route::get('fuel-prices/template.xlsx', DownloadFuelPriceImportTemplateController::class)->name('fuel-prices.template.xlsx');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
-            Route::livewire('employees/{employee}', 'pages::admin.employee-show')->name('employees.show');
             Route::get('employees/template.xlsx', DownloadEmployeeImportTemplateController::class)->name('employees.template.xlsx');
+            Route::livewire('employees/{employee}', 'pages::admin.employee-show')->name('employees.show');
             Route::livewire('orders', 'pages::admin.orders-index')->name('orders.index');
             Route::get('orders/export-finance.csv', ExportFinanceOrdersCsvController::class)->name('orders.export.finance.csv');
             Route::get('orders/export-logo.xml', ExportLogoOrdersXmlController::class)->name('orders.export.logo.xml');

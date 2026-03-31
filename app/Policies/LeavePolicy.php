@@ -10,12 +10,12 @@ class LeavePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can(LogisticsPermission::VIEW);
+        return LogisticsPermission::canView($user);
     }
 
     public function view(User $user, Leave $leave): bool
     {
-        return $user->can(LogisticsPermission::VIEW)
+        return LogisticsPermission::canView($user)
             && (int) $user->tenant_id === (int) $leave->tenant_id;
     }
 

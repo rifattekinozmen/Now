@@ -42,6 +42,14 @@ final class LogisticsPermission
 
     public const PAYROLL_WRITE = 'logistics.payroll.write';
 
+    /**
+     * Admin kullanıcılar view iznini de kapsar (ADMIN ⊇ VIEW).
+     */
+    public static function canView(User $user): bool
+    {
+        return $user->can(self::ADMIN) || $user->can(self::VIEW);
+    }
+
     public static function canWrite(User $user, string $writePermission): bool
     {
         return $user->can(self::ADMIN) || $user->can($writePermission);

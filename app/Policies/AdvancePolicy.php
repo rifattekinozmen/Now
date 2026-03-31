@@ -10,12 +10,12 @@ class AdvancePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can(LogisticsPermission::VIEW);
+        return LogisticsPermission::canView($user);
     }
 
     public function view(User $user, Advance $advance): bool
     {
-        return $user->can(LogisticsPermission::VIEW)
+        return LogisticsPermission::canView($user)
             && (int) $user->tenant_id === (int) $advance->tenant_id;
     }
 

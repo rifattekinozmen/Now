@@ -10,12 +10,12 @@ class PersonnelAttendancePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can(LogisticsPermission::VIEW);
+        return LogisticsPermission::canView($user);
     }
 
     public function view(User $user, PersonnelAttendance $personnelAttendance): bool
     {
-        return $user->can(LogisticsPermission::VIEW)
+        return LogisticsPermission::canView($user)
             && (int) $user->tenant_id === (int) $personnelAttendance->tenant_id;
     }
 

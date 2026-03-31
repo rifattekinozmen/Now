@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
 > Son güncelleme: 2026-03-31
-> Mevcut: Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 + Sprint 5 tamamlandı
+> Mevcut: Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 + Sprint 5 + Sprint 6 tamamlandı
 
 ## Durum Özeti
 
@@ -12,6 +12,7 @@
 | 3 | Operasyon: Vehicle/Employee Show, Maintenance | ✅ TAMAM |
 | 4 | Audit Log + Bildirim Merkezi | ✅ TAMAM |
 | 5 | Analytics + Dashboard Güçlendirme | ✅ TAMAM |
+| 6 | Entegrasyonlar + Adres Defteri | ✅ TAMAM |
 
 ---
 
@@ -134,3 +135,24 @@
 - [x] fleet-analytics: araç sefer/tonaj (30g), bakım KPI, yakıt anomali
 - [x] operations-analytics: sipariş durum dağılımı, aylık trend, şoför performans, freight outlier
 - [x] Sidebar Operations grubuna Fleet analytics + Operations analytics eklendi
+
+---
+
+## SPRINT 6 — Entegrasyonlar & Adres Defteri ✅
+
+### TODO-9.1: Integration Settings Sayfası ✅
+- [x] `tenant_settings` migration + `TenantSetting` model (encrypted key-value store)
+- [x] `settings/integrations` Livewire sayfası: TotalEnergies, Logo ERP, SMS, WhatsApp, Slack kartları
+- [x] Her kart için Yapılandırıldı/Yapılandırılmadı badge, save butonu, validation
+- [x] Gizli alanlar şifreli saklanır, UI'da maskelenir
+- [x] `routes/settings.php`'e `integrations.edit` rotası, settings nav'a Integrations linki (admin-only)
+- [x] `tr.json`'a entegrasyon çevirileri eklendi
+
+### TODO-9.2: Customer Show Adres Defteri ✅
+- [x] `customer_addresses` migration + `CustomerAddress` model (BelongsToTenant)
+- [x] `Customer::addresses()` hasMany ilişkisi
+- [x] Customer Show "Address book" sekmesi: liste, ekleme/düzenleme/silme formu
+- [x] Varsayılan adres işaretleme (setDefaultAddress)
+- [x] Geçmiş siparişlerden teslimat noktaları arşiv olarak collapsible section
+- [x] `tr.json`'a adres defteri çevirileri eklendi
+- [x] 329/329 test geçiyor
