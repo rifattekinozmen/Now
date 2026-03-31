@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Concerns\BelongsToTenant;
+use App\Traits\LogsActivity;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -31,6 +33,7 @@ class Voucher extends Model
 {
     use BelongsToTenant;
     use HasFactory;
+    use LogsActivity;
 
     /**
      * @return array<string, string>
@@ -38,12 +41,12 @@ class Voucher extends Model
     protected function casts(): array
     {
         return [
-            'type'         => VoucherType::class,
-            'status'       => VoucherStatus::class,
-            'amount'       => 'decimal:2',
+            'type' => VoucherType::class,
+            'status' => VoucherStatus::class,
+            'amount' => 'decimal:2',
             'voucher_date' => 'date',
-            'approved_at'  => 'datetime',
-            'meta'         => 'array',
+            'approved_at' => 'datetime',
+            'meta' => 'array',
         ];
     }
 
@@ -79,12 +82,12 @@ class Voucher extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
-    public function scopePending(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopePending(Builder $query): Builder
     {
         return $query->where('status', VoucherStatus::Pending->value);
     }
 
-    public function scopeApproved(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    public function scopeApproved(Builder $query): Builder
     {
         return $query->where('status', VoucherStatus::Approved->value);
     }

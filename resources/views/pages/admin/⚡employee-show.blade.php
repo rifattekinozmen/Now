@@ -55,6 +55,7 @@ new #[Title('Employee Details')] class extends Component
         <flux:tab name="leaves" icon="calendar-days">{{ __('Leaves') }}</flux:tab>
         <flux:tab name="advances" icon="banknotes">{{ __('Advances') }}</flux:tab>
         <flux:tab name="payrolls" icon="document-text">{{ __('Payrolls') }}</flux:tab>
+        <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
 
     {{-- TAB: Overview --}}
@@ -265,6 +266,43 @@ new #[Title('Employee Details')] class extends Component
                         @empty
                             <tr>
                                 <td colspan="5" class="py-6 text-center text-zinc-500">{{ __('No payroll records found.') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </flux:card>
+    @endif
+
+    {{-- TAB: Activity Log --}}
+    @if ($tab === 'activity')
+        <flux:card class="p-4">
+            <flux:heading size="lg" class="mb-4">{{ __('Activity log') }}</flux:heading>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                    <thead>
+                        <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                            <th class="py-2 pe-3 font-medium">{{ __('Date') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Event') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('User') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Details') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($employee->activityLogs()->with('user')->take(20)->get() as $log)
+                            <tr>
+                                <td class="py-2 pe-3 whitespace-nowrap text-xs text-zinc-500">{{ $log->created_at?->format('d M Y H:i') }}</td>
+                                <td class="py-2 pe-3">
+                                    <flux:badge size="sm" color="{{ match($log->event) { 'created' => 'green', 'deleted' => 'red', default => 'blue' } }}">
+                                        {{ $log->event }}
+                                    </flux:badge>
+                                </td>
+                                <td class="py-2 pe-3">{{ $log->user?->name ?? __('System') }}</td>
+                                <td class="py-2 pe-3 text-xs text-zinc-500">{{ $log->description ?? (isset($log->properties['changed']) ? implode(', ', $log->properties['changed']) : '—') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="py-6 text-center text-zinc-500">{{ __('No activity recorded yet.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -20,10 +20,10 @@
         <flux:menu.separator />
         <flux:menu.heading>{{ __('Language') }}</flux:menu.heading>
         <flux:menu.radio.group>
-            <flux:menu.item :href="route('locale.switch', ['locale' => 'tr'])" icon="language" wire:navigate>
+            <flux:menu.item :href="route('locale.switch', ['locale' => 'tr'])" icon="language">
                 {{ __('Turkish') }}
             </flux:menu.item>
-            <flux:menu.item :href="route('locale.switch', ['locale' => 'en'])" icon="language" wire:navigate>
+            <flux:menu.item :href="route('locale.switch', ['locale' => 'en'])" icon="language">
                 {{ __('English') }}
             </flux:menu.item>
         </flux:menu.radio.group>

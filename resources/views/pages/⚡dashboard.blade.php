@@ -2,9 +2,17 @@
 
 use App\Authorization\LogisticsPermission;
 use App\Enums\DeliveryNumberStatus;
+use App\Enums\LeaveStatus;
+use App\Enums\PayrollStatus;
 use App\Enums\ShipmentStatus;
+use App\Enums\VoucherStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
+use App\Models\Advance;
+use App\Models\Leave;
+use App\Models\Order;
+use App\Models\Payroll;
 use App\Models\Shipment;
+use App\Models\Voucher;
 use App\Services\Logistics\FleetSummaryService;
 use App\Services\Logistics\TcmbExchangeRateService;
 use App\Support\TenantContext;
@@ -146,6 +154,43 @@ new #[Title('Dashboard')] class extends Component
         }
 
         return app(FleetSummaryService::class)->getFleetKpi($tenantId);
+    }
+
+    /**
+     * Bekleyen onay sayıları (Voucher, Leave, Payroll).
+     *
+     * @return array{vouchers:int, leaves:int, payrolls:int, advances:int}
+     */
+    #[Computed]
+    public function pendingApprovals(): array
+    {
+        return [
+            'vouchers'  => Voucher::query()->where('status', VoucherStatus::Pending->value)->count(),
+            'leaves'    => Leave::query()->where('status', LeaveStatus::Pending->value)->count(),
+            'payrolls'  => Payroll::query()->where('status', PayrollStatus::Draft->value)->count(),
+            'advances'  => Advance::query()->where('status', \App\Enums\AdvanceStatus::Pending->value)->count(),
+        ];
+    }
+
+    /**
+     * Önümüzdeki 7 gün içinde due_date olan siparişler.
+     *
+     * @return array{count:int, total_freight:float}
+     */
+    #[Computed]
+    public function upcomingDues(): array
+    {
+        $rows = Order::query()
+            ->whereNotNull('due_date')
+            ->whereBetween('due_date', [now()->toDateString(), now()->addDays(7)->toDateString()])
+            ->whereIn('status', [\App\Enums\OrderStatus::Confirmed->value, \App\Enums\OrderStatus::InTransit->value])
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(freight_amount), 0) as total')
+            ->first();
+
+        return [
+            'count'         => (int) ($rows?->cnt ?? 0),
+            'total_freight' => (float) ($rows?->total ?? 0),
+        ];
     }
 
     /**
@@ -327,5 +372,63 @@ new #[Title('Dashboard')] class extends Component
                 <flux:button :href="route('admin.finance.index')" variant="filled" wire:navigate>{{ __('Finance summary') }}</flux:button>
                 <flux:button :href="route('admin.fuel-intakes.index')" variant="outline" wire:navigate>{{ __('Fuel intakes') }}</flux:button>
             </div>
+
+            {{-- Pending Approvals Widget --}}
+            @php
+                $totalPending = array_sum($this->pendingApprovals);
+            @endphp
+            @if ($totalPending > 0)
+                <flux:card class="p-4">
+                    <flux:heading size="sm" class="mb-3">{{ __('Pending approvals') }}</flux:heading>
+                    <div class="grid gap-3 sm:grid-cols-4">
+                        @if ($this->pendingApprovals['vouchers'] > 0)
+                            <a href="{{ route('admin.finance.vouchers.index') }}" wire:navigate
+                                class="flex flex-col rounded-lg border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/20">
+                                <flux:text class="text-xs text-zinc-500">{{ __('Vouchers') }}</flux:text>
+                                <flux:heading size="lg" class="text-yellow-600">{{ $this->pendingApprovals['vouchers'] }}</flux:heading>
+                            </a>
+                        @endif
+                        @if ($this->pendingApprovals['leaves'] > 0)
+                            <a href="{{ route('admin.hr.leaves.index') }}" wire:navigate
+                                class="flex flex-col rounded-lg border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/20">
+                                <flux:text class="text-xs text-zinc-500">{{ __('Leave requests') }}</flux:text>
+                                <flux:heading size="lg" class="text-yellow-600">{{ $this->pendingApprovals['leaves'] }}</flux:heading>
+                            </a>
+                        @endif
+                        @if ($this->pendingApprovals['payrolls'] > 0)
+                            <a href="{{ route('admin.hr.payroll.index') }}" wire:navigate
+                                class="flex flex-col rounded-lg border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/20">
+                                <flux:text class="text-xs text-zinc-500">{{ __('Payroll') }}</flux:text>
+                                <flux:heading size="lg" class="text-yellow-600">{{ $this->pendingApprovals['payrolls'] }}</flux:heading>
+                            </a>
+                        @endif
+                        @if ($this->pendingApprovals['advances'] > 0)
+                            <a href="{{ route('admin.hr.advances.index') }}" wire:navigate
+                                class="flex flex-col rounded-lg border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-700 dark:bg-yellow-900/20">
+                                <flux:text class="text-xs text-zinc-500">{{ __('Advances') }}</flux:text>
+                                <flux:heading size="lg" class="text-yellow-600">{{ $this->pendingApprovals['advances'] }}</flux:heading>
+                            </a>
+                        @endif
+                    </div>
+                </flux:card>
+            @endif
+
+            {{-- Upcoming Dues Widget --}}
+            @if ($this->upcomingDues['count'] > 0)
+                <flux:card class="border border-orange-300 bg-orange-50 p-4 dark:border-orange-700 dark:bg-orange-900/10">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <flux:heading size="sm">{{ __('Due in 7 days') }}</flux:heading>
+                            <flux:text class="text-sm text-zinc-600">
+                                {{ $this->upcomingDues['count'] }} {{ __('orders') }}
+                                · {{ number_format($this->upcomingDues['total_freight'], 2) }} {{ __('freight total') }}
+                            </flux:text>
+                        </div>
+                        <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline" size="sm" wire:navigate>
+                            {{ __('View calendar') }}
+                        </flux:button>
+                    </div>
+                </flux:card>
+            @endif
         @endcanany
     </div>

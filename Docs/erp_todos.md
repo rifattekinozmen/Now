@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
 > Son güncelleme: 2026-03-31
-> Mevcut: Sprint 1 + Sprint 2 tamamlandı
+> Mevcut: Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 + Sprint 5 tamamlandı
 
 ## Durum Özeti
 
@@ -9,9 +9,9 @@
 |--------|------|-------|
 | 1 | CashRegister + Voucher (Maker-Checker) | ✅ TAMAM |
 | 2 | İK: Leave, Advance, Payroll | ✅ TAMAM |
-| 3 | Operasyon: Vehicle/Employee Show, Maintenance | 🔄 SIRADA |
-| 4 | Audit Log + Bildirim Merkezi | 🔄 SIRADA |
-| 5 | Analytics + Dashboard Güçlendirme | 🔄 SIRADA |
+| 3 | Operasyon: Vehicle/Employee Show, Maintenance | ✅ TAMAM |
+| 4 | Audit Log + Bildirim Merkezi | ✅ TAMAM |
+| 5 | Analytics + Dashboard Güçlendirme | ✅ TAMAM |
 
 ---
 
@@ -85,10 +85,14 @@
 
 ---
 
-## SPRINT 3 — Operasyon Detay 🔄
+## SPRINT 3 — Operasyon Detay ✅
 
-### TODO-6.1: PersonnelAttendance (Puantaj)
-- [ ] Migration + haftalık takvim grid sayfası + Maker-Checker
+### TODO-6.1: PersonnelAttendance (Puantaj) ✅
+- [x] Migration + haftalık takvim grid sayfası + Maker-Checker
+- [x] AttendanceStatus enum (Present/Absent/Late/HalfDay)
+- [x] PersonnelAttendancePolicy + tenant izolasyonu
+- [x] Sidebar HR grubu + tr.json çevirisi
+- [x] Pest testleri (9 test: izolasyon + maker-checker + model)
 
 ### TODO-6.2: Maintenance Schedules Sayfası ✅
 - [x] Migration + KPI (7 günde gelecek) + takvim widget
@@ -101,19 +105,32 @@
 
 ---
 
-## SPRINT 4 — Audit Log & Bildirim
+## SPRINT 4 — Audit Log & Bildirim ✅
 
-### TODO-7.1: Activity Log
-- [ ] Migration + LogsActivity trait + Order/Voucher/Shipment/Vehicle gözlemci
-- [ ] Detay sayfalarda "İşlem Geçmişi" sekmesi
+### TODO-7.1: Activity Log ✅
+- [x] Migration + LogsActivity trait + Order/Voucher/Shipment/Vehicle gözlemci
+- [x] Detay sayfalarda "İşlem Geçmişi" sekmesi (vehicle-show + employee-show)
+- [x] ActivityLog::log() statik yardımcı + created_at explicit set (SQLite uyumu)
+- [x] Pest testleri (6 test: trait auto-log + static helper)
 
-### TODO-7.2: Bildirim Merkezi
-- [ ] Migration + Navbar çan badge + notifications-index sayfası
+### TODO-7.2: Bildirim Merkezi ✅
+- [x] Migration (app_notifications) + AppNotification modeli
+- [x] NotificationBell Livewire bileşeni + 60s polling
+- [x] notifications-index sayfası (okundu/okunmamış toggle + hepsini okundu)
+- [x] Sidebar Platform grubuna "Notifications" eklendi
 
 ---
 
-## SPRINT 5 — Analytics & Dashboard
+## SPRINT 5 — Analytics & Dashboard ✅
 
-### TODO-8.1: Customer Show 4 sekme
-### TODO-8.2: Dashboard Güçlendirme (pending onaylar widget, vade uyarıları)
-### TODO-8.3: Analytics Sayfaları (filo + operasyon)
+### TODO-8.1: Customer Show 4 sekme ✅
+- [x] Cari Hesap sekmesi: voucher KPI (gelir/gider/bakiye/bekleyen) + son 20 fiş
+
+### TODO-8.2: Dashboard Güçlendirme ✅
+- [x] Bekleyen Onaylar widget (voucher/leave/payroll/advance)
+- [x] Vadesi Yaklaşan widget (7 gün içinde due_date olan siparişler)
+
+### TODO-8.3: Analytics Sayfaları ✅
+- [x] fleet-analytics: araç sefer/tonaj (30g), bakım KPI, yakıt anomali
+- [x] operations-analytics: sipariş durum dağılımı, aylık trend, şoför performans, freight outlier
+- [x] Sidebar Operations grubuna Fleet analytics + Operations analytics eklendi

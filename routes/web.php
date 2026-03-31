@@ -89,10 +89,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::livewire('leaves', 'pages::admin.leaves-index')->name('leaves.index');
                 Route::livewire('advances', 'pages::admin.advances-index')->name('advances.index');
                 Route::livewire('payroll', 'pages::admin.payroll-index')->name('payroll.index');
+                Route::livewire('attendance', 'pages::admin.attendance-index')->name('attendance.index');
             });
 
             // Operations
             Route::livewire('maintenance', 'pages::admin.maintenance-index')->name('maintenance.index');
+
+            // Notifications
+            Route::livewire('notifications', 'pages::admin.notifications-index')->name('notifications.index');
+
+            // Analytics
+            Route::livewire('analytics/fleet', 'pages::admin.fleet-analytics')->name('analytics.fleet');
+            Route::livewire('analytics/operations', 'pages::admin.operations-analytics')->name('analytics.operations');
         });
     });
 });

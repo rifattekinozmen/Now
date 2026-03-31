@@ -11,7 +11,9 @@
       "mcp__laravel-boost__database-schema",
       "Bash(ls /c/Users/TekinOzmen/Desktop/Now/tests/Feature/CustomerEngagement*)",
       "Bash(ls /c/Users/TekinOzmen/Desktop/Now/tests/Unit/CustomerEngagement*)",
-      "mcp__laravel-boost__search-docs"
+      "mcp__laravel-boost__search-docs",
+      "Bash(xargs grep:*)",
+      "Bash(git stash:*)"
     ]
   }
 }

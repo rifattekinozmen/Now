@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\OrderStatus;
 use App\Models\Concerns\BelongsToTenant;
+use App\Traits\LogsActivity;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -38,6 +39,8 @@ class Order extends Model
 
     /** @use HasFactory<OrderFactory> */
     use HasFactory;
+
+    use LogsActivity;
 
     protected static function booted(): void
     {

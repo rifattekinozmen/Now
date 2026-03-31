@@ -19,6 +19,9 @@
                     <flux:sidebar.item icon="home" :href="route('dashboard')" wire:navigate wire:current.exact="font-medium">
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="bell" :href="route('admin.notifications.index')" wire:navigate wire:current.exact="font-medium">
+                        {{ __('Notifications') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
 
                 @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
@@ -51,6 +54,12 @@
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="wrench-screwdriver" :href="route('admin.maintenance.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Maintenance') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="chart-bar-square" :href="route('admin.analytics.fleet')" wire:navigate wire:current="font-medium">
+                            {{ __('Fleet analytics') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="chart-bar" :href="route('admin.analytics.operations')" wire:navigate wire:current="font-medium">
+                            {{ __('Operations analytics') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 
@@ -105,6 +114,9 @@
                         <flux:sidebar.item icon="document-text" :href="route('admin.hr.payroll.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Payroll') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="calendar-days" :href="route('admin.hr.attendance.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Attendance') }}
+                        </flux:sidebar.item>
                     </flux:sidebar.group>
 
                 @endcanany
@@ -118,6 +130,11 @@
 
         <div class="flex min-h-0 min-w-0 flex-1 flex-col">
         <livewire:global-search />
+        @auth
+            @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                <livewire:notification-bell wire:poll.60s />
+            @endcanany
+        @endauth
         <!-- Mobile User Menu -->
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
@@ -151,10 +168,10 @@
 
                     <flux:menu.heading>{{ __('Language') }}</flux:menu.heading>
                     <flux:menu.radio.group>
-                        <flux:menu.item :href="route('locale.switch', ['locale' => 'tr'])" icon="language" wire:navigate>
+                        <flux:menu.item :href="route('locale.switch', ['locale' => 'tr'])" icon="language">
                             {{ __('Turkish') }}
                         </flux:menu.item>
-                        <flux:menu.item :href="route('locale.switch', ['locale' => 'en'])" icon="language" wire:navigate>
+                        <flux:menu.item :href="route('locale.switch', ['locale' => 'en'])" icon="language">
                             {{ __('English') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>

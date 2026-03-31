@@ -1,8 +1,11 @@
 <?php
 
 use App\Enums\OrderStatus;
+use App\Enums\VoucherStatus;
+use App\Enums\VoucherType;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Voucher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
@@ -92,6 +95,52 @@ new #[Title('Customer profile')] class extends Component
     public function getOrdersProperty(): \Illuminate\Database\Eloquent\Collection
     {
         return $this->ordersQuery()->limit(50)->get();
+    }
+
+    /**
+     * @return array{total_income:float, total_expense:float, balance:float, pending_count:int}
+     */
+    #[Computed]
+    public function accountSummary(): array
+    {
+        // Vouchers linked to this customer's orders
+        $orderIds = Order::query()->where('customer_id', $this->customer->id)->pluck('id');
+
+        $vouchers = Voucher::query()
+            ->whereIn('order_id', $orderIds)
+            ->where('status', VoucherStatus::Approved->value)
+            ->get();
+
+        $income  = $vouchers->where('type', VoucherType::Income)->sum('amount');
+        $expense = $vouchers->where('type', VoucherType::Expense)->sum('amount');
+
+        $pending = Voucher::query()
+            ->whereIn('order_id', $orderIds)
+            ->where('status', VoucherStatus::Pending->value)
+            ->count();
+
+        return [
+            'total_income'  => (float) $income,
+            'total_expense' => (float) $expense,
+            'balance'       => (float) ($income - $expense),
+            'pending_count' => $pending,
+        ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Voucher>
+     */
+    #[Computed]
+    public function recentVouchers(): \Illuminate\Database\Eloquent\Collection
+    {
+        $orderIds = Order::query()->where('customer_id', $this->customer->id)->pluck('id');
+
+        return Voucher::query()
+            ->with(['cashRegister', 'approvedBy'])
+            ->whereIn('order_id', $orderIds)
+            ->orderByDesc('voucher_date')
+            ->limit(20)
+            ->get();
     }
 
     public function orderStatusLabel(OrderStatus $status): string
@@ -184,24 +233,71 @@ new #[Title('Customer profile')] class extends Component
             @endif
         </flux:card>
     @elseif ($activeTab === 'accounts')
-        <flux:card>
-            <flux:heading size="lg" class="mb-2">{{ __('Current account') }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Finance summary and aging reports are under Finance.') }}
-            </flux:text>
-            @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-                <div class="flex flex-wrap gap-2">
-                    <flux:button :href="route('admin.finance.index')" variant="primary" wire:navigate>
-                        {{ __('Open finance summary') }}
-                    </flux:button>
-                    <flux:button :href="route('admin.finance.reports')" variant="outline" wire:navigate>
-                        {{ __('Open finance reports') }}
-                    </flux:button>
-                    <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline" wire:navigate>
-                        {{ __('Payment due calendar') }}
-                    </flux:button>
-                </div>
-            @endcanany
+        {{-- KPI summary --}}
+        <div class="grid gap-3 sm:grid-cols-4">
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total income') }}</flux:text>
+                <flux:heading size="lg" class="text-green-600">{{ number_format($this->accountSummary['total_income'], 2) }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total expense') }}</flux:text>
+                <flux:heading size="lg" class="text-red-500">{{ number_format($this->accountSummary['total_expense'], 2) }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Balance') }}</flux:text>
+                <flux:heading size="lg" class="{{ $this->accountSummary['balance'] >= 0 ? 'text-green-600' : 'text-red-500' }}">
+                    {{ number_format($this->accountSummary['balance'], 2) }}
+                </flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Pending approval') }}</flux:text>
+                <flux:heading size="lg" class="{{ $this->accountSummary['pending_count'] > 0 ? 'text-yellow-500' : '' }}">
+                    {{ $this->accountSummary['pending_count'] }}
+                </flux:heading>
+            </flux:card>
+        </div>
+        <flux:card class="p-4">
+            <flux:heading size="sm" class="mb-3">{{ __('Recent vouchers') }}</flux:heading>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                    <thead>
+                        <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                            <th class="py-2 pe-3 font-medium">{{ __('Date') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Type') }}</th>
+                            <th class="py-2 pe-3 font-medium text-end">{{ __('Amount') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Cash register') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($this->recentVouchers as $voucher)
+                            <tr>
+                                <td class="py-2 pe-3 whitespace-nowrap">{{ $voucher->voucher_date?->format('d M Y') }}</td>
+                                <td class="py-2 pe-3">
+                                    <flux:badge color="{{ $voucher->type->color() }}" size="sm">{{ $voucher->type->label() }}</flux:badge>
+                                </td>
+                                <td class="py-2 pe-3 text-end font-mono">{{ number_format((float)$voucher->amount, 2) }} {{ $voucher->currency_code }}</td>
+                                <td class="py-2 pe-3">
+                                    <flux:badge color="{{ $voucher->status->color() }}" size="sm">{{ $voucher->status->label() }}</flux:badge>
+                                </td>
+                                <td class="py-2 pe-3 text-zinc-500">{{ $voucher->cashRegister?->name ?? '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-zinc-500">{{ __('No vouchers linked to this customer yet.') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+                <flux:button :href="route('admin.finance.reports')" variant="ghost" size="sm" wire:navigate>
+                    {{ __('Finance reports') }}
+                </flux:button>
+                <flux:button :href="route('admin.finance.payment-due-calendar')" variant="ghost" size="sm" wire:navigate>
+                    {{ __('Payment due calendar') }}
+                </flux:button>
+            </div>
         </flux:card>
     @elseif ($activeTab === 'locations')
         <flux:card>

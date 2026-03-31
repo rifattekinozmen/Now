@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ShipmentStatus;
 use App\Models\Concerns\BelongsToTenant;
+use App\Traits\LogsActivity;
 use Database\Factories\ShipmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,8 @@ class Shipment extends Model
 
     /** @use HasFactory<ShipmentFactory> */
     use HasFactory;
+
+    use LogsActivity;
 
     protected static function booted(): void
     {

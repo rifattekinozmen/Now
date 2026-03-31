@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToTenant;
+use App\Traits\LogsActivity;
 use Database\Factories\VehicleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,8 @@ class Vehicle extends Model
 
     /** @use HasFactory<VehicleFactory> */
     use HasFactory;
+
+    use LogsActivity;
 
     /**
      * @return array<string, string>
