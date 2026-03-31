@@ -49,12 +49,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('customers/template.xlsx', DownloadCustomerImportTemplateController::class)->name('customers.template.xlsx');
             Route::livewire('customers/{customer}', 'pages::admin.customer-show')->name('customers.show');
             Route::livewire('vehicles', 'pages::admin.vehicles-index')->name('vehicles.index');
+            Route::livewire('vehicles/{vehicle}', 'pages::admin.vehicle-show')->name('vehicles.show');
             Route::get('vehicles/template.xlsx', DownloadVehicleImportTemplateController::class)->name('vehicles.template.xlsx');
             Route::livewire('fuel-intakes', 'pages::admin.fuel-intakes-index')->name('fuel-intakes.index');
             Route::get('fuel-intakes/template.xlsx', DownloadFuelIntakeImportTemplateController::class)->name('fuel-intakes.template.xlsx');
             Route::livewire('fuel-prices', 'pages::admin.fuel-prices-index')->name('fuel-prices.index');
             Route::get('fuel-prices/template.xlsx', DownloadFuelPriceImportTemplateController::class)->name('fuel-prices.template.xlsx');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
+            Route::livewire('employees/{employee}', 'pages::admin.employee-show')->name('employees.show');
             Route::get('employees/template.xlsx', DownloadEmployeeImportTemplateController::class)->name('employees.template.xlsx');
             Route::livewire('orders', 'pages::admin.orders-index')->name('orders.index');
             Route::get('orders/export-finance.csv', ExportFinanceOrdersCsvController::class)->name('orders.export.finance.csv');
@@ -79,6 +81,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/trial-balance', 'pages::admin.finance-trial-balance')->name('finance.trial-balance');
             Route::livewire('finance/balance-sheet', 'pages::admin.finance-balance-sheet')->name('finance.balance-sheet');
             Route::livewire('finance/fiscal-opening-balances', 'pages::admin.fiscal-opening-balances-index')->name('finance.fiscal-opening-balances.index');
+            Route::livewire('finance/cash-registers', 'pages::admin.cash-registers-index')->name('finance.cash-registers.index');
+            Route::livewire('finance/vouchers', 'pages::admin.vouchers-index')->name('finance.vouchers.index');
+
+            // HR Module
+            Route::prefix('hr')->name('hr.')->group(function (): void {
+                Route::livewire('leaves', 'pages::admin.leaves-index')->name('leaves.index');
+                Route::livewire('advances', 'pages::admin.advances-index')->name('advances.index');
+                Route::livewire('payroll', 'pages::admin.payroll-index')->name('payroll.index');
+            });
+
+            // Operations
+            Route::livewire('maintenance', 'pages::admin.maintenance-index')->name('maintenance.index');
         });
     });
 });

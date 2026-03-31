@@ -321,19 +321,19 @@ new #[Title('Vehicles')] class extends Component
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total vehicles') }}</flux:text>
             <flux:heading size="xl">{{ $this->vehicleIndexStats['total'] }}</flux:heading>
         </flux:card>
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Inspection within 30 days') }}</flux:text>
             <flux:heading size="xl">{{ $this->vehicleIndexStats['inspection_soon'] }}</flux:heading>
         </flux:card>
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With brand set') }}</flux:text>
             <flux:heading size="xl">{{ $this->vehicleIndexStats['with_brand'] }}</flux:heading>
         </flux:card>
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With model set') }}</flux:text>
             <flux:heading size="xl">{{ $this->vehicleIndexStats['with_model'] }}</flux:heading>
         </flux:card>
@@ -425,9 +425,7 @@ new #[Title('Vehicles')] class extends Component
                         />
                     </flux:table.column>
                 @endif
-                @if ($canWriteVehicles)
-                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
-                @endif
+                <flux:table.column>{{ __('Actions') }}</flux:table.column>
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                         {{ __('ID') }}
@@ -481,13 +479,12 @@ new #[Title('Vehicles')] class extends Component
                                 />
                             </flux:table.cell>
                         @endif
-                        @if ($canWriteVehicles)
-                            <flux:table.cell>
-                                <flux:button type="button" size="sm" variant="ghost" wire:click="startEdit({{ $vehicle->id }})">
-                                    {{ __('Edit') }}
-                                </flux:button>
-                            </flux:table.cell>
-                        @endif
+                        <flux:table.cell class="flex items-center gap-2">
+                            <flux:button size="sm" variant="ghost" icon="eye" :href="route('admin.vehicles.show', $vehicle)" wire:navigate />
+                            @if ($canWriteVehicles)
+                                <flux:button type="button" size="sm" variant="ghost" icon="pencil-square" wire:click="startEdit({{ $vehicle->id }})" />
+                            @endif
+                        </flux:table.cell>
                         <flux:table.cell>{{ $vehicle->id }}</flux:table.cell>
                         <flux:table.cell>{{ $vehicle->plate }}</flux:table.cell>
                         <flux:table.cell>{{ $vehicle->brand ?? '—' }}</flux:table.cell>

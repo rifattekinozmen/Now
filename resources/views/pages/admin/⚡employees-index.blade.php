@@ -417,19 +417,19 @@ new #[Title('Employees')] class extends Component
     @endif
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total employees') }}</flux:text>
             <flux:heading size="xl">{{ $this->employeeIndexStats['total'] }}</flux:heading>
         </flux:card>
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Drivers') }}</flux:text>
             <flux:heading size="xl">{{ $this->employeeIndexStats['drivers'] }}</flux:heading>
         </flux:card>
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Docs expiring (30d)') }}</flux:text>
             <flux:heading size="xl">{{ $this->employeeIndexStats['docs_soon'] }}</flux:heading>
         </flux:card>
-        <flux:card class="!p-4">
+        <flux:card class="p-4!">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('With national ID') }}</flux:text>
             <flux:heading size="xl">{{ $this->employeeIndexStats['with_national_id'] }}</flux:heading>
         </flux:card>
@@ -572,8 +572,8 @@ new #[Title('Employees')] class extends Component
                             wire:key="select-page-employees"
                         />
                     </flux:table.column>
-                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
                 @endif
+                <flux:table.column>{{ __('Actions') }}</flux:table.column>
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                         {{ __('ID') }}
@@ -626,12 +626,13 @@ new #[Title('Employees')] class extends Component
                                     :value="(int) $employee->id"
                                 />
                             </flux:table.cell>
-                            <flux:table.cell>
-                                <flux:button type="button" size="sm" variant="ghost" wire:click="startEditEmployee({{ $employee->id }})">
-                                    {{ __('Edit') }}
-                                </flux:button>
-                            </flux:table.cell>
                         @endif
+                        <flux:table.cell class="flex items-center gap-2">
+                            <flux:button size="sm" variant="ghost" icon="eye" :href="route('admin.employees.show', $employee)" wire:navigate />
+                            @if ($canWriteEmployees)
+                                <flux:button type="button" size="sm" variant="ghost" icon="pencil-square" wire:click="startEditEmployee({{ $employee->id }})" />
+                            @endif
+                        </flux:table.cell>
                         <flux:table.cell>{{ $employee->id }}</flux:table.cell>
                         <flux:table.cell>{{ $employee->first_name }}</flux:table.cell>
                         <flux:table.cell>{{ $employee->last_name }}</flux:table.cell>

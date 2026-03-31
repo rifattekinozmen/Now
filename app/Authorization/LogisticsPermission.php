@@ -32,6 +32,16 @@ final class LogisticsPermission
 
     public const WAREHOUSE_WRITE = 'logistics.warehouse.write';
 
+    public const CASH_REGISTERS_WRITE = 'logistics.cash-registers.write';
+
+    public const VOUCHERS_WRITE = 'logistics.vouchers.write';
+
+    public const LEAVES_WRITE = 'logistics.leaves.write';
+
+    public const ADVANCES_WRITE = 'logistics.advances.write';
+
+    public const PAYROLL_WRITE = 'logistics.payroll.write';
+
     public static function canWrite(User $user, string $writePermission): bool
     {
         return $user->can(self::ADMIN) || $user->can($writePermission);

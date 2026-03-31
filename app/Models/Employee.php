@@ -66,4 +66,28 @@ class Employee extends Model
     {
         return trim($this->first_name.' '.$this->last_name);
     }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Leave, $this>
+     */
+    public function leaves(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Leave::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Advance, $this>
+     */
+    public function advances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Advance::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Payroll, $this>
+     */
+    public function payrolls(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Payroll::class);
+    }
 }

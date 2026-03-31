@@ -61,4 +61,12 @@ class Vehicle extends Model
     {
         return $this->hasMany(FuelIntake::class);
     }
+
+    /**
+     * @return HasMany<MaintenanceSchedule, $this>
+     */
+    public function maintenanceSchedules(): HasMany
+    {
+        return $this->hasMany(MaintenanceSchedule::class);
+    }
 }

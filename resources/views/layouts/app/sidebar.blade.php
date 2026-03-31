@@ -22,7 +22,9 @@
                 </flux:sidebar.group>
 
                 @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-                    <flux:sidebar.group :heading="__('Operations')" class="grid">
+
+                    {{-- Lojistik Operasyon --}}
+                    <flux:sidebar.group :heading="__('Operations')" expandable class="grid">
                         <flux:sidebar.item icon="users" :href="route('admin.customers.index')" wire:navigate wire:current="font-medium">
                             {{ __('Customers') }}
                         </flux:sidebar.item>
@@ -44,15 +46,16 @@
                         <flux:sidebar.item icon="currency-dollar" :href="route('admin.fuel-prices.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Fuel prices') }}
                         </flux:sidebar.item>
-                        <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="font-medium">
-                            {{ __('Employees') }}
-                        </flux:sidebar.item>
                         <flux:sidebar.item icon="archive-box" :href="route('admin.warehouse.index')" wire:navigate wire:current="font-medium">
                             {{ __('Warehouse') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="wrench-screwdriver" :href="route('admin.maintenance.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Maintenance') }}
+                        </flux:sidebar.item>
                     </flux:sidebar.group>
 
-                    <flux:sidebar.group :heading="__('Finance')" class="grid">
+                    {{-- Finans --}}
+                    <flux:sidebar.group :heading="__('Finance')" expandable class="grid">
                         <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Finance summary') }}
                         </flux:sidebar.item>
@@ -80,7 +83,30 @@
                         <flux:sidebar.item icon="calendar" :href="route('admin.finance.fiscal-opening-balances.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Fiscal opening balances') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="banknotes" :href="route('admin.finance.cash-registers.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Cash registers') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-check" :href="route('admin.finance.vouchers.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Vouchers') }}
+                        </flux:sidebar.item>
                     </flux:sidebar.group>
+
+                    {{-- İnsan Kaynakları --}}
+                    <flux:sidebar.group :heading="__('HR')" expandable class="grid">
+                        <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="font-medium">
+                            {{ __('Employees') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="calendar-days" :href="route('admin.hr.leaves.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Leave requests') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="banknotes" :href="route('admin.hr.advances.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Advances') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-text" :href="route('admin.hr.payroll.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Payroll') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+
                 @endcanany
             </flux:sidebar.nav>
 
