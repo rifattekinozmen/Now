@@ -38,6 +38,15 @@ new #[Title('Pricing Conditions')] class extends Component
     public string $filterMaterial = '';
     public string $filterStatus = '';
 
+    public string $sortColumn = 'name';
+    public string $sortDirection = 'asc';
+
+    /** @var int[] */
+    public array $selectedIds = [];
+
+    public ?int $confirmingId = null;
+    public string $confirmingAction = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', PricingCondition::class);

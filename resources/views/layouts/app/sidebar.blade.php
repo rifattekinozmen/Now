@@ -8,13 +8,13 @@
         <div class="flex min-h-screen w-full bg-background dark:bg-zinc-800">
         {{-- @persist: navigasyonda sidebar DOM yeniden boyanmaz (daha hızlı). :current + wire:current.ignore menüyü kilitliyordu; bunun yerine wire:current ile Livewire yolu eşleştirir. --}}
         @persist('app-sidebar')
-        <flux:sidebar sticky :collapsible="true" class="border-e border-border-app bg-card dark:border-zinc-700">
+        <flux:sidebar sticky :collapsible="true" class="flex flex-col border-e border-border-app bg-card dark:border-zinc-700">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
             </flux:sidebar.header>
 
-            <flux:sidebar.nav>
+            <flux:sidebar.nav class="flex-1 overflow-y-auto">
                 <flux:sidebar.group :heading="__('Platform')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" wire:navigate wire:current.exact="font-medium">
                         {{ __('Dashboard') }}
@@ -131,9 +131,10 @@
                 @endcanany
             </flux:sidebar.nav>
 
-            <flux:spacer />
-
-            <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+            {{-- Profil: nav dışında sabit alta pinlendi, scrollbar profilü itmez --}}
+            <div class="hidden shrink-0 border-t border-border-app p-3 lg:block">
+                <x-desktop-user-menu :name="auth()->user()->name" />
+            </div>
         </flux:sidebar>
         @endpersist
 
