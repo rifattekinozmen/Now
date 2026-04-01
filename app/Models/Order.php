@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'sas_no',
     'status',
     'ordered_at',
+    'due_date',
     'currency_code',
     'freight_amount',
     'exchange_rate',
@@ -72,6 +73,7 @@ class Order extends Model
         return [
             'status' => OrderStatus::class,
             'ordered_at' => 'datetime',
+            'due_date' => 'date',
             'freight_amount' => 'decimal:2',
             'exchange_rate' => 'decimal:6',
             'distance_km' => 'decimal:2',
