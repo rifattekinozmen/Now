@@ -45,6 +45,9 @@ class RolesAndPermissionsSeeder extends Seeder
             LogisticsPermission::EMPLOYEES_WRITE,
             LogisticsPermission::FINANCE_WRITE,
             LogisticsPermission::WAREHOUSE_WRITE,
+            LogisticsPermission::CURRENT_ACCOUNTS_WRITE,
+            LogisticsPermission::PRICING_CONDITIONS_WRITE,
+            LogisticsPermission::TRIP_EXPENSES_WRITE,
         ] as $writePermission) {
             Permission::findOrCreate($writePermission, 'web');
         }

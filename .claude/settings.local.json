@@ -14,7 +14,8 @@
       "mcp__laravel-boost__search-docs",
       "Bash(xargs grep:*)",
       "Bash(git stash:*)",
-      "Bash(Docs/erp_todos.md:*)"
+      "Bash(Docs/erp_todos.md:*)",
+      "Bash(grep -n \"\\\\.show\\\\|vehicles\\\\|show\" tests/Feature/*.php)"
     ]
   }
 }

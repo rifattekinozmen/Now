@@ -42,6 +42,12 @@ final class LogisticsPermission
 
     public const PAYROLL_WRITE = 'logistics.payroll.write';
 
+    public const CURRENT_ACCOUNTS_WRITE = 'logistics.current-accounts.write';
+
+    public const PRICING_CONDITIONS_WRITE = 'logistics.pricing-conditions.write';
+
+    public const TRIP_EXPENSES_WRITE = 'logistics.trip-expenses.write';
+
     /**
      * Admin kullanıcılar view iznini de kapsar (ADMIN ⊇ VIEW).
      */

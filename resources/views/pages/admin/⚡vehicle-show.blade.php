@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\ExpenseType;
 use App\Enums\MaintenanceStatus;
+use App\Models\TripExpense;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -20,8 +22,29 @@ new #[Title('Vehicle')] class extends Component
         $this->vehicle = Vehicle::query()
             ->with(['tenant', 'shipments.order', 'fuelIntakes', 'maintenanceSchedules'])
             ->findOrFail($id);
-
         Gate::authorize('view', $this->vehicle);
+    }
+
+    /** @return array{total:int,totalAmount:float,thisMonth:float,topType:string} */
+    #[Computed]
+    public function expenseStats(): array
+    {
+        $expenses = TripExpense::query()
+            ->where('vehicle_id', $this->vehicle->id)
+            ->get();
+
+        $topType = $expenses->groupBy('expense_type')
+            ->map(fn ($g) => $g->sum('amount'))
+            ->sortDesc()
+            ->keys()
+            ->first();
+
+        return [
+            'total'       => $expenses->count(),
+            'totalAmount' => (float) $expenses->sum('amount'),
+            'thisMonth'   => (float) $expenses->filter(fn ($e) => $e->expense_date?->isCurrentMonth())->sum('amount'),
+            'topType'     => $topType instanceof ExpenseType ? $topType->label() : ($topType ? ExpenseType::from($topType)->label() : '—'),
+        ];
     }
 
     /** @return array{total:int,thisMonth:float,last3Months:float} */
@@ -104,6 +127,7 @@ new #[Title('Vehicle')] class extends Component
         <flux:tab name="shipments" icon="cube">{{ __('Shipments') }}</flux:tab>
         <flux:tab name="fuel" icon="bolt">{{ __('Fuel intakes') }}</flux:tab>
         <flux:tab name="maintenance" icon="wrench-screwdriver">{{ __('Maintenance') }}</flux:tab>
+        <flux:tab name="expenses" icon="banknotes">{{ __('Expenses') }}</flux:tab>
         <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
 
@@ -294,6 +318,74 @@ new #[Title('Vehicle')] class extends Component
             <div class="mt-4">
                 <flux:button variant="outline" icon="plus" :href="route('admin.maintenance.index')" wire:navigate>
                     {{ __('Schedule maintenance') }}
+                </flux:button>
+            </div>
+        </flux:card>
+    @endif
+
+    {{-- TAB: Expenses --}}
+    @if ($tab === 'expenses')
+        <div class="grid gap-3 sm:grid-cols-4">
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total records') }}</flux:text>
+                <flux:heading size="lg">{{ $this->expenseStats['total'] }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total amount (TRY)') }}</flux:text>
+                <flux:heading size="lg">{{ number_format($this->expenseStats['totalAmount'], 2) }} ₺</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('This month (TRY)') }}</flux:text>
+                <flux:heading size="lg">{{ number_format($this->expenseStats['thisMonth'], 2) }} ₺</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Top expense type') }}</flux:text>
+                <flux:heading size="lg">{{ $this->expenseStats['topType'] }}</flux:heading>
+            </flux:card>
+        </div>
+        <flux:card class="p-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                    <thead>
+                        <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                            <th class="py-2 pe-4 font-medium">{{ __('Date') }}</th>
+                            <th class="py-2 pe-4 font-medium">{{ __('Type') }}</th>
+                            <th class="py-2 pe-4 font-medium">{{ __('Driver') }}</th>
+                            <th class="py-2 pe-4 font-medium text-end">{{ __('Amount') }}</th>
+                            <th class="py-2 pe-4 font-medium">{{ __('KM') }}</th>
+                            <th class="py-2 font-medium">{{ __('Description') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse (TripExpense::query()->where('vehicle_id', $vehicle->id)->with('employee')->orderByDesc('expense_date')->orderByDesc('id')->take(50)->get() as $exp)
+                            <tr>
+                                <td class="py-2 pe-4 whitespace-nowrap">{{ $exp->expense_date->format('d.m.Y') }}</td>
+                                <td class="py-2 pe-4">
+                                    <flux:badge :color="$exp->expense_type->color()" size="sm">
+                                        {{ $exp->expense_type->label() }}
+                                    </flux:badge>
+                                </td>
+                                <td class="py-2 pe-4 text-zinc-500">{{ $exp->employee?->name ?? '—' }}</td>
+                                <td class="py-2 pe-4 text-end font-mono">
+                                    {{ number_format((float) $exp->amount, 2) }}
+                                    <span class="text-xs text-zinc-400">{{ $exp->currency_code }}</span>
+                                </td>
+                                <td class="py-2 pe-4 font-mono text-xs text-zinc-500">
+                                    {{ $exp->odometer_km ? number_format((float) $exp->odometer_km, 0) : '—' }}
+                                </td>
+                                <td class="py-2 text-xs text-zinc-500">{{ $exp->description ?? '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-zinc-500">{{ __('No expenses recorded for this vehicle.') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4">
+                <flux:button variant="outline" icon="arrow-top-right-on-square" :href="route('admin.trip-expenses.index')" wire:navigate>
+                    {{ __('View all expenses') }}
                 </flux:button>
             </div>
         </flux:card>

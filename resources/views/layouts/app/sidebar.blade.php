@@ -61,6 +61,12 @@
                         <flux:sidebar.item icon="chart-bar" :href="route('admin.analytics.operations')" wire:navigate wire:current="font-medium">
                             {{ __('Operations analytics') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-text" :href="route('admin.pricing-conditions.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Pricing conditions') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="receipt-percent" :href="route('admin.trip-expenses.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Trip expenses') }}
+                        </flux:sidebar.item>
                     </flux:sidebar.group>
 
                     {{-- Finans --}}
@@ -97,6 +103,9 @@
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="document-check" :href="route('admin.finance.vouchers.index')" wire:navigate wire:current.exact="font-medium">
                             {{ __('Vouchers') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="credit-card" :href="route('admin.finance.current-accounts.index')" wire:navigate wire:current.exact="font-medium">
+                            {{ __('Current accounts') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>
 

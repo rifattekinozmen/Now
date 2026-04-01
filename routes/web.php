@@ -83,6 +83,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/fiscal-opening-balances', 'pages::admin.fiscal-opening-balances-index')->name('finance.fiscal-opening-balances.index');
             Route::livewire('finance/cash-registers', 'pages::admin.cash-registers-index')->name('finance.cash-registers.index');
             Route::livewire('finance/vouchers', 'pages::admin.vouchers-index')->name('finance.vouchers.index');
+            Route::livewire('finance/current-accounts', 'pages::admin.current-accounts-index')->name('finance.current-accounts.index');
+            Route::livewire('pricing-conditions', 'pages::admin.pricing-conditions-index')->name('pricing-conditions.index');
+            Route::livewire('trip-expenses', 'pages::admin.trip-expenses-index')->name('trip-expenses.index');
 
             // HR Module
             Route::prefix('hr')->name('hr.')->group(function (): void {

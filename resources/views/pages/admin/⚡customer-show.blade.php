@@ -7,6 +7,7 @@ use App\Enums\VoucherType;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
 use App\Models\Order;
+use App\Models\PricingCondition;
 use App\Models\Voucher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -287,6 +288,19 @@ new #[Title('Customer profile')] class extends Component
             ->whereIn('order_id', $orderIds)
             ->orderByDesc('voucher_date')
             ->limit(20)
+            ->get();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, PricingCondition>
+     */
+    #[Computed]
+    public function pricingConditions(): \Illuminate\Database\Eloquent\Collection
+    {
+        return PricingCondition::query()
+            ->where('customer_id', $this->customer->id)
+            ->orderByDesc('is_active')
+            ->orderBy('name')
             ->get();
     }
 
@@ -608,11 +622,61 @@ new #[Title('Customer profile')] class extends Component
             @endif
         </flux:card>
     @else
-        <flux:card>
-            <flux:heading size="lg" class="mb-2">{{ __('Pricing / freight agreements') }}</flux:heading>
-            <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('PricingCondition links — planned module.') }}
-            </flux:text>
+        <flux:card class="p-4">
+            <div class="mb-4 flex items-center justify-between">
+                <flux:heading size="lg">{{ __('Pricing / freight agreements') }}</flux:heading>
+                <flux:button :href="route('admin.pricing-conditions.index')" size="sm" variant="ghost" wire:navigate>
+                    {{ __('Manage all') }}
+                </flux:button>
+            </div>
+            @if ($this->pricingConditions->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                    {{ __('No pricing conditions for this customer yet.') }}
+                </flux:text>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Name') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Route') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Material') }}</th>
+                                <th class="py-2 pe-4 font-medium text-end">{{ __('Price/ton') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Valid until') }}</th>
+                                <th class="py-2 font-medium">{{ __('Status') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($this->pricingConditions as $pc)
+                                <tr>
+                                    <td class="py-2 pe-4 font-medium">
+                                        {{ $pc->name }}
+                                        @if ($pc->contract_no)
+                                            <div class="text-xs font-mono text-zinc-400">{{ $pc->contract_no }}</div>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4 text-zinc-500">{{ $pc->route_from }} → {{ $pc->route_to }}</td>
+                                    <td class="py-2 pe-4 font-mono text-xs text-zinc-500">{{ $pc->material_code ?? '—' }}</td>
+                                    <td class="py-2 pe-4 text-end font-mono">
+                                        {{ number_format((float) $pc->price_per_ton, 2) }}
+                                        <span class="text-xs text-zinc-400">{{ $pc->currency_code }}</span>
+                                    </td>
+                                    <td class="py-2 pe-4">
+                                        {{ $pc->valid_until?->format('d.m.Y') ?? __('No expiry') }}
+                                    </td>
+                                    <td class="py-2">
+                                        @if ($pc->is_active)
+                                            <flux:badge color="green" size="sm">{{ __('Active') }}</flux:badge>
+                                        @else
+                                            <flux:badge color="zinc" size="sm">{{ __('Inactive') }}</flux:badge>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </flux:card>
     @endif
 </div>
