@@ -32,6 +32,15 @@ new #[Title('Cash Registers')] class extends Component
 
     public string $filterStatus = '';
 
+    public string $sortColumn = 'name';
+    public string $sortDirection = 'asc';
+
+    /** @var int[] */
+    public array $selectedIds = [];
+
+    public ?int $confirmingId = null;
+    public string $confirmingAction = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', CashRegister::class);
@@ -42,6 +51,72 @@ new #[Title('Cash Registers')] class extends Component
     public function updatedFilterCurrency(): void { $this->resetPage(); }
 
     public function updatedFilterStatus(): void { $this->resetPage(); }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['id', 'name', 'code', 'current_balance', 'currency_code', 'created_at'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+        $this->selectedIds = [];
+        $this->resetPage();
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedRegisters->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedRegisters->pluck('id')->toArray();
+
+        return count($pageIds) > 0
+            && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function confirmAction(int $id, string $action): void
+    {
+        $this->confirmingId = $id;
+        $this->confirmingAction = $action;
+        $this->modal('confirm-action')->show();
+    }
+
+    public function executeAction(): void
+    {
+        if ($this->confirmingAction === 'bulk-delete') {
+            $this->bulkDelete();
+        } elseif ($this->confirmingId) {
+            $this->delete($this->confirmingId);
+        }
+        $this->confirmingId = null;
+        $this->confirmingAction = '';
+    }
+
+    public function bulkDelete(): void
+    {
+        $authUser = auth()->user();
+        if (! ($authUser instanceof \App\Models\User) || ! $authUser->can(\App\Authorization\LogisticsPermission::ADMIN)) {
+            abort(403);
+        }
+        CashRegister::query()
+            ->whereIn('id', $this->selectedIds)
+            ->where('tenant_id', $authUser->tenant_id)
+            ->delete();
+        $this->selectedIds = [];
+        $this->resetPage();
+    }
 
     /**
      * @return array{total: int, active: int, total_try: float, total_usd: float}
@@ -80,7 +155,7 @@ new #[Title('Cash Registers')] class extends Component
             $q->where('is_active', false);
         }
 
-        return $q->orderBy('name');
+        return $q->orderBy($this->sortColumn, $this->sortDirection);
     }
 
     #[Computed]
@@ -259,16 +334,47 @@ new #[Title('Cash Registers')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete toolbar --}}
+    @if ($canWrite && count($selectedIds) > 0)
+        <div class="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-2 dark:border-red-800 dark:bg-red-950/30">
+            <span class="text-sm text-zinc-600 dark:text-zinc-400">{{ __(':count selected', ['count' => count($selectedIds)]) }}</span>
+            <flux:button variant="danger" size="sm" icon="trash" wire:click="confirmAction(0, 'bulk-delete')">
+                {{ __('Delete selected') }}
+            </flux:button>
+        </div>
+    @endif
+
     {{-- Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
-                        <th class="py-2 pe-4 font-medium">{{ __('Name') }}</th>
-                        <th class="py-2 pe-4 font-medium">{{ __('Code') }}</th>
+                        @if ($canWrite)
+                            <th class="w-8 py-2 pe-2 ps-2">
+                                <flux:checkbox
+                                    :checked="$this->isPageFullySelected()"
+                                    :indeterminate="count($selectedIds) > 0 && ! $this->isPageFullySelected()"
+                                    wire:click="toggleSelectPage"
+                                />
+                            </th>
+                        @endif
+                        <th class="py-2 pe-4 font-medium">
+                            <button wire:click="sortBy('name')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Name') }}@if ($sortColumn === 'name') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-4 font-medium">
+                            <button wire:click="sortBy('code')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Code') }}@if ($sortColumn === 'code') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
                         <th class="py-2 pe-4 font-medium">{{ __('Currency') }}</th>
-                        <th class="py-2 pe-4 font-medium text-end">{{ __('Balance') }}</th>
+                        <th class="py-2 pe-4 font-medium text-end">
+                            <button wire:click="sortBy('current_balance')" class="ms-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Balance') }}@if ($sortColumn === 'current_balance') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
                         <th class="py-2 pe-4 font-medium">{{ __('Status') }}</th>
                         <th class="py-2 pe-4 font-medium">{{ __('Vouchers') }}</th>
                         @if ($canWrite)
@@ -279,6 +385,11 @@ new #[Title('Cash Registers')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedRegisters as $row)
                         <tr>
+                            @if ($canWrite)
+                                <td class="py-2 pe-2 ps-2">
+                                    <flux:checkbox wire:model.live="selectedIds" :value="(int) $row->id" />
+                                </td>
+                            @endif
                             <td class="py-2 pe-4 font-medium">{{ $row->name }}</td>
                             <td class="py-2 pe-4 font-mono text-xs text-zinc-500">{{ $row->code ?? '—' }}</td>
                             <td class="py-2 pe-4">{{ $row->currency_code }}</td>
@@ -294,7 +405,7 @@ new #[Title('Cash Registers')] class extends Component
                             </td>
                             <td class="py-2 pe-4">
                                 <a href="{{ route('admin.finance.vouchers.index', ['cashRegister' => $row->id]) }}"
-                                   class="text-primary hover:underline text-xs" wire:navigate>
+                                   class="text-xs text-primary hover:underline" wire:navigate>
                                     {{ __('View vouchers') }}
                                 </a>
                             </td>
@@ -304,18 +415,13 @@ new #[Title('Cash Registers')] class extends Component
                                     <flux:button size="sm" variant="ghost" wire:click="toggleActive({{ $row->id }})">
                                         {{ $row->is_active ? __('Deactivate') : __('Activate') }}
                                     </flux:button>
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="delete({{ $row->id }})"
-                                        wire:confirm="{{ __('Delete this cash register? This cannot be undone.') }}"
-                                    >{{ __('Delete') }}</flux:button>
+                                    <flux:button size="sm" variant="ghost" wire:click="confirmAction({{ $row->id }}, 'delete')">{{ __('Delete') }}</flux:button>
                                 </td>
                             @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-8 text-center text-zinc-500">
+                            <td colspan="8" class="py-8 text-center text-zinc-500">
                                 {{ __('No cash registers yet. Create your first one above.') }}
                             </td>
                         </tr>
@@ -327,4 +433,19 @@ new #[Title('Cash Registers')] class extends Component
             {{ $this->paginatedRegisters->links() }}
         </div>
     </flux:card>
+
+    <flux:modal name="confirm-action" class="min-w-[22rem]">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Confirm deletion') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('This action cannot be undone.') }}</flux:text>
+            </div>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" wire:click="executeAction">{{ __('Delete') }}</flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

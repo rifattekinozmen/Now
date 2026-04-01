@@ -31,6 +31,12 @@ new #[Title('Advances')] class extends Component
     public string $filterStatus   = '';
     public string $filterEmployee = '';
 
+    public string $sortColumn = 'requested_at';
+    public string $sortDirection = 'desc';
+
+    public ?int $confirmingId = null;
+    public string $confirmingAction = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Advance::class);
@@ -41,6 +47,44 @@ new #[Title('Advances')] class extends Component
     public function updatedFilterSearch(): void { $this->resetPage(); }
     public function updatedFilterStatus(): void { $this->resetPage(); }
     public function updatedFilterEmployee(): void { $this->resetPage(); }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['id', 'requested_at', 'amount', 'status', 'repayment_date'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+        $this->resetPage();
+    }
+
+    public function confirmAction(int $id, string $action): void
+    {
+        $this->confirmingId = $id;
+        $this->confirmingAction = $action;
+        $this->modal('confirm-action')->show();
+    }
+
+    public function executeAction(): void
+    {
+        if (! $this->confirmingId) {
+            return;
+        }
+        match ($this->confirmingAction) {
+            'approve'  => $this->approve($this->confirmingId),
+            'reject'   => $this->reject($this->confirmingId),
+            'repaid'   => $this->markRepaid($this->confirmingId),
+            'delete'   => $this->delete($this->confirmingId),
+            default    => null,
+        };
+        $this->confirmingId = null;
+        $this->confirmingAction = '';
+    }
 
     /**
      * @return array{pending:int, approved_total:float, repaid_total:float}
@@ -83,7 +127,7 @@ new #[Title('Advances')] class extends Component
             $q->where('employee_id', (int) $this->filterEmployee);
         }
 
-        return $q->orderByDesc('requested_at')->orderByDesc('id');
+        return $q->orderBy($this->sortColumn, $this->sortDirection)->orderByDesc('id');
     }
 
     #[Computed]
@@ -284,10 +328,26 @@ new #[Title('Advances')] class extends Component
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
                         <th class="py-2 pe-3 font-medium">{{ __('Employee') }}</th>
-                        <th class="py-2 pe-3 font-medium text-end">{{ __('Amount') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Requested') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Repayment') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                        <th class="py-2 pe-3 font-medium text-end">
+                            <button wire:click="sortBy('amount')" class="ms-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Amount') }}@if ($sortColumn === 'amount') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('requested_at')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Requested') }}@if ($sortColumn === 'requested_at') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('repayment_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Repayment') }}@if ($sortColumn === 'repayment_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('status')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Status') }}@if ($sortColumn === 'status') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Approved by') }}</th>
                         <th class="py-2 text-end font-medium">{{ __('Actions') }}</th>
                     </tr>
@@ -306,24 +366,20 @@ new #[Title('Advances')] class extends Component
                             <td class="py-2 text-end">
                                 @if ($canApprove && $adv->status->isPending())
                                     <flux:button size="sm" variant="primary"
-                                        wire:click="approve({{ $adv->id }})"
-                                        wire:confirm="{{ __('Approve this advance?') }}"
+                                        wire:click="confirmAction({{ $adv->id }}, 'approve')"
                                     >{{ __('Approve') }}</flux:button>
                                     <flux:button size="sm" variant="ghost"
-                                        wire:click="reject({{ $adv->id }})"
-                                        wire:confirm="{{ __('Reject?') }}"
+                                        wire:click="confirmAction({{ $adv->id }}, 'reject')"
                                     >{{ __('Reject') }}</flux:button>
                                 @endif
                                 @if ($canWrite && $adv->status->isApproved())
                                     <flux:button size="sm" variant="ghost"
-                                        wire:click="markRepaid({{ $adv->id }})"
-                                        wire:confirm="{{ __('Mark as repaid?') }}"
+                                        wire:click="confirmAction({{ $adv->id }}, 'repaid')"
                                     >{{ __('Mark repaid') }}</flux:button>
                                 @endif
                                 @if ($canWrite && $adv->status->isPending())
                                     <flux:button size="sm" variant="ghost"
-                                        wire:click="delete({{ $adv->id }})"
-                                        wire:confirm="{{ __('Delete this advance?') }}"
+                                        wire:click="confirmAction({{ $adv->id }}, 'delete')"
                                     >{{ __('Delete') }}</flux:button>
                                 @endif
                             </td>
@@ -340,4 +396,34 @@ new #[Title('Advances')] class extends Component
         </div>
         <div class="mt-4">{{ $this->paginatedAdvances->links() }}</div>
     </flux:card>
+
+    <flux:modal name="confirm-action" class="min-w-[22rem]">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">
+                    @if ($confirmingAction === 'approve') {{ __('Approve this advance?') }}
+                    @elseif ($confirmingAction === 'reject') {{ __('Reject?') }}
+                    @elseif ($confirmingAction === 'repaid') {{ __('Mark as repaid?') }}
+                    @else {{ __('Delete this advance?') }}
+                    @endif
+                </flux:heading>
+                <flux:text class="mt-2">{{ __('This action cannot be undone.') }}</flux:text>
+            </div>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button
+                    :variant="in_array($confirmingAction, ['approve', 'repaid']) ? 'primary' : ($confirmingAction === 'delete' ? 'danger' : 'ghost')"
+                    wire:click="executeAction"
+                >
+                    @if ($confirmingAction === 'approve') {{ __('Approve') }}
+                    @elseif ($confirmingAction === 'reject') {{ __('Reject') }}
+                    @elseif ($confirmingAction === 'repaid') {{ __('Mark repaid') }}
+                    @else {{ __('Delete') }}
+                    @endif
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

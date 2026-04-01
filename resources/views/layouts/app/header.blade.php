@@ -19,28 +19,76 @@
             <flux:spacer />
 
             <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                <flux:tooltip :content="__('Search')" position="bottom">
+                <flux:tooltip :content="__('Search') . ' (Ctrl+K)'" position="bottom">
                     <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
                 </flux:tooltip>
-                <flux:tooltip :content="__('Repository')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="folder-git-2"
-                        href="https://github.com/laravel/livewire-starter-kit"
-                        target="_blank"
-                        :label="__('Repository')"
-                    />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Documentation')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="book-open-text"
-                        href="https://laravel.com/docs/starter-kits#livewire"
-                        target="_blank"
-                        :label="__('Documentation')"
-                    />
-                </flux:tooltip>
+                @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                    <flux:modal.trigger name="quick-actions">
+                        <flux:tooltip :content="__('Quick actions')" position="bottom">
+                            <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="bolt" :label="__('Quick actions')" />
+                        </flux:tooltip>
+                    </flux:modal.trigger>
+                @endcanany
             </flux:navbar>
+
+            {{-- Quick Actions Modal --}}
+            @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                <flux:modal name="quick-actions" class="md:w-[480px]">
+                    <div class="space-y-4 p-2">
+                        <flux:heading size="lg">⚡ {{ __('Quick actions') }}</flux:heading>
+                        <div class="grid grid-cols-3 gap-3">
+                            @can(\App\Authorization\LogisticsPermission::ADMIN)
+                                <a href="{{ route('admin.orders.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="clipboard-document-list" class="size-6 text-primary" />
+                                    {{ __('New order') }}
+                                </a>
+                                <a href="{{ route('admin.customers.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="users" class="size-6 text-primary" />
+                                    {{ __('New customer') }}
+                                </a>
+                                <a href="{{ route('admin.shipments.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="cube" class="size-6 text-primary" />
+                                    {{ __('New shipment') }}
+                                </a>
+                                <a href="{{ route('admin.fuel-intakes.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="bolt" class="size-6 text-amber-500" />
+                                    {{ __('Fuel intakes') }}
+                                </a>
+                                <a href="{{ route('admin.finance.vouchers.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="document-check" class="size-6 text-green-600" />
+                                    {{ __('New voucher') }}
+                                </a>
+                                <a href="{{ route('admin.trip-expenses.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="receipt-percent" class="size-6 text-orange-500" />
+                                    {{ __('Trip expenses') }}
+                                </a>
+                            @else
+                                <a href="{{ route('admin.orders.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="clipboard-document-list" class="size-6 text-primary" />
+                                    {{ __('Orders') }}
+                                </a>
+                                <a href="{{ route('admin.shipments.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="cube" class="size-6 text-primary" />
+                                    {{ __('Shipments') }}
+                                </a>
+                                <a href="{{ route('admin.customers.index') }}" wire:navigate
+                                   class="flex flex-col items-center gap-2 rounded-xl border border-zinc-200 p-4 text-sm font-medium text-zinc-700 transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:text-zinc-300">
+                                    <flux:icon name="users" class="size-6 text-primary" />
+                                    {{ __('Customers') }}
+                                </a>
+                            @endcan
+                        </div>
+                    </div>
+                </flux:modal>
+            @endcanany
 
             <x-desktop-user-menu />
         </flux:header>

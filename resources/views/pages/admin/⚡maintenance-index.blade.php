@@ -34,6 +34,12 @@ new #[Title('Maintenance Schedules')] class extends Component
     public string $filterType    = '';
     public string $filterStatus  = '';
 
+    public string $sortColumn = 'scheduled_date';
+    public string $sortDirection = 'desc';
+
+    public ?int $confirmingId = null;
+    public string $confirmingAction = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', MaintenanceSchedule::class);
@@ -43,6 +49,39 @@ new #[Title('Maintenance Schedules')] class extends Component
     public function updatedFilterVehicle(): void { $this->resetPage(); }
     public function updatedFilterType(): void { $this->resetPage(); }
     public function updatedFilterStatus(): void { $this->resetPage(); }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['id', 'scheduled_date', 'type', 'status', 'cost', 'created_at'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+        $this->resetPage();
+    }
+
+    public function confirmAction(int $id, string $action): void
+    {
+        $this->confirmingId = $id;
+        $this->confirmingAction = $action;
+        $this->modal('confirm-action')->show();
+    }
+
+    public function executeAction(): void
+    {
+        if ($this->confirmingAction === 'done' && $this->confirmingId) {
+            $this->markDone($this->confirmingId);
+        } elseif ($this->confirmingAction === 'delete' && $this->confirmingId) {
+            $this->delete($this->confirmingId);
+        }
+        $this->confirmingId = null;
+        $this->confirmingAction = '';
+    }
 
     /**
      * @return array{upcoming_7d:int, overdue:int, done_this_month:int, total_cost_this_month:float}
@@ -102,7 +141,7 @@ new #[Title('Maintenance Schedules')] class extends Component
             $q->where('status', $this->filterStatus);
         }
 
-        return $q->orderByDesc('scheduled_date')->orderByDesc('id');
+        return $q->orderBy($this->sortColumn, $this->sortDirection)->orderByDesc('id');
     }
 
     #[Computed]
@@ -305,10 +344,26 @@ new #[Title('Maintenance Schedules')] class extends Component
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
                         <th class="py-2 pe-3 font-medium">{{ __('Vehicle') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Title') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Type') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Scheduled') }}</th>
-                        <th class="py-2 pe-3 font-medium text-end">{{ __('Cost') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('type')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Type') }}@if ($sortColumn === 'type') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('scheduled_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Scheduled') }}@if ($sortColumn === 'scheduled_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium text-end">
+                            <button wire:click="sortBy('cost')" class="ms-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Cost') }}@if ($sortColumn === 'cost') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('status')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Status') }}@if ($sortColumn === 'status') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
                         <th class="py-2 text-end font-medium">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
@@ -348,14 +403,12 @@ new #[Title('Maintenance Schedules')] class extends Component
                                 @endif
                                 @if (! $s->status->isDone())
                                     <flux:button size="sm" variant="primary"
-                                        wire:click="markDone({{ $s->id }})"
-                                        wire:confirm="{{ __('Mark as done?') }}"
+                                        wire:click="confirmAction({{ $s->id }}, 'done')"
                                     >{{ __('Done') }}</flux:button>
                                 @endif
                                 @if ($s->status->isScheduled())
                                     <flux:button size="sm" variant="ghost"
-                                        wire:click="delete({{ $s->id }})"
-                                        wire:confirm="{{ __('Delete this schedule?') }}"
+                                        wire:click="confirmAction({{ $s->id }}, 'delete')"
                                     >{{ __('Delete') }}</flux:button>
                                 @endif
                             </td>
@@ -372,4 +425,28 @@ new #[Title('Maintenance Schedules')] class extends Component
         </div>
         <div class="mt-4">{{ $this->paginatedSchedules->links() }}</div>
     </flux:card>
+
+    <flux:modal name="confirm-action" class="min-w-[22rem]">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">
+                    @if ($confirmingAction === 'done')
+                        {{ __('Mark as done?') }}
+                    @else
+                        {{ __('Confirm deletion') }}
+                    @endif
+                </flux:heading>
+                <flux:text class="mt-2">{{ __('This action cannot be undone.') }}</flux:text>
+            </div>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button
+                    :variant="$confirmingAction === 'done' ? 'primary' : 'danger'"
+                    wire:click="executeAction"
+                >{{ $confirmingAction === 'done' ? __('Done') : __('Delete') }}</flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

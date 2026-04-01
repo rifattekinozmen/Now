@@ -32,6 +32,12 @@ new #[Title('Leave Requests')] class extends Component
     public string $filterStatus    = '';
     public string $filterEmployee  = '';
 
+    public string $sortColumn = 'start_date';
+    public string $sortDirection = 'desc';
+
+    public ?int $confirmingId = null;
+    public string $confirmingAction = '';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Leave::class);
@@ -43,6 +49,43 @@ new #[Title('Leave Requests')] class extends Component
     public function updatedFilterType(): void { $this->resetPage(); }
     public function updatedFilterStatus(): void { $this->resetPage(); }
     public function updatedFilterEmployee(): void { $this->resetPage(); }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['id', 'start_date', 'end_date', 'days_count', 'status', 'created_at'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+        $this->resetPage();
+    }
+
+    public function confirmAction(int $id, string $action): void
+    {
+        $this->confirmingId = $id;
+        $this->confirmingAction = $action;
+        $this->modal('confirm-action')->show();
+    }
+
+    public function executeAction(): void
+    {
+        if (! $this->confirmingId) {
+            return;
+        }
+        match ($this->confirmingAction) {
+            'approve' => $this->approve($this->confirmingId),
+            'reject'  => $this->reject($this->confirmingId),
+            'delete'  => $this->delete($this->confirmingId),
+            default   => null,
+        };
+        $this->confirmingId = null;
+        $this->confirmingAction = '';
+    }
 
     /**
      * @return array{pending:int, approved_this_month:int, total_days:int}
@@ -91,7 +134,7 @@ new #[Title('Leave Requests')] class extends Component
             $q->where('employee_id', (int) $this->filterEmployee);
         }
 
-        return $q->orderByDesc('start_date')->orderByDesc('id');
+        return $q->orderBy($this->sortColumn, $this->sortDirection)->orderByDesc('id');
     }
 
     #[Computed]
@@ -294,10 +337,26 @@ new #[Title('Leave Requests')] class extends Component
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
                         <th class="py-2 pe-3 font-medium">{{ __('Employee') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Type') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Start') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('End') }}</th>
-                        <th class="py-2 pe-3 font-medium text-center">{{ __('Days') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('start_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Start') }}@if ($sortColumn === 'start_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('end_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('End') }}@if ($sortColumn === 'end_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium text-center">
+                            <button wire:click="sortBy('days_count')" class="mx-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Days') }}@if ($sortColumn === 'days_count') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('status')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Status') }}@if ($sortColumn === 'status') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Approved by') }}</th>
                         <th class="py-2 text-end font-medium">{{ __('Actions') }}</th>
                     </tr>
@@ -321,18 +380,15 @@ new #[Title('Leave Requests')] class extends Component
                             <td class="py-2 text-end">
                                 @if ($canApprove && $leave->status->isPending())
                                     <flux:button size="sm" variant="primary"
-                                        wire:click="approve({{ $leave->id }})"
-                                        wire:confirm="{{ __('Approve this leave request?') }}"
+                                        wire:click="confirmAction({{ $leave->id }}, 'approve')"
                                     >{{ __('Approve') }}</flux:button>
                                     <flux:button size="sm" variant="ghost"
-                                        wire:click="reject({{ $leave->id }})"
-                                        wire:confirm="{{ __('Reject this leave request?') }}"
+                                        wire:click="confirmAction({{ $leave->id }}, 'reject')"
                                     >{{ __('Reject') }}</flux:button>
                                 @endif
                                 @if ($canWrite && $leave->status->isPending())
                                     <flux:button size="sm" variant="ghost"
-                                        wire:click="delete({{ $leave->id }})"
-                                        wire:confirm="{{ __('Delete this leave request?') }}"
+                                        wire:click="confirmAction({{ $leave->id }}, 'delete')"
                                     >{{ __('Delete') }}</flux:button>
                                 @endif
                             </td>
@@ -349,4 +405,35 @@ new #[Title('Leave Requests')] class extends Component
         </div>
         <div class="mt-4">{{ $this->paginatedLeaves->links() }}</div>
     </flux:card>
+
+    <flux:modal name="confirm-action" class="min-w-[22rem]">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">
+                    @if ($confirmingAction === 'approve')
+                        {{ __('Approve this leave request?') }}
+                    @elseif ($confirmingAction === 'reject')
+                        {{ __('Reject this leave request?') }}
+                    @else
+                        {{ __('Delete this leave request?') }}
+                    @endif
+                </flux:heading>
+                <flux:text class="mt-2">{{ __('This action cannot be undone.') }}</flux:text>
+            </div>
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button
+                    :variant="$confirmingAction === 'approve' ? 'primary' : ($confirmingAction === 'reject' ? 'ghost' : 'danger')"
+                    wire:click="executeAction"
+                >
+                    @if ($confirmingAction === 'approve') {{ __('Approve') }}
+                    @elseif ($confirmingAction === 'reject') {{ __('Reject') }}
+                    @else {{ __('Delete') }}
+                    @endif
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>
