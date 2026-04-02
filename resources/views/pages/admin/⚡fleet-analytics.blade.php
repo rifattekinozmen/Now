@@ -68,7 +68,7 @@ new #[Title('Fleet analytics')] class extends Component
     {
         $svc = app(AuditAiEvaluationService::class);
 
-        return $svc->summarizeFuelIntakeAnomalies();
+        return $svc->summarizeFuelIntakeAnomalies(auth()->user()->tenant_id);
     }
 
     /**

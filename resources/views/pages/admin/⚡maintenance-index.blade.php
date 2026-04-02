@@ -37,6 +37,11 @@ new #[Title('Maintenance Schedules')] class extends Component
     public string $sortColumn = 'scheduled_date';
     public string $sortDirection = 'desc';
 
+    public bool $filtersOpen = false;
+
+    /** @var int[] */
+    public array $selectedIds = [];
+
     public ?int $confirmingId = null;
     public string $confirmingAction = '';
 
@@ -62,6 +67,32 @@ new #[Title('Maintenance Schedules')] class extends Component
             $this->sortColumn = $column;
             $this->sortDirection = 'asc';
         }
+        $this->resetPage();
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedSchedules->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedSchedules->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        return count($pageIds) > 0 && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        Gate::authorize('viewAny', MaintenanceSchedule::class);
+        $count = MaintenanceSchedule::query()->whereIn('id', $this->selectedIds)->delete();
+        $this->selectedIds = [];
+        session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
         $this->resetPage();
     }
 
@@ -284,25 +315,34 @@ new #[Title('Maintenance Schedules')] class extends Component
     @endif
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:select wire:model.live="filterVehicle" :label="__('Vehicle')" class="max-w-[220px]">
-            <option value="">{{ __('All vehicles') }}</option>
-            @foreach ($this->vehicles as $v)
-                <option value="{{ $v->id }}">{{ $v->plate }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
-            <option value="">{{ __('All types') }}</option>
-            @foreach (\App\Enums\MaintenanceType::cases() as $mt)
-                <option value="{{ $mt->value }}">{{ $mt->label() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-            <option value="">{{ __('All statuses') }}</option>
-            @foreach (\App\Enums\MaintenanceStatus::cases() as $ms)
-                <option value="{{ $ms->value }}">{{ $ms->label() }}</option>
-            @endforeach
-        </flux:select>
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="flex flex-wrap gap-4">
+                <flux:select wire:model.live="filterVehicle" :label="__('Vehicle')" class="max-w-[220px]">
+                    <option value="">{{ __('All vehicles') }}</option>
+                    @foreach ($this->vehicles as $v)
+                        <option value="{{ $v->id }}">{{ $v->plate }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
+                    <option value="">{{ __('All types') }}</option>
+                    @foreach (\App\Enums\MaintenanceType::cases() as $mt)
+                        <option value="{{ $mt->value }}">{{ $mt->label() }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (\App\Enums\MaintenanceStatus::cases() as $ms)
+                        <option value="{{ $ms->value }}">{{ $ms->label() }}</option>
+                    @endforeach
+                </flux:select>
+            </div>
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create Form --}}
@@ -336,12 +376,26 @@ new #[Title('Maintenance Schedules')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete toolbar --}}
+    @if (count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected" wire:confirm="{{ __('Delete selected maintenance schedules?') }}">{{ __('Delete selected') }}</flux:button>
+        </div>
+    @endif
+
     {{-- Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        <th class="w-12 py-2 pe-3">
+                            <input type="checkbox"
+                                   wire:click.prevent="toggleSelectPage"
+                                   @checked($this->isPageFullySelected())
+                                   class="rounded border-zinc-300" />
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Vehicle') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Title') }}</th>
                         <th class="py-2 pe-3 font-medium">
@@ -373,6 +427,9 @@ new #[Title('Maintenance Schedules')] class extends Component
                             $isOverdue = $s->status->isScheduled() && $s->scheduled_date->isPast();
                         @endphp
                         <tr class="{{ $isOverdue ? 'bg-red-50 dark:bg-red-950/30' : '' }}">
+                            <td class="py-2 pe-3">
+                                <input type="checkbox" wire:model="selectedIds" :value="$s->id" class="rounded border-zinc-300" />
+                            </td>
                             <td class="py-2 pe-3 font-medium">{{ $s->vehicle?->plate }}</td>
                             <td class="py-2 pe-3">
                                 {{ $s->title }}
@@ -415,7 +472,7 @@ new #[Title('Maintenance Schedules')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-8 text-center text-zinc-500">
+                            <td colspan="8" class="py-8 text-center text-zinc-500">
                                 {{ __('No maintenance schedules yet.') }}
                             </td>
                         </tr>

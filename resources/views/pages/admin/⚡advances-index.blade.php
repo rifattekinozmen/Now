@@ -31,11 +31,16 @@ new #[Title('Advances')] class extends Component
     public string $filterStatus   = '';
     public string $filterEmployee = '';
 
+    public bool $filtersOpen = false;
+
     public string $sortColumn = 'requested_at';
     public string $sortDirection = 'desc';
 
     public ?int $confirmingId = null;
     public string $confirmingAction = '';
+
+    /** @var int[] */
+    public array $selectedIds = [];
 
     public function mount(): void
     {
@@ -87,15 +92,19 @@ new #[Title('Advances')] class extends Component
     }
 
     /**
-     * @return array{pending:int, approved_total:float, repaid_total:float}
+     * @return array{pending:int, approved_total:float, repaid_total:float, outstanding:float}
      */
     #[Computed]
     public function kpiStats(): array
     {
+        $approvedTotal = (float) Advance::query()->approved()->sum('amount');
+        $repaidTotal   = (float) Advance::query()->where('status', AdvanceStatus::Repaid->value)->sum('amount');
+
         return [
-            'pending'       => Advance::query()->pending()->count(),
-            'approved_total'=> (float) Advance::query()->approved()->sum('amount'),
-            'repaid_total'  => (float) Advance::query()->where('status', AdvanceStatus::Repaid->value)->sum('amount'),
+            'pending'        => Advance::query()->pending()->count(),
+            'approved_total' => $approvedTotal,
+            'repaid_total'   => $repaidTotal,
+            'outstanding'    => max(0.0, $approvedTotal - $repaidTotal),
         ];
     }
 
@@ -134,6 +143,32 @@ new #[Title('Advances')] class extends Component
     public function paginatedAdvances(): LengthAwarePaginator
     {
         return $this->advancesQuery()->paginate(20);
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedAdvances->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedAdvances->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        return count($pageIds) > 0 && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        Gate::authorize('viewAny', Advance::class);
+        $count = Advance::query()->whereIn('id', $this->selectedIds)->delete();
+        $this->selectedIds = [];
+        session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
+        $this->resetPage();
     }
 
     public function startCreate(): void
@@ -245,6 +280,10 @@ new #[Title('Advances')] class extends Component
             && $authUser->can(\App\Authorization\LogisticsPermission::ADMIN);
     @endphp
 
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success">{{ session('bulk_deleted') }}</flux:callout>
+    @endif
+
     <x-admin.page-header
         :heading="__('Advances')"
         :description="__('Employee advance payment requests with Maker-Checker approval.')"
@@ -259,7 +298,7 @@ new #[Title('Advances')] class extends Component
     </x-admin.page-header>
 
     {{-- KPI Cards --}}
-    <div class="grid gap-3 sm:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Pending') }}</flux:text>
             <flux:heading size="lg" class="{{ $this->kpiStats['pending'] > 0 ? 'text-yellow-500' : '' }}">
@@ -274,23 +313,36 @@ new #[Title('Advances')] class extends Component
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Repaid total') }}</flux:text>
             <flux:heading size="lg" class="text-green-600">{{ number_format($this->kpiStats['repaid_total'], 2) }} ₺</flux:heading>
         </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Outstanding balance') }}</flux:text>
+            <flux:heading size="lg" class="{{ $this->kpiStats['outstanding'] > 0 ? 'text-red-500' : '' }}">
+                {{ number_format($this->kpiStats['outstanding'], 2) }} ₺
+            </flux:heading>
+        </flux:card>
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
-        <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
-            <option value="">{{ __('All employees') }}</option>
-            @foreach ($this->employees as $emp)
-                <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-            <option value="">{{ __('All statuses') }}</option>
-            @foreach (\App\Enums\AdvanceStatus::cases() as $as)
-                <option value="{{ $as->value }}">{{ $as->label() }}</option>
-            @endforeach
-        </flux:select>
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
+            <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
+                <option value="">{{ __('All employees') }}</option>
+                @foreach ($this->employees as $emp)
+                    <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                <option value="">{{ __('All statuses') }}</option>
+                @foreach (\App\Enums\AdvanceStatus::cases() as $as)
+                    <option value="{{ $as->value }}">{{ $as->label() }}</option>
+                @endforeach
+            </flux:select>
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create Form --}}
@@ -321,12 +373,26 @@ new #[Title('Advances')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete bar --}}
+    @if (count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected" wire:confirm="{{ __('Delete selected records?') }}">{{ __('Delete selected') }}</flux:button>
+        </div>
+    @endif
+
     {{-- Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        <th class="py-2 pe-3 font-medium">
+                            <input type="checkbox"
+                                wire:click="toggleSelectPage"
+                                @checked($this->isPageFullySelected())
+                            >
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Employee') }}</th>
                         <th class="py-2 pe-3 font-medium text-end">
                             <button wire:click="sortBy('amount')" class="ms-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
@@ -355,6 +421,9 @@ new #[Title('Advances')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedAdvances as $adv)
                         <tr>
+                            <td class="py-2 pe-3">
+                                <input type="checkbox" wire:model.live="selectedIds" value="{{ $adv->id }}">
+                            </td>
                             <td class="py-2 pe-3 font-medium">{{ $adv->employee?->fullName() }}</td>
                             <td class="py-2 pe-3 text-end font-mono">{{ number_format((float)$adv->amount, 2) }} {{ $adv->currency_code }}</td>
                             <td class="py-2 pe-3 whitespace-nowrap">{{ $adv->requested_at->format('d M Y') }}</td>
@@ -386,7 +455,7 @@ new #[Title('Advances')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-8 text-center text-zinc-500">
+                            <td colspan="8" class="py-8 text-center text-zinc-500">
                                 {{ __('No advance requests yet.') }}
                             </td>
                         </tr>

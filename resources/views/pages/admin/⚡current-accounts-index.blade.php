@@ -32,6 +32,8 @@ new #[Title('Current Accounts')] class extends Component
     public bool $is_active = true;
     public string $notes = '';
 
+    public bool $filtersOpen = false;
+
     public string $filterSearch = '';
     public string $filterType = '';
     public string $filterCurrency = '';
@@ -356,25 +358,32 @@ new #[Title('Current Accounts')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search name / code')" class="max-w-sm" />
-        <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
-            <option value="">{{ __('All types') }}</option>
-            @foreach (\App\Enums\AccountType::cases() as $type)
-                <option value="{{ $type->value }}">{{ $type->label() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterCurrency" :label="__('Currency')" class="max-w-[120px]">
-            <option value="">{{ __('All') }}</option>
-            <option value="TRY">TRY</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[140px]">
-            <option value="">{{ __('All') }}</option>
-            <option value="active">{{ __('Active') }}</option>
-            <option value="inactive">{{ __('Inactive') }}</option>
-        </flux:select>
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search name / code')" class="max-w-sm" />
+            <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
+                <option value="">{{ __('All types') }}</option>
+                @foreach (\App\Enums\AccountType::cases() as $type)
+                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterCurrency" :label="__('Currency')" class="max-w-[120px]">
+                <option value="">{{ __('All') }}</option>
+                <option value="TRY">TRY</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+            </flux:select>
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[140px]">
+                <option value="">{{ __('All') }}</option>
+                <option value="active">{{ __('Active') }}</option>
+                <option value="inactive">{{ __('Inactive') }}</option>
+            </flux:select>
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create / Edit Form --}}
