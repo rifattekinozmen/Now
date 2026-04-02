@@ -25,7 +25,10 @@
       "Bash(find C:UsersTekinOzmenDesktopNow -type f -name *.ts -o -name *.tsx)",
       "Bash(find C:UsersTekinOzmenDesktopNowresources -type f \\\\\\(-name *.js -o -name *.ts \\\\\\))",
       "Bash(find C:UsersTekinOzmenDesktopNow -path */node_modules -prune -o -type f -name *.blade.php -exec grep -l \"x-data.*sidebar\\\\|@dispatch\" {})",
-      "Bash(2)"
+      "Bash(2)",
+      "Bash(sed -i 's/APP_LOCALE=en/APP_LOCALE=tr/' .env)",
+      "Bash(sed -i 's/APP_FALLBACK_LOCALE=en/APP_FALLBACK_LOCALE=tr/' .env)",
+      "Bash(grep -l \"x-admin.page-header\\\\|x-admin.filter-bar\" \"/c/Users/TekinOzmen/Desktop/Now/resources/views/pages/admin/\"⚡*.blade.php)"
     ]
   }
 }
