@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
     'tenant_id',
     'order_id',
     'vehicle_id',
+    'driver_employee_id',
     'status',
     'dispatched_at',
     'delivered_at',
@@ -91,6 +92,14 @@ class Shipment extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    /**
+     * @return BelongsTo<Employee, $this>
+     */
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'driver_employee_id');
     }
 
     /**

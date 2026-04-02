@@ -38,6 +38,8 @@ new #[Title('Trip Expenses')] class extends Component
     public string $sortColumn = 'expense_date';
     public string $sortDirection = 'desc';
 
+    public bool $filtersOpen = false;
+
     /** @var int[] */
     public array $selectedIds = [];
 
@@ -331,21 +333,30 @@ new #[Title('Trip Expenses')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:select wire:model.live="filterVehicle" :label="__('Vehicle')" class="max-w-[200px]">
-            <option value="">{{ __('All vehicles') }}</option>
-            @foreach ($this->vehicles as $v)
-                <option value="{{ $v->id }}">{{ $v->plate }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
-            <option value="">{{ __('All types') }}</option>
-            @foreach (\App\Enums\ExpenseType::cases() as $type)
-                <option value="{{ $type->value }}">{{ $type->label() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="max-w-[160px]" />
-        <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="flex flex-wrap gap-4">
+                <flux:select wire:model.live="filterVehicle" :label="__('Vehicle')" class="max-w-[200px]">
+                    <option value="">{{ __('All vehicles') }}</option>
+                    @foreach ($this->vehicles as $v)
+                        <option value="{{ $v->id }}">{{ $v->plate }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
+                    <option value="">{{ __('All types') }}</option>
+                    @foreach (\App\Enums\ExpenseType::cases() as $type)
+                        <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="max-w-[160px]" />
+                <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
+            </div>
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create / Edit Form --}}

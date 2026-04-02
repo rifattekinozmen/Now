@@ -43,6 +43,8 @@ new #[Title('Vouchers')] class extends Component
     public $documentFile = null;
 
     // Filters
+    public bool $filtersOpen = false;
+
     public string $filterSearch = '';
 
     public string $filterType = '';
@@ -57,6 +59,9 @@ new #[Title('Vouchers')] class extends Component
 
     public string $sortColumn = 'voucher_date';
     public string $sortDirection = 'desc';
+
+    /** @var int[] */
+    public array $selectedIds = [];
 
     public ?int $confirmingId = null;
     public string $confirmingAction = '';
@@ -86,6 +91,32 @@ new #[Title('Vouchers')] class extends Component
             $this->sortColumn = $column;
             $this->sortDirection = 'asc';
         }
+        $this->resetPage();
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedVouchers->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedVouchers->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        return count($pageIds) > 0 && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        Gate::authorize('viewAny', Voucher::class);
+        $count = Voucher::query()->whereIn('id', $this->selectedIds)->delete();
+        $this->selectedIds = [];
+        session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
         $this->resetPage();
     }
 
@@ -317,6 +348,9 @@ new #[Title('Vouchers')] class extends Component
     @if (session()->has('error'))
         <flux:callout variant="danger">{{ session('error') }}</flux:callout>
     @endif
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success">{{ session('bulk_deleted') }}</flux:callout>
+    @endif
 
     {{-- KPI Cards --}}
     <div class="grid gap-3 sm:grid-cols-4">
@@ -345,28 +379,35 @@ new #[Title('Vouchers')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search ref / description')" class="max-w-sm" />
-        <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[140px]">
-            <option value="">{{ __('All types') }}</option>
-            <option value="expense">{{ __('Expense') }}</option>
-            <option value="income">{{ __('Income') }}</option>
-            <option value="transfer">{{ __('Transfer') }}</option>
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-            <option value="">{{ __('All statuses') }}</option>
-            <option value="pending">{{ __('Pending') }}</option>
-            <option value="approved">{{ __('Approved') }}</option>
-            <option value="rejected">{{ __('Rejected') }}</option>
-        </flux:select>
-        <flux:select wire:model.live="filterCashRegister" :label="__('Cash register')" class="max-w-[200px]">
-            <option value="">{{ __('All registers') }}</option>
-            @foreach ($this->cashRegisters as $reg)
-                <option value="{{ $reg->id }}">{{ $reg->name }}</option>
-            @endforeach
-        </flux:select>
-        <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="max-w-[160px]" />
-        <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search ref / description')" class="max-w-sm" />
+            <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[140px]">
+                <option value="">{{ __('All types') }}</option>
+                <option value="expense">{{ __('Expense') }}</option>
+                <option value="income">{{ __('Income') }}</option>
+                <option value="transfer">{{ __('Transfer') }}</option>
+            </flux:select>
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                <option value="">{{ __('All statuses') }}</option>
+                <option value="pending">{{ __('Pending') }}</option>
+                <option value="approved">{{ __('Approved') }}</option>
+                <option value="rejected">{{ __('Rejected') }}</option>
+            </flux:select>
+            <flux:select wire:model.live="filterCashRegister" :label="__('Cash register')" class="max-w-[200px]">
+                <option value="">{{ __('All registers') }}</option>
+                @foreach ($this->cashRegisters as $reg)
+                    <option value="{{ $reg->id }}">{{ $reg->name }}</option>
+                @endforeach
+            </flux:select>
+            <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="max-w-[160px]" />
+            <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create Form --}}
@@ -418,12 +459,29 @@ new #[Title('Vouchers')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete toolbar --}}
+    @if ($canWrite && count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected" wire:confirm="{{ __('Delete selected vouchers?') }}">{{ __('Delete selected') }}</flux:button>
+        </div>
+    @endif
+
     {{-- Vouchers Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        @if ($canWrite)
+                            <th class="w-8 py-2 pe-2 ps-2">
+                                <flux:checkbox
+                                    :checked="$this->isPageFullySelected()"
+                                    :indeterminate="count($selectedIds) > 0 && ! $this->isPageFullySelected()"
+                                    wire:click="toggleSelectPage"
+                                />
+                            </th>
+                        @endif
                         <th class="py-2 pe-3 font-medium">{{ __('Ref No') }}</th>
                         <th class="py-2 pe-3 font-medium">
                             <button wire:click="sortBy('voucher_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
@@ -454,6 +512,11 @@ new #[Title('Vouchers')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedVouchers as $voucher)
                         <tr>
+                            @if ($canWrite)
+                                <td class="py-2 pe-2 ps-2">
+                                    <flux:checkbox wire:model.live="selectedIds" :value="(int) $voucher->id" />
+                                </td>
+                            @endif
                             <td class="py-2 pe-3 font-mono text-xs">
                                 {{ $voucher->reference_no ?? '#'.$voucher->id }}
                             </td>
@@ -515,7 +578,7 @@ new #[Title('Vouchers')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="py-8 text-center text-zinc-500">
+                            <td colspan="{{ $canWrite ? 10 : 9 }}" class="py-8 text-center text-zinc-500">
                                 {{ __('No vouchers found.') }}
                             </td>
                         </tr>

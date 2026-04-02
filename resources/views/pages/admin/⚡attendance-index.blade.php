@@ -31,6 +31,14 @@ new #[Title('Attendance')] class extends Component
     public string $filterStatus   = '';
     public string $filterDate     = '';
 
+    public bool $filtersOpen = false;
+
+    public string $sortColumn = 'date';
+    public string $sortDirection = 'desc';
+
+    /** @var int[] */
+    public array $selectedIds = [];
+
     public function mount(): void
     {
         Gate::authorize('viewAny', PersonnelAttendance::class);
@@ -41,6 +49,21 @@ new #[Title('Attendance')] class extends Component
     public function updatedFilterEmployee(): void { $this->resetPage(); }
     public function updatedFilterStatus(): void { $this->resetPage(); }
     public function updatedFilterDate(): void { $this->resetPage(); }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['date', 'employee_id', 'status', 'check_in', 'check_out'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+        $this->resetPage();
+    }
 
     /**
      * @return array{today_present:int, today_absent:int, today_late:int, weekly_absences:int}
@@ -86,13 +109,39 @@ new #[Title('Attendance')] class extends Component
             $q->whereDate('date', $this->filterDate);
         }
 
-        return $q->orderByDesc('date')->orderBy('employee_id');
+        return $q->orderBy($this->sortColumn, $this->sortDirection)->orderBy('employee_id');
     }
 
     #[Computed]
     public function paginatedAttendances(): LengthAwarePaginator
     {
         return $this->attendanceQuery()->paginate(25);
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedAttendances->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedAttendances->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        return count($pageIds) > 0 && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        Gate::authorize('viewAny', PersonnelAttendance::class);
+        $count = PersonnelAttendance::query()->whereIn('id', $this->selectedIds)->delete();
+        $this->selectedIds = [];
+        session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
+        $this->resetPage();
     }
 
     public function startCreate(): void
@@ -205,6 +254,10 @@ new #[Title('Attendance')] class extends Component
             && $authUser->can(\App\Authorization\LogisticsPermission::ADMIN);
     @endphp
 
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success">{{ session('bulk_deleted') }}</flux:callout>
+    @endif
+
     <x-admin.page-header
         :heading="__('Attendance')"
         :description="__('Attendance tracking for employees.')"
@@ -243,20 +296,27 @@ new #[Title('Attendance')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[220px]">
-            <option value="">{{ __('All employees') }}</option>
-            @foreach ($this->employees as $emp)
-                <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-            <option value="">{{ __('All statuses') }}</option>
-            @foreach (\App\Enums\AttendanceStatus::cases() as $s)
-                <option value="{{ $s->value }}">{{ $s->label() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:input wire:model.live="filterDate" type="date" :label="__('Date')" class="max-w-[180px]" />
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[220px]">
+                <option value="">{{ __('All employees') }}</option>
+                @foreach ($this->employees as $emp)
+                    <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                <option value="">{{ __('All statuses') }}</option>
+                @foreach (\App\Enums\AttendanceStatus::cases() as $s)
+                    <option value="{{ $s->value }}">{{ $s->label() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:input wire:model.live="filterDate" type="date" :label="__('Date')" class="max-w-[180px]" />
+        @endif
     </x-admin.filter-bar>
 
     {{-- Form --}}
@@ -289,17 +349,47 @@ new #[Title('Attendance')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete bar --}}
+    @if (count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected" wire:confirm="{{ __('Delete selected records?') }}">{{ __('Delete selected') }}</flux:button>
+        </div>
+    @endif
+
     {{-- Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        <th class="py-2 pe-3 font-medium">
+                            <input type="checkbox"
+                                wire:click="toggleSelectPage"
+                                @checked($this->isPageFullySelected())
+                            >
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Employee') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Date') }}</th>
-                        <th class="py-2 pe-3 font-medium text-center">{{ __('Check in') }}</th>
-                        <th class="py-2 pe-3 font-medium text-center">{{ __('Check out') }}</th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Date') }}@if ($sortColumn === 'date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium text-center">
+                            <button wire:click="sortBy('check_in')" class="mx-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Check in') }}@if ($sortColumn === 'check_in') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium text-center">
+                            <button wire:click="sortBy('check_out')" class="mx-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Check out') }}@if ($sortColumn === 'check_out') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-3 font-medium">
+                            <button wire:click="sortBy('status')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Status') }}@if ($sortColumn === 'status') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                            </button>
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Notes') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Approved by') }}</th>
                         <th class="py-2 text-end font-medium">{{ __('Actions') }}</th>
@@ -308,6 +398,9 @@ new #[Title('Attendance')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedAttendances as $record)
                         <tr>
+                            <td class="py-2 pe-3">
+                                <input type="checkbox" wire:model.live="selectedIds" value="{{ $record->id }}">
+                            </td>
                             <td class="py-2 pe-3 font-medium">{{ $record->employee?->fullName() }}</td>
                             <td class="py-2 pe-3 whitespace-nowrap">{{ $record->date->format('d M Y') }}</td>
                             <td class="py-2 pe-3 text-center font-mono">{{ $record->check_in ?? '—' }}</td>
@@ -345,7 +438,7 @@ new #[Title('Attendance')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-8 text-center text-zinc-500">
+                            <td colspan="9" class="py-8 text-center text-zinc-500">
                                 {{ __('No attendance records yet.') }}
                             </td>
                         </tr>

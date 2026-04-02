@@ -2,14 +2,19 @@
 
 Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederken bağlam olarak kullanılır.
 
-## Current Focus
+## Current Focus (2026-04-02)
 
-- Depo: `pages::admin.warehouse-index` — **depolar**, **stok kartları**, **depo bazlı bakiyeler** (`warehouses`, `inventory_items`, `inventory_stocks`); `logistics.warehouse.write`.
-- UX: `App\Livewire\GlobalSearch` — `Ctrl+K` ve üst çubuk **Search**; müşteri, sipariş, sevkiyat, araç, depo, personel.
-- Finans: `pages::admin.finance-index` — üstte **yakıt alımı uyarı özeti** (`AuditAiEvaluationService::summarizeFuelIntakeAnomalies`, `fuel_intakes` tablosu); navlun medyan sapması ile birlikte.
-- Operasyon: `config/logistics.php` — `LOGISTICS_IPOD_STRICT`, `PodDeliveryComplianceGate`; `DriverSafetyService` + sevkiyat gönderim kapısında yorgunluk; siparişlerde **kantar/rutubet** alanları ve CSV import genişlemesi (`ExcelImportService`).
-- Entegrasyon: `TotalEnergiesFuelQuoteService` — `TOTALENERGIES_PROVINCE` / `DISTRICT`; `HttpCustomerEngagementNotifier` — SMS/WhatsApp ayrı Bearer (`CUSTOMER_ENGAGEMENT_SMS_BEARER`, `WHATSAPP_BEARER`); `LogoErpExportService` — `OrderRecordId`, kantar alanları + `MaterialCode`/`PlantCode`/`StorageLocation` (config `logo_export`).
-- UI: `resources/css/app.css` — `bg-card`, `bg-background`, `border-border-app`; sidebar’da harici repo linkleri kaldırıldı, **Ayarlar** (`profile.edit`); finans alt sayfalarında `x-admin.page-header` yaygınlaştırıldı.
+**Sprint 7 tamamlandı — 353/353 test geçiyor.**
+
+- **Analytics bug fix:** `fleet-analytics` + `operations-analytics` sayfaları çalışır durumda; `summarizeFuelIntakeAnomalies` ve `summarizeFreightOutliersAgainstMedian` doğru tenant_id + Carbon parametreleriyle çağrılıyor.
+- **Shipments:** `driver_employee_id` nullable FK kolonu eklendi (migration `2026_04_02_072925`); `Shipment` modeline `driver()` ilişkisi eklendi.
+- **Sidebar:** `.env` locale `tr`; tüm sidebar grup başlıkları ve item isimleri Türkçe; `tr.json` duplicate key’ler temizlendi.
+- **UI tutarlılığı:** Tüm admin index sayfaları standart desene getirildi — 4 KPI kart, `filtersOpen` açılır filtre, sort okları, checkbox + bulk delete.
+
+### Bir sonraki öncelikli adımlar:
+- TotalEnergies canlı API endpoint doğrulaması (yer tutucu URL dışı)
+- Banka ekstresi görüntü-only PDF için harici OCR entegrasyonu
+- Logo XML şema genişletmesi
 
 ## Rol matrisi (özet)
 

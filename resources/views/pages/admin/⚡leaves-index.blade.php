@@ -32,11 +32,16 @@ new #[Title('Leave Requests')] class extends Component
     public string $filterStatus    = '';
     public string $filterEmployee  = '';
 
+    public bool $filtersOpen = false;
+
     public string $sortColumn = 'start_date';
     public string $sortDirection = 'desc';
 
     public ?int $confirmingId = null;
     public string $confirmingAction = '';
+
+    /** @var int[] */
+    public array $selectedIds = [];
 
     public function mount(): void
     {
@@ -88,7 +93,7 @@ new #[Title('Leave Requests')] class extends Component
     }
 
     /**
-     * @return array{pending:int, approved_this_month:int, total_days:int}
+     * @return array{pending:int, approved_this_month:int, total_days:int, unique_employees:int}
      */
     #[Computed]
     public function kpiStats(): array
@@ -98,6 +103,7 @@ new #[Title('Leave Requests')] class extends Component
             'approved_this_month' => Leave::query()->approved()
                 ->whereMonth('start_date', now()->month)->count(),
             'total_days'          => (int) Leave::query()->approved()->sum('days_count'),
+            'unique_employees'    => Leave::query()->approved()->distinct('employee_id')->count('employee_id'),
         ];
     }
 
@@ -141,6 +147,32 @@ new #[Title('Leave Requests')] class extends Component
     public function paginatedLeaves(): LengthAwarePaginator
     {
         return $this->leavesQuery()->paginate(20);
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedLeaves->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedLeaves->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        return count($pageIds) > 0 && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        Gate::authorize('viewAny', Leave::class);
+        $count = Leave::query()->whereIn('id', $this->selectedIds)->delete();
+        $this->selectedIds = [];
+        session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
+        $this->resetPage();
     }
 
     public function startCreate(): void
@@ -248,6 +280,10 @@ new #[Title('Leave Requests')] class extends Component
             && $authUser->can(\App\Authorization\LogisticsPermission::ADMIN);
     @endphp
 
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success">{{ session('bulk_deleted') }}</flux:callout>
+    @endif
+
     <x-admin.page-header
         :heading="__('Leave Requests')"
         :description="__('Manage employee leave requests with Maker-Checker approval workflow.')"
@@ -262,7 +298,7 @@ new #[Title('Leave Requests')] class extends Component
     </x-admin.page-header>
 
     {{-- KPI Cards --}}
-    <div class="grid gap-3 sm:grid-cols-3">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Pending approval') }}</flux:text>
             <flux:heading size="lg" class="{{ $this->kpiStats['pending'] > 0 ? 'text-yellow-500' : '' }}">
@@ -277,29 +313,40 @@ new #[Title('Leave Requests')] class extends Component
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total approved days') }}</flux:text>
             <flux:heading size="lg">{{ $this->kpiStats['total_days'] }}</flux:heading>
         </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Employees on leave') }}</flux:text>
+            <flux:heading size="lg">{{ $this->kpiStats['unique_employees'] }}</flux:heading>
+        </flux:card>
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
-        <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
-            <option value="">{{ __('All employees') }}</option>
-            @foreach ($this->employees as $emp)
-                <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
-            <option value="">{{ __('All types') }}</option>
-            @foreach (\App\Enums\LeaveType::cases() as $lt)
-                <option value="{{ $lt->value }}">{{ $lt->label() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-            <option value="">{{ __('All statuses') }}</option>
-            @foreach (\App\Enums\LeaveStatus::cases() as $ls)
-                <option value="{{ $ls->value }}">{{ $ls->label() }}</option>
-            @endforeach
-        </flux:select>
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
+            <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
+                <option value="">{{ __('All employees') }}</option>
+                @foreach ($this->employees as $emp)
+                    <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[160px]">
+                <option value="">{{ __('All types') }}</option>
+                @foreach (\App\Enums\LeaveType::cases() as $lt)
+                    <option value="{{ $lt->value }}">{{ $lt->label() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                <option value="">{{ __('All statuses') }}</option>
+                @foreach (\App\Enums\LeaveStatus::cases() as $ls)
+                    <option value="{{ $ls->value }}">{{ $ls->label() }}</option>
+                @endforeach
+            </flux:select>
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create Form --}}
@@ -329,12 +376,26 @@ new #[Title('Leave Requests')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete bar --}}
+    @if (count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected" wire:confirm="{{ __('Delete selected records?') }}">{{ __('Delete selected') }}</flux:button>
+        </div>
+    @endif
+
     {{-- Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        <th class="py-2 pe-3 font-medium">
+                            <input type="checkbox"
+                                wire:click="toggleSelectPage"
+                                @checked($this->isPageFullySelected())
+                            >
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Employee') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Type') }}</th>
                         <th class="py-2 pe-3 font-medium">
@@ -364,6 +425,9 @@ new #[Title('Leave Requests')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedLeaves as $leave)
                         <tr>
+                            <td class="py-2 pe-3">
+                                <input type="checkbox" wire:model.live="selectedIds" value="{{ $leave->id }}">
+                            </td>
                             <td class="py-2 pe-3 font-medium">{{ $leave->employee?->fullName() }}</td>
                             <td class="py-2 pe-3">
                                 <flux:badge color="{{ $leave->type->color() }}" size="sm">{{ $leave->type->label() }}</flux:badge>
@@ -395,7 +459,7 @@ new #[Title('Leave Requests')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-8 text-center text-zinc-500">
+                            <td colspan="9" class="py-8 text-center text-zinc-500">
                                 {{ __('No leave requests yet.') }}
                             </td>
                         </tr>

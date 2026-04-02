@@ -41,6 +41,8 @@ new #[Title('Pricing Conditions')] class extends Component
     public string $sortColumn = 'name';
     public string $sortDirection = 'asc';
 
+    public bool $filtersOpen = false;
+
     /** @var int[] */
     public array $selectedIds = [];
 
@@ -354,19 +356,28 @@ new #[Title('Pricing Conditions')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search name / route')" class="max-w-sm" />
-        <flux:select wire:model.live="filterCustomer" :label="__('Customer')" class="max-w-[200px]">
-            <option value="">{{ __('All customers') }}</option>
-            @foreach ($this->customers as $c)
-                <option value="{{ $c->id }}">{{ $c->name }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[140px]">
-            <option value="">{{ __('All') }}</option>
-            <option value="active">{{ __('Active') }}</option>
-            <option value="inactive">{{ __('Inactive') }}</option>
-        </flux:select>
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="flex flex-wrap gap-4">
+                <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search name / route')" class="max-w-sm" />
+                <flux:select wire:model.live="filterCustomer" :label="__('Customer')" class="max-w-[200px]">
+                    <option value="">{{ __('All customers') }}</option>
+                    @foreach ($this->customers as $c)
+                        <option value="{{ $c->id }}">{{ $c->name }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[140px]">
+                    <option value="">{{ __('All') }}</option>
+                    <option value="active">{{ __('Active') }}</option>
+                    <option value="inactive">{{ __('Inactive') }}</option>
+                </flux:select>
+            </div>
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create / Edit Form --}}

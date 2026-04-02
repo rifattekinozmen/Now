@@ -39,6 +39,11 @@ new #[Title('Fuel intakes')] class extends Component
 
     public string $sortDirection = 'desc';
 
+    public bool $filtersOpen = false;
+
+    /** @var list<int> */
+    public array $selectedIds = [];
+
     public function mount(): void
     {
         Gate::authorize('viewAny', FuelIntake::class);
@@ -51,19 +56,29 @@ new #[Title('Fuel intakes')] class extends Component
     }
 
     /**
-     * @return array{total: int, total_liters: float}
+     * @return array{total: int, total_liters: float, intakes_this_month: int, avg_liters: float}
      */
     #[Computed]
     public function fuelIntakeStats(): array
     {
+        $monthStart = now()->startOfMonth()->toDateTimeString();
+
         $row = FuelIntake::query()
             ->toBase()
-            ->selectRaw('COUNT(*) as c, COALESCE(SUM(liters), 0) as sum_liters')
+            ->selectRaw(
+                'COUNT(*) as c, COALESCE(SUM(liters), 0) as sum_liters, COALESCE(AVG(liters), 0) as avg_liters'
+            )
             ->first();
+
+        $intakesThisMonth = FuelIntake::query()
+            ->where('recorded_at', '>=', $monthStart)
+            ->count();
 
         return [
             'total' => (int) ($row->c ?? 0),
             'total_liters' => (float) ($row->sum_liters ?? 0),
+            'intakes_this_month' => $intakesThisMonth,
+            'avg_liters' => (float) ($row->avg_liters ?? 0),
         ];
     }
 
@@ -109,6 +124,58 @@ new #[Title('Fuel intakes')] class extends Component
         }
 
         $this->resetPage();
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedIntakes->pluck('id')->map(fn ($id) => (int) $id)->all();
+        if ($pageIds === []) {
+            return false;
+        }
+
+        $selected = array_map('intval', $this->selectedIds);
+
+        return count(array_diff($pageIds, $selected)) === 0;
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedIntakes->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $selected = array_map('intval', $this->selectedIds);
+        $allSelected = $pageIds !== [] && count(array_diff($pageIds, $selected)) === 0;
+
+        if ($allSelected) {
+            $this->selectedIds = array_values(array_diff($selected, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($selected, $pageIds)));
+        }
+
+        $this->selectedIds = array_values(array_map('intval', $this->selectedIds));
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
+        Gate::authorize('viewAny', FuelIntake::class);
+
+        if ($this->selectedIds === []) {
+            return;
+        }
+
+        $ids = array_map('intval', $this->selectedIds);
+        $rows = FuelIntake::query()->whereIn('id', $ids)->get();
+        $deleted = 0;
+
+        foreach ($rows as $row) {
+            Gate::authorize('delete', $row);
+            $row->delete();
+            $deleted++;
+        }
+
+        $this->selectedIds = [];
+        $this->resetPage();
+
+        session()->flash('bulk_deleted', $deleted);
     }
 
     public function startCreate(): void
@@ -234,20 +301,41 @@ new #[Title('Fuel intakes')] class extends Component
         </x-slot>
     </x-admin.page-header>
 
-    <div class="grid gap-3 sm:grid-cols-2">
-        <flux:card class="p-4">
-            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Records') }}</flux:text>
-            <flux:heading size="lg">{{ number_format($this->fuelIntakeStats['total']) }}</flux:heading>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total records') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->fuelIntakeStats['total']) }}</flux:heading>
         </flux:card>
-        <flux:card class="p-4">
+        <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total liters (tenant)') }}</flux:text>
-            <flux:heading size="lg">{{ number_format($this->fuelIntakeStats['total_liters'], 3) }}</flux:heading>
+            <flux:heading size="xl">{{ number_format($this->fuelIntakeStats['total_liters'], 3) }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Intakes this month') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->fuelIntakeStats['intakes_this_month']) }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Avg. liters per intake') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->fuelIntakeStats['avg_liters'], 2) }}</flux:heading>
         </flux:card>
     </div>
 
     <x-admin.filter-bar :label="__('Advanced filters')">
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="max-w-md" />
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="max-w-md" />
+        @endif
     </x-admin.filter-bar>
+
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Deleted :count records.', ['count' => session('bulk_deleted')]) }}
+        </flux:callout>
+    @endif
 
     @if (session()->has('import_created'))
         <flux:callout variant="success">
@@ -311,11 +399,37 @@ new #[Title('Fuel intakes')] class extends Component
         </flux:card>
     @endif
 
+    @if ($canWriteFuel && count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button
+                type="button"
+                variant="danger"
+                wire:click="bulkDeleteSelected"
+                wire:confirm="{{ __('Delete selected fuel intakes?') }}"
+            >
+                {{ __('Delete selected') }}
+            </flux:button>
+        </div>
+    @endif
+
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        @if ($canWriteFuel)
+                            <th class="w-12 py-2 pe-4">
+                                <span class="sr-only">{{ __('Select page') }}</span>
+                                <input
+                                    type="checkbox"
+                                    class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
+                                    @checked($this->isPageFullySelected())
+                                    wire:click.prevent="toggleSelectPage"
+                                    wire:key="select-page-intakes"
+                                />
+                            </th>
+                        @endif
                         <th class="py-2 pe-4">
                             <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                                 ID
@@ -357,6 +471,17 @@ new #[Title('Fuel intakes')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedIntakes as $row)
                         <tr>
+                            @if ($canWriteFuel)
+                                <td class="py-2 pe-4">
+                                    <input
+                                        type="checkbox"
+                                        class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
+                                        wire:key="intake-select-{{ $row->id }}"
+                                        wire:model.live="selectedIds"
+                                        value="{{ $row->id }}"
+                                    />
+                                </td>
+                            @endif
                             <td class="py-2 pe-4 font-mono text-xs">{{ $row->id }}</td>
                             <td class="py-2 pe-4">{{ $row->vehicle?->plate ?? '—' }}</td>
                             <td class="py-2 pe-4">{{ number_format((float) $row->liters, 3) }}</td>
@@ -380,7 +505,7 @@ new #[Title('Fuel intakes')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-6 text-center text-zinc-500">{{ __('No fuel intakes yet.') }}</td>
+                            <td colspan="{{ $canWriteFuel ? 7 : 6 }}" class="py-6 text-center text-zinc-500">{{ __('No fuel intakes yet.') }}</td>
                         </tr>
                     @endforelse
                 </tbody>

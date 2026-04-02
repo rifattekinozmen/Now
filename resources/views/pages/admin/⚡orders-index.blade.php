@@ -480,6 +480,7 @@ new #[Title('Orders')] class extends Component
         </flux:callout>
     @endif
 
+    @cache('orders-stats-' . auth()->user()->tenant_id, 30)
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total orders') }}</flux:text>
@@ -498,6 +499,7 @@ new #[Title('Orders')] class extends Component
             <flux:heading size="xl">{{ $this->orderIndexStats['currencies'] }}</flux:heading>
         </flux:card>
     </div>
+    @endcache
 
     <x-admin.filter-bar :label="__('Advanced filters')">
         <div class="flex flex-wrap items-center justify-between gap-2">

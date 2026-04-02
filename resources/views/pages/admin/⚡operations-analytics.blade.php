@@ -79,8 +79,9 @@ new #[Title('Operations analytics')] class extends Component
     public function driverPerformance(): \Illuminate\Support\Collection
     {
         return DB::table('shipments')
-            ->join('employees', 'shipments.driver_employee_id', '=', 'employees.id')
+            ->leftJoin('employees', 'shipments.driver_employee_id', '=', 'employees.id')
             ->join('orders', 'shipments.order_id', '=', 'orders.id')
+            ->whereNotNull('shipments.driver_employee_id')
             ->where('shipments.created_at', '>=', now()->subDays(30))
             ->where('shipments.tenant_id', auth()->user()?->tenant_id)
             ->selectRaw('employees.id, employees.first_name, employees.last_name, COUNT(shipments.id) as trips, COALESCE(SUM(orders.net_weight_kg),0) as total_kg')
@@ -97,8 +98,9 @@ new #[Title('Operations analytics')] class extends Component
     public function freightOutliers(): array
     {
         return app(AuditAiEvaluationService::class)->summarizeFreightOutliersAgainstMedian(
-            now()->subDays(90)->toDateString(),
-            now()->toDateString(),
+            auth()->user()->tenant_id,
+            now()->subDays(90),
+            now(),
         );
     }
 }; ?>

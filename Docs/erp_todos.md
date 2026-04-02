@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
-> Son güncelleme: 2026-03-31
-> Mevcut: Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 + Sprint 5 + Sprint 6 tamamlandı
+> Son güncelleme: 2026-04-02
+> Mevcut: Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 + Sprint 5 + Sprint 6 + Sprint 7 tamamlandı
 
 ## Durum Özeti
 
@@ -13,6 +13,7 @@
 | 4 | Audit Log + Bildirim Merkezi | ✅ TAMAM |
 | 5 | Analytics + Dashboard Güçlendirme | ✅ TAMAM |
 | 6 | Entegrasyonlar + Adres Defteri | ✅ TAMAM |
+| 7 | Analytics Bug Fix + Sidebar + UI Tutarlılığı | ✅ TAMAM |
 
 ---
 
@@ -156,3 +157,28 @@
 - [x] Geçmiş siparişlerden teslimat noktaları arşiv olarak collapsible section
 - [x] `tr.json`'a adres defteri çevirileri eklendi
 - [x] 329/329 test geçiyor
+
+---
+
+## SPRINT 7 — Analytics Bug Fix + Sidebar + UI Tutarlılığı ✅
+
+### TODO-10.1: Analytics Hata Düzeltmeleri ✅
+- [x] `⚡fleet-analytics.blade.php:71` — `summarizeFuelIntakeAnomalies()` çağrısına `auth()->user()->tenant_id` eklendi
+- [x] `⚡operations-analytics.blade.php:99` — `summarizeFreightOutliersAgainstMedian()` çağrısına `tenant_id` + Carbon instance parametreleri eklendi
+- [x] `shipments` tablosuna `driver_employee_id` nullable FK kolonu migration ile eklendi
+- [x] `Shipment` modeli fillable + `driver()` ilişkisi güncellendi
+- [x] `⚡operations-analytics.blade.php:82` — INNER JOIN → LEFT JOIN + whereNotNull guard eklendi
+
+### TODO-10.2: Sidebar Kurumsal Türkçe ✅
+- [x] `.env` APP_LOCALE/APP_FALLBACK_LOCALE `en` → `tr` değiştirildi
+- [x] `lang/tr.json` duplicate key'ler temizlendi ("Fleet analytics" → "Filo analitik", "Operations analytics" → "Operasyon analitik")
+- [x] Tüm sidebar item çevirileri `tr.json`'da mevcut; grup başlıkları (Operasyon, Finans, İnsan Kaynakları) doğru çevrildi
+
+### TODO-10.3: Admin Sayfaları UI Tutarlılığı ✅
+- [x] `filtersOpen` açılır/kapanır filtre: 14 admin sayfasına eklendi (maintenance, trip-expenses, pricing-conditions, fuel-intakes, fuel-prices, cash-registers, vouchers, current-accounts, leaves, advances, payroll, attendance, warehouse)
+- [x] 4 KPI kart standardı: fuel-intakes (2→4), fuel-prices (1→4), leaves (3→4), advances (3→4) güncellendi
+- [x] Bulk select + bulk delete: maintenance, fuel-intakes, fuel-prices, vouchers, leaves, advances, payroll, attendance sayfalarına eklendi
+- [x] Sort okları: attendance sayfasında `sortColumn`/`sortDirection`/`sortBy()` eklendi
+- [x] Warehouse: 4 KPI kart + filterWarehouse + sort okları eklendi
+- [x] `lang/tr.json`'a yeni çeviriler eklendi (warehouse istatistikleri, delete confirmations)
+- [x] 353/353 test geçiyor

@@ -523,12 +523,7 @@
     "No attendance records yet.": "Henüz puantaj kaydı yok.",
     "Attendance tracking for employees.": "Personel puantaj takibi.",
 
-    "Fleet analytics": "Filo analizi",
-    "Operations analytics": "Operasyon analizi",
-    "Trips (30d)": "Sefer (30g)",
-    "Total tonnage": "Toplam tonaj",
     "Overdue maintenance": "Gecikmiş bakım",
-    "Driver performance": "Şoför performansı",
     "Monthly trend": "Aylık trend",
     "Pending approvals": "Bekleyen onaylar",
     "Upcoming dues": "Yaklaşan vadeler",
@@ -716,5 +711,20 @@
     "No projected inflows in this window.": "Bu pencerede beklenen tahsilat yok.",
     "Operations overview": "Operasyon özeti",
     "Tenant KPIs, FX cache, and shipment distribution.": "Kiracı KPI, döviz önbelleği ve sevkiyat dağılımı.",
-    "Refresh TCMB rates": "TCMB kurlarını yenile"
+    "Refresh TCMB rates": "TCMB kurlarını yenile",
+
+    "Intakes this month": "Bu ayki alımlar",
+    "Avg. liters per intake": "Alım başına ort. litre",
+    "Prices this month": "Bu ayki fiyatlar",
+    "Avg. price": "Ort. fiyat",
+    "Fuel types": "Yakıt türleri",
+    "Total liters (tenant)": "Toplam litre (kiracı)",
+    "Delete selected fuel intakes?": "Seçili yakıt alımları silinsin mi?",
+    "Delete selected fuel price records?": "Seçili yakıt fiyatı kayıtları silinsin mi?",
+
+    "Total warehouses": "Toplam depo",
+    "Stock items": "Stok kalemleri",
+    "Stock records": "Stok kayıtları",
+    "Total quantity": "Toplam miktar",
+    "Search (code, name)": "Ara (kod, ad)"
 }

@@ -21,6 +21,14 @@ new #[Title('Warehouse')] class extends Component
 
     public ?int $warehouseEditingId = null;
 
+    public string $filterWarehouse = '';
+
+    public bool $filtersOpen = false;
+
+    public string $sortColumn = 'code';
+
+    public string $sortDirection = 'asc';
+
     public string $warehouse_code = '';
 
     public string $warehouse_name = '';
@@ -49,12 +57,52 @@ new #[Title('Warehouse')] class extends Component
     }
 
     /**
+     * @return array{warehouses: int, items: int, stock_records: int, total_quantity: int}
+     */
+    #[Computed]
+    public function warehouseStats(): array
+    {
+        return [
+            'warehouses' => Warehouse::query()->count(),
+            'items' => InventoryItem::query()->count(),
+            'stock_records' => InventoryStock::query()->count(),
+            'total_quantity' => (int) InventoryStock::query()->sum('quantity'),
+        ];
+    }
+
+    /**
      * @return LengthAwarePaginator<int, Warehouse>
      */
     #[Computed]
     public function paginatedWarehouses(): LengthAwarePaginator
     {
-        return Warehouse::query()->orderBy('code')->paginate(10, pageName: 'wh');
+        return Warehouse::query()
+            ->when($this->filterWarehouse, fn ($q) => $q->where(function ($q2) {
+                $q2->where('code', 'like', '%'.$this->filterWarehouse.'%')
+                    ->orWhere('name', 'like', '%'.$this->filterWarehouse.'%');
+            }))
+            ->orderBy($this->sortColumn, $this->sortDirection)
+            ->paginate(10, pageName: 'wh');
+    }
+
+    public function updatedFilterWarehouse(): void
+    {
+        $this->resetPage();
+    }
+
+    public function sortBy(string $column): void
+    {
+        $allowed = ['code', 'name'];
+        if (! in_array($column, $allowed, true)) {
+            return;
+        }
+        if ($this->sortColumn === $column) {
+            $this->sortDirection = $this->sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->sortColumn = $column;
+            $this->sortDirection = 'asc';
+        }
+        $this->resetPage();
     }
 
     /**
@@ -158,7 +206,7 @@ new #[Title('Warehouse')] class extends Component
 
         $this->warehouseEditingId = null;
         $this->resetWarehouseForm();
-        unset($this->paginatedWarehouses, $this->allWarehousesForSelect);
+        unset($this->warehouseStats, $this->paginatedWarehouses, $this->allWarehousesForSelect);
     }
 
     public function deleteWarehouse(int $id): void
@@ -167,7 +215,7 @@ new #[Title('Warehouse')] class extends Component
         $row = Warehouse::query()->findOrFail($id);
         Gate::authorize('delete', $row);
         $row->delete();
-        unset($this->paginatedWarehouses, $this->paginatedStocks, $this->allWarehousesForSelect);
+        unset($this->warehouseStats, $this->paginatedWarehouses, $this->paginatedStocks, $this->allWarehousesForSelect);
     }
 
     private function resetWarehouseForm(): void
@@ -378,8 +426,38 @@ new #[Title('Warehouse')] class extends Component
         :description="__('Warehouses, stock cards, and per-location balances (MVP).')"
     />
 
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total warehouses') }}</flux:text>
+            <flux:heading size="xl">{{ $this->warehouseStats['warehouses'] }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Stock items') }}</flux:text>
+            <flux:heading size="xl">{{ $this->warehouseStats['items'] }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Stock records') }}</flux:text>
+            <flux:heading size="xl">{{ $this->warehouseStats['stock_records'] }}</flux:heading>
+        </flux:card>
+        <flux:card class="!p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total quantity') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->warehouseStats['total_quantity']) }}</flux:heading>
+        </flux:card>
+    </div>
+
     <flux:card class="p-4">
         <flux:heading size="lg" class="mb-4">{{ __('Warehouses') }}</flux:heading>
+
+        <x-admin.filter-bar :label="__('Advanced filters')">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                    {{ $filtersOpen ? __('Hide') : __('Show') }}
+                </flux:button>
+            </div>
+            @if ($filtersOpen)
+                <flux:input wire:model.live.debounce.400ms="filterWarehouse" :label="__('Search (code, name)')" size="sm" />
+            @endif
+        </x-admin.filter-bar>
 
         @if ($canWriteWarehouse)
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -405,8 +483,18 @@ new #[Title('Warehouse')] class extends Component
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
-                        <th class="py-2 pe-4 font-medium text-zinc-800 dark:text-white">{{ __('Code') }}</th>
-                        <th class="py-2 pe-4 font-medium text-zinc-800 dark:text-white">{{ __('Name') }}</th>
+                        <th class="py-2 pe-4 font-medium text-zinc-800 dark:text-white">
+                            <button wire:click="sortBy('code')" class="flex items-center gap-1 font-medium">
+                                {{ __('Code') }}
+                                @if ($sortColumn === 'code') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
+                            </button>
+                        </th>
+                        <th class="py-2 pe-4 font-medium text-zinc-800 dark:text-white">
+                            <button wire:click="sortBy('name')" class="flex items-center gap-1 font-medium">
+                                {{ __('Name') }}
+                                @if ($sortColumn === 'name') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
+                            </button>
+                        </th>
                         <th class="py-2 pe-4">{{ __('Address') }}</th>
                         <th class="py-2 pe-4 text-end">{{ __('View') }}</th>
                         @if ($canWriteWarehouse)

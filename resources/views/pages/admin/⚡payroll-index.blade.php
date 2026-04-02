@@ -30,11 +30,16 @@ new #[Title('Payroll')] class extends Component
     public string $filterStatus    = '';
     public string $filterPeriod    = '';
 
+    public bool $filtersOpen = false;
+
     public string $sortColumn = 'period_start';
     public string $sortDirection = 'desc';
 
     public ?int $confirmingId = null;
     public string $confirmingAction = '';
+
+    /** @var int[] */
+    public array $selectedIds = [];
 
     public function mount(): void
     {
@@ -137,6 +142,32 @@ new #[Title('Payroll')] class extends Component
     public function paginatedPayrolls(): LengthAwarePaginator
     {
         return $this->payrollQuery()->paginate(20);
+    }
+
+    public function toggleSelectPage(): void
+    {
+        $pageIds = $this->paginatedPayrolls->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+        if ($this->isPageFullySelected()) {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $pageIds));
+        } else {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $pageIds)));
+        }
+    }
+
+    public function isPageFullySelected(): bool
+    {
+        $pageIds = $this->paginatedPayrolls->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        return count($pageIds) > 0 && count(array_diff($pageIds, $this->selectedIds)) === 0;
+    }
+
+    public function bulkDeleteSelected(): void
+    {
+        Gate::authorize('viewAny', Payroll::class);
+        $count = Payroll::query()->whereIn('id', $this->selectedIds)->delete();
+        $this->selectedIds = [];
+        session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
+        $this->resetPage();
     }
 
     public function startCreate(): void
@@ -255,6 +286,10 @@ new #[Title('Payroll')] class extends Component
         <flux:callout variant="success">{{ session('success') }}</flux:callout>
     @endif
 
+    @if (session()->has('bulk_deleted'))
+        <flux:callout variant="success">{{ session('bulk_deleted') }}</flux:callout>
+    @endif
+
     <x-admin.page-header
         :heading="__('Payroll')"
         :description="__('Manage employee payroll with draft → approved → paid lifecycle.')"
@@ -291,20 +326,27 @@ new #[Title('Payroll')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Filters')">
-        <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[220px]">
-            <option value="">{{ __('All employees') }}</option>
-            @foreach ($this->employees as $emp)
-                <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-            <option value="">{{ __('All statuses') }}</option>
-            @foreach (\App\Enums\PayrollStatus::cases() as $ps)
-                <option value="{{ $ps->value }}">{{ $ps->label() }}</option>
-            @endforeach
-        </flux:select>
-        <flux:input wire:model.live="filterPeriod" type="month" :label="__('Period')" class="max-w-[180px]" />
+    <x-admin.filter-bar :label="__('Advanced filters')">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
+                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[220px]">
+                <option value="">{{ __('All employees') }}</option>
+                @foreach ($this->employees as $emp)
+                    <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                <option value="">{{ __('All statuses') }}</option>
+                @foreach (\App\Enums\PayrollStatus::cases() as $ps)
+                    <option value="{{ $ps->value }}">{{ $ps->label() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:input wire:model.live="filterPeriod" type="month" :label="__('Period')" class="max-w-[180px]" />
+        @endif
     </x-admin.filter-bar>
 
     {{-- Create Form --}}
@@ -353,12 +395,26 @@ new #[Title('Payroll')] class extends Component
         </flux:card>
     @endif
 
+    {{-- Bulk delete bar --}}
+    @if (count($selectedIds) > 0)
+        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
+            <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected" wire:confirm="{{ __('Delete selected records?') }}">{{ __('Delete selected') }}</flux:button>
+        </div>
+    @endif
+
     {{-- Table --}}
     <flux:card class="p-4">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                        <th class="py-2 pe-3 font-medium">
+                            <input type="checkbox"
+                                wire:click="toggleSelectPage"
+                                @checked($this->isPageFullySelected())
+                            >
+                        </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Employee') }}</th>
                         <th class="py-2 pe-3 font-medium">
                             <button wire:click="sortBy('period_start')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
@@ -388,6 +444,9 @@ new #[Title('Payroll')] class extends Component
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedPayrolls as $payroll)
                         <tr>
+                            <td class="py-2 pe-3">
+                                <input type="checkbox" wire:model.live="selectedIds" value="{{ $payroll->id }}">
+                            </td>
                             <td class="py-2 pe-3 font-medium">{{ $payroll->employee?->fullName() }}</td>
                             <td class="py-2 pe-3 whitespace-nowrap text-xs text-zinc-500">
                                 {{ $payroll->period_start->format('d M Y') }} – {{ $payroll->period_end->format('d M') }}
@@ -429,7 +488,7 @@ new #[Title('Payroll')] class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="py-8 text-center text-zinc-500">
+                            <td colspan="9" class="py-8 text-center text-zinc-500">
                                 {{ __('No payroll entries yet.') }}
                             </td>
                         </tr>
