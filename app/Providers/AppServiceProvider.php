@@ -133,8 +133,17 @@ class AppServiceProvider extends ServiceProvider
     protected function registerBladeDirectives(): void
     {
         Blade::directive('cache', function (string $expression): string {
-            // Split at compile-time so we don't pass $expression directly into explode() at runtime
-            [$key, $ttl] = array_pad(array_map('trim', explode(',', $expression, 2)), 2, '60');
+            // Split on the last comma so keys like `'x' . foo()->bar, 30` are not broken by
+            // Livewire/Blade inlining the expression into a single explode() call (4-arg bug).
+            $expression = trim($expression);
+            $lastComma = strrpos($expression, ',');
+            if ($lastComma === false) {
+                $key = $expression;
+                $ttl = '60';
+            } else {
+                $key = trim(substr($expression, 0, $lastComma));
+                $ttl = trim(substr($expression, $lastComma + 1));
+            }
 
             return "<?php
                 \$__cacheKey = (string) ({$key});
