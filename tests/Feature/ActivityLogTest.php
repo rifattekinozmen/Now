@@ -35,7 +35,7 @@ it('creates an activity log entry when an order is updated', function (): void {
     $admin->givePermissionTo('logistics.admin');
     $this->actingAs($admin);
 
-    $order = Order::factory()->create(['tenant_id' => $tenant->id]);
+    $order = Order::factory()->create(['tenant_id' => $tenant->id, 'incoterms' => 'EXW']);
 
     $order->update(['incoterms' => 'FOB']);
 

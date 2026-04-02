@@ -103,7 +103,7 @@ new #[Title('Current Accounts')] class extends Component
     #[Computed]
     public function customers(): \Illuminate\Database\Eloquent\Collection
     {
-        return Customer::query()->orderBy('name')->get(['id', 'name']);
+        return Customer::query()->orderBy('legal_name')->get(['id', 'legal_name']);
     }
 
     /** @return \Illuminate\Database\Eloquent\Collection<int, Employee> */

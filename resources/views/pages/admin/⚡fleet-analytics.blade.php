@@ -7,6 +7,7 @@ use App\Models\Shipment;
 use App\Models\Vehicle;
 use App\Services\Logistics\AuditAiEvaluationService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -25,15 +26,20 @@ new #[Title('Fleet analytics')] class extends Component
     #[Computed]
     public function vehiclesWithStats(): \Illuminate\Database\Eloquent\Collection
     {
+        $cutoff = now()->subDays(30);
+
         return Vehicle::query()
             ->withCount([
-                'shipments as shipments_30d' => function ($q): void {
-                    $q->where('created_at', '>=', now()->subDays(30));
-                },
+                'shipments as shipments_30d' => fn ($q) => $q->where('created_at', '>=', $cutoff),
             ])
-            ->withSum(['shipments as total_tonnage' => function ($q): void {
-                $q->where('created_at', '>=', now()->subDays(30));
-            }], 'net_weight_kg')
+            ->selectSub(
+                DB::table('shipments as s')
+                    ->selectRaw('COALESCE(SUM(o.net_weight_kg), 0)')
+                    ->join('orders as o', 's.order_id', '=', 'o.id')
+                    ->whereColumn('s.vehicle_id', 'vehicles.id')
+                    ->where('s.created_at', '>=', $cutoff),
+                'total_tonnage'
+            )
             ->orderByDesc('shipments_30d')
             ->limit(20)
             ->get();

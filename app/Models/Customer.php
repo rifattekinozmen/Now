@@ -37,6 +37,15 @@ class Customer extends Model
     }
 
     /**
+     * Virtual "name" attribute — returns legal_name for display convenience.
+     * Avoids raw SQL errors when code references $customer->name.
+     */
+    public function getNameAttribute(): string
+    {
+        return $this->legal_name ?? $this->trade_name ?? '';
+    }
+
+    /**
      * @return BelongsTo<Tenant, $this>
      */
     public function tenant(): BelongsTo

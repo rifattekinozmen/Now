@@ -257,12 +257,17 @@ new #[Title('Finance summary')] class extends Component
                 <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Finance summary') }}</span>
             </x-slot>
             <x-slot name="actions">
-                <flux:button :href="route('admin.finance.reports')" variant="outline">{{ __('Finance reports') }}</flux:button>
-                <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline">{{ __('Payment due calendar') }}</flux:button>
-                <flux:button :href="route('admin.finance.bank-statement-csv')" variant="outline">{{ __('Bank statement CSV import') }}</flux:button>
-                <flux:button :href="route('admin.orders.export.finance.csv')" variant="outline">{{ __('Export orders CSV') }}</flux:button>
-                <flux:button :href="route('admin.orders.export.logo.xml')" variant="outline">{{ __('Export Logo XML') }}</flux:button>
-                <flux:button :href="route('dashboard')" variant="ghost" wire:navigate>{{ __('Back to dashboard') }}</flux:button>
+                <flux:button :href="route('admin.finance.reports')" variant="outline" wire:navigate>{{ __('Finance reports') }}</flux:button>
+                <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline" wire:navigate>{{ __('Payment due calendar') }}</flux:button>
+                <flux:tooltip :content="__('Bank statement CSV import')" position="bottom">
+                    <flux:button icon="arrow-up-tray" variant="outline" :href="route('admin.finance.bank-statement-csv')" wire:navigate />
+                </flux:tooltip>
+                <flux:tooltip :content="__('Export orders CSV')" position="bottom">
+                    <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.orders.export.finance.csv')" />
+                </flux:tooltip>
+                <flux:tooltip :content="__('Export Logo XML')" position="bottom">
+                    <flux:button icon="code-bracket" variant="outline" :href="route('admin.orders.export.logo.xml')" />
+                </flux:tooltip>
             </x-slot>
         </x-admin.page-header>
 

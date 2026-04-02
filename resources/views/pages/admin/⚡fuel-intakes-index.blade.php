@@ -274,8 +274,10 @@ new #[Title('Fuel intakes')] class extends Component
             </flux:text>
             <div class="flex flex-wrap items-end gap-4">
                 <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                <flux:button type="button" wire:click="importFuelIntakes" variant="primary">{{ __('Import') }}</flux:button>
-                <flux:button :href="route('admin.fuel-intakes.template.xlsx')" variant="ghost">{{ __('Download template') }}</flux:button>
+                <flux:button type="button" wire:click="importFuelIntakes" icon="arrow-up-tray" variant="primary">{{ __('Import') }}</flux:button>
+                <flux:tooltip :content="__('Download template')" position="bottom">
+                    <flux:button icon="document-arrow-down" :href="route('admin.fuel-intakes.template.xlsx')" variant="ghost" />
+                </flux:tooltip>
             </div>
         </flux:card>
     @endif

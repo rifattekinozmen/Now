@@ -142,6 +142,59 @@
 
         {{ $slot }}
 
+        {{-- Floating Action Button (FAB) --}}
+        @canany([\App\Authorization\LogisticsPermission::ADMIN])
+        <div
+            class="fixed bottom-6 right-6 z-50"
+            x-data="{ open: false }"
+            x-on:keydown.escape.window="open = false"
+            @click.outside="open = false"
+        >
+            {{-- Action items --}}
+            <div
+                x-show="open"
+                x-transition:enter="transition ease-out duration-150"
+                x-transition:enter-start="opacity-0 translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-100"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-2"
+                class="mb-3 flex flex-col items-end gap-2"
+            >
+                <a href="{{ route('admin.fuel-intakes.index') }}" wire:navigate
+                   class="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-lg ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700">
+                    <flux:icon name="bolt" class="size-4 text-amber-500" />
+                    {{ __('Fuel intake') }}
+                </a>
+                <a href="{{ route('admin.finance.vouchers.index') }}" wire:navigate
+                   class="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-lg ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700">
+                    <flux:icon name="document-check" class="size-4 text-green-600" />
+                    {{ __('New voucher') }}
+                </a>
+                <a href="{{ route('admin.customers.index') }}" wire:navigate
+                   class="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-lg ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700">
+                    <flux:icon name="users" class="size-4 text-primary" />
+                    {{ __('New customer') }}
+                </a>
+                <a href="{{ route('admin.orders.index') }}" wire:navigate
+                   class="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-medium text-zinc-700 shadow-lg ring-1 ring-zinc-200 transition hover:bg-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:ring-zinc-700 dark:hover:bg-zinc-700">
+                    <flux:icon name="clipboard-document-list" class="size-4 text-primary" />
+                    {{ __('New order') }}
+                </a>
+            </div>
+
+            {{-- Toggle button --}}
+            <button
+                type="button"
+                x-on:click="open = !open"
+                class="flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                :aria-label="open ? '{{ __('Close') }}' : '{{ __('Quick actions') }}'"
+            >
+                <flux:icon name="plus" class="size-6 transition-transform duration-200" :class="open ? 'rotate-45' : ''" />
+            </button>
+        </div>
+        @endcanany
+
         @fluxScripts
         </div>
     </body>

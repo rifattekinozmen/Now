@@ -358,7 +358,9 @@ new #[Title('PIN pool')] class extends Component
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('PIN pool') }}</span>
         </x-slot>
         <x-slot name="actions">
-            <flux:button :href="route('admin.delivery-numbers.template.xlsx')" variant="outline">{{ __('Download XLSX template') }}</flux:button>
+            <flux:tooltip :content="__('Download XLSX template')" position="bottom">
+                <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.delivery-numbers.template.xlsx')" />
+            </flux:tooltip>
         </x-slot>
     </x-admin.page-header>
 

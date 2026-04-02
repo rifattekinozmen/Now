@@ -194,6 +194,27 @@ new #[Title('Dashboard')] class extends Component
     }
 
     /**
+     * Bugünün özeti — today's orders, shipments and pending approvals total.
+     *
+     * @return array{today_orders: int, today_shipments: int, pending_total: int, upcoming_dues: int}
+     */
+    #[Computed]
+    public function todaySummary(): array
+    {
+        $todayOrders = Order::query()->whereDate('created_at', today())->count();
+        $todayShipments = Shipment::query()->whereDate('created_at', today())->count();
+        $pa = $this->pendingApprovals;
+        $pendingTotal = ($pa['vouchers'] ?? 0) + ($pa['leaves'] ?? 0) + ($pa['payrolls'] ?? 0) + ($pa['advances'] ?? 0);
+
+        return [
+            'today_orders'   => $todayOrders,
+            'today_shipments' => $todayShipments,
+            'pending_total'  => $pendingTotal,
+            'upcoming_dues'  => $this->upcomingDues['count'],
+        ];
+    }
+
+    /**
      * Chart.js için sevkiyat dağılımı (yalnızca sayısı sıfırdan büyük durumlar).
      *
      * @return array{labels: list<string>, data: list<int>, colors: list<string>}|null
@@ -255,6 +276,46 @@ new #[Title('Dashboard')] class extends Component
         @if (session()->has('error'))
             <flux:callout variant="danger" icon="exclamation-triangle">{{ session('error') }}</flux:callout>
         @endif
+
+        {{-- Bugünün Özeti --}}
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <flux:card class="!p-3 flex items-center gap-3">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <flux:icon name="clipboard-document-list" class="size-5 text-primary" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Today\'s orders') }}</div>
+                    <div class="text-lg font-bold">{{ $this->todaySummary['today_orders'] }}</div>
+                </div>
+            </flux:card>
+            <flux:card class="!p-3 flex items-center gap-3">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                    <flux:icon name="truck" class="size-5 text-blue-500" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Today\'s shipments') }}</div>
+                    <div class="text-lg font-bold">{{ $this->todaySummary['today_shipments'] }}</div>
+                </div>
+            </flux:card>
+            <flux:card class="!p-3 flex items-center gap-3">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-lg {{ $this->todaySummary['pending_total'] > 0 ? 'bg-amber-500/10' : 'bg-zinc-100 dark:bg-zinc-700' }}">
+                    <flux:icon name="clock" class="size-5 {{ $this->todaySummary['pending_total'] > 0 ? 'text-amber-500' : 'text-zinc-400' }}" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Pending approvals') }}</div>
+                    <div class="text-lg font-bold {{ $this->todaySummary['pending_total'] > 0 ? 'text-amber-600' : '' }}">{{ $this->todaySummary['pending_total'] }}</div>
+                </div>
+            </flux:card>
+            <flux:card class="!p-3 flex items-center gap-3">
+                <div class="flex size-9 shrink-0 items-center justify-center rounded-lg {{ $this->todaySummary['upcoming_dues'] > 0 ? 'bg-red-500/10' : 'bg-zinc-100 dark:bg-zinc-700' }}">
+                    <flux:icon name="exclamation-circle" class="size-5 {{ $this->todaySummary['upcoming_dues'] > 0 ? 'text-red-500' : 'text-zinc-400' }}" />
+                </div>
+                <div class="min-w-0">
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Due in 7 days') }}</div>
+                    <div class="text-lg font-bold {{ $this->todaySummary['upcoming_dues'] > 0 ? 'text-red-600' : '' }}">{{ $this->todaySummary['upcoming_dues'] }}</div>
+                </div>
+            </flux:card>
+        </div>
 
         <flux:card>
             <flux:heading size="lg" class="mb-2">{{ __('Cached FX (TCMB ForexBuying → TRY per 1 unit)') }}</flux:heading>

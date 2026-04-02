@@ -216,6 +216,42 @@
         </div>
 
         @fluxScripts
+
+        {{-- Sidebar collapse state persistence via localStorage --}}
+        <script>
+            (function () {
+                var STORAGE_KEY = 'sidebar-desktop-collapsed';
+
+                function initSidebarMemory() {
+                    var sidebar = document.querySelector('[data-flux-sidebar]');
+                    if (!sidebar) return;
+
+                    // Restore saved collapse state on full page load
+                    if (localStorage.getItem(STORAGE_KEY) === '1') {
+                        var btn = document.querySelector('[data-flux-sidebar-collapse]');
+                        if (btn && !sidebar.hasAttribute('data-flux-sidebar-collapsed-desktop')) {
+                            btn.click();
+                        }
+                    }
+
+                    // Observe attribute changes and save to localStorage
+                    var observer = new MutationObserver(function () {
+                        var collapsed = sidebar.hasAttribute('data-flux-sidebar-collapsed-desktop');
+                        localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0');
+                    });
+                    observer.observe(sidebar, {
+                        attributes: true,
+                        attributeFilter: ['data-flux-sidebar-collapsed-desktop'],
+                    });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initSidebarMemory);
+                } else {
+                    initSidebarMemory();
+                }
+            })();
+        </script>
         </div>
     </body>
 </html>

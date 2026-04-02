@@ -144,7 +144,7 @@ new #[Title('Pricing Conditions')] class extends Component
     #[Computed]
     public function customers(): \Illuminate\Database\Eloquent\Collection
     {
-        return Customer::query()->orderBy('name')->get(['id', 'name']);
+        return Customer::query()->orderBy('legal_name')->get(['id', 'legal_name']);
     }
 
     private function conditionsQuery(): Builder

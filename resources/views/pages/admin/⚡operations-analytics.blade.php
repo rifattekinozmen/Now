@@ -80,8 +80,10 @@ new #[Title('Operations analytics')] class extends Component
     {
         return DB::table('shipments')
             ->join('employees', 'shipments.driver_employee_id', '=', 'employees.id')
+            ->join('orders', 'shipments.order_id', '=', 'orders.id')
             ->where('shipments.created_at', '>=', now()->subDays(30))
-            ->selectRaw('employees.id, employees.first_name, employees.last_name, COUNT(shipments.id) as trips, COALESCE(SUM(shipments.net_weight_kg),0) as total_kg')
+            ->where('shipments.tenant_id', auth()->user()?->tenant_id)
+            ->selectRaw('employees.id, employees.first_name, employees.last_name, COUNT(shipments.id) as trips, COALESCE(SUM(orders.net_weight_kg),0) as total_kg')
             ->groupBy('employees.id', 'employees.first_name', 'employees.last_name')
             ->orderByDesc('trips')
             ->limit(10)
