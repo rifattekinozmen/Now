@@ -18,6 +18,8 @@ use App\Services\Operations\FreightEscalationRule;
 use App\Services\Operations\LogOperationalNotifier;
 use App\Services\Operations\SlackOperationalNotifier;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -116,6 +118,40 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->registerBladeDirectives();
+    }
+
+    /**
+     * Register custom Blade directives.
+     *
+     * @cache('key', 60) ... @endcache
+     *
+     * Caches the enclosed HTML output. Use for static/rarely-changing
+     * Blade sections (KPI cards, page headers). Do NOT use inside
+     * Livewire wire: directive scopes — it will break reactivity.
+     */
+    protected function registerBladeDirectives(): void
+    {
+        Blade::directive('cache', function (string $expression): string {
+            // Split at compile-time so we don't pass $expression directly into explode() at runtime
+            [$key, $ttl] = array_pad(array_map('trim', explode(',', $expression, 2)), 2, '60');
+
+            return "<?php
+                \$__cacheKey = (string) ({$key});
+                \$__cacheTtl = (int) ({$ttl});
+                \$__cachedHtml = \\Illuminate\\Support\\Facades\\Cache::get(\$__cacheKey);
+                if (\$__cachedHtml !== null) { echo \$__cachedHtml; } else { ob_start();
+            ?>";
+        });
+
+        Blade::directive('endcache', function (): string {
+            return '<?php
+                $__cachedHtml = ob_get_clean();
+                Cache::put($__cacheKey, $__cachedHtml, $__cacheTtl);
+                echo $__cachedHtml;
+                } // end @cache
+            ?>';
+        });
     }
 
     /**

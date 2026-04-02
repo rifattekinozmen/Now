@@ -56,17 +56,21 @@ This application is a Laravel application and its main Laravel ecosystems packag
 
 # Laravel Boost
 
-## Tools
+## Tools (ZORUNLU — HER ZAMAN KULLAN)
 
-- Laravel Boost is an MCP server with tools designed specifically for this application. Prefer Boost tools over manual alternatives like shell commands or file reads.
-- Use `database-query` to run read-only queries against the database instead of writing raw SQL in tinker.
-- Use `database-schema` to inspect table structure before writing migrations or models.
-- Use `get-absolute-url` to resolve the correct scheme, domain, and port for project URLs. Always use this before sharing a URL with the user.
-- Use `browser-logs` to read browser logs, errors, and exceptions. Only recent logs are useful, ignore old entries.
+- Laravel Boost, bu uygulama için özel tasarlanmış bir MCP sunucusudur. Manuel alternatifler (shell komutları, dosya okuma) yerine **her zaman** Boost araçlarını kullan.
+- **`search-docs`** — Herhangi bir kod değişikliğinden ÖNCE mutlaka çağır. Atlamak yasaktır.
+- **`database-schema`** — Migration veya model yazmadan önce tablo yapısını kontrol et.
+- **`database-query`** — Tinker ya da raw SQL yerine read-only sorgular için kullan.
+- **`get-absolute-url`** — Kullanıcıya URL paylaşmadan önce her zaman çağır.
+- **`browser-logs`** — Hata ayıklarken veya sayfa hatası geldiğinde ilk kontrol noktası.
+- **`last-error`** — Son uygulama hatasını okumak için kullan.
+- **`read-log-entries`** — Laravel log dosyasını okumak için kullan.
 
-## Searching Documentation (IMPORTANT)
+## Searching Documentation (ZORUNLU)
 
-- Always use `search-docs` before making code changes. Do not skip this step. It returns version-specific docs based on installed packages automatically.
+- **Her kod değişikliğinden önce `search-docs` çağır. Bu adımı asla atlama.**
+- Pass a `packages` array to scope results when you know which packages are relevant.
 - Pass a `packages` array to scope results when you know which packages are relevant.
 - Use multiple broad, topic-based queries: `['rate limiting', 'routing rate limiting', 'routing']`. Expect the most relevant results first.
 - Do not add package names to queries because package info is already shared. Use `test resource table`, not `filament 4 test resource table`.

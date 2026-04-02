@@ -24,6 +24,7 @@
         "spatie/laravel-permission": "^6.21"
     },
     "require-dev": {
+        "barryvdh/laravel-debugbar": "^4.2",
         "fakerphp/faker": "^1.24",
         "laravel/boost": "*",
         "laravel/pail": "^1.2.5",
