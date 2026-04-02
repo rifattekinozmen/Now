@@ -22,3 +22,6 @@ yarn-error.log
 /.vscode
 /.zed
 /.vagrant
+
+# Claude agent worktrees (local only; not versioned)
+/.claude/worktrees/
