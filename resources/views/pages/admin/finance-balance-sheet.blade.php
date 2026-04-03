@@ -8,7 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Balance sheet summary')] class extends Component
+new #[Lazy, Title('Balance sheet summary')] class extends Component
 {
     public string $dateFrom = '';
 

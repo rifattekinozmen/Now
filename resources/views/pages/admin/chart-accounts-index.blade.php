@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Chart of accounts')] class extends Component
+new #[Lazy, Title('Chart of accounts')] class extends Component
 {
     public string $code = '';
 

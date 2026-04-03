@@ -16,7 +16,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Shipments')] class extends Component
+new #[Lazy, Title('Shipments')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithPagination;

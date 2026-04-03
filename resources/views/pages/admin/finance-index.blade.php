@@ -11,7 +11,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Finance summary')] class extends Component
+new #[Lazy, Title('Finance summary')] class extends Component
 {
     public string $filterDateFrom = '';
 

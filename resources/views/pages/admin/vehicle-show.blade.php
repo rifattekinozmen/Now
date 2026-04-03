@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-new #[Title('Vehicle')] class extends Component
+new #[Lazy, Title('Vehicle')] class extends Component
 {
     public Vehicle $vehicle;
 

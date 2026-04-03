@@ -8,7 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Payment due calendar')] class extends Component
+new #[Lazy, Title('Payment due calendar')] class extends Component
 {
     /** @var string `Y-m` */
     public string $month = '';

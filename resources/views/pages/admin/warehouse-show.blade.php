@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Warehouse detail')] class extends Component
+new #[Lazy, Title('Warehouse detail')] class extends Component
 {
     public Warehouse $warehouse;
 

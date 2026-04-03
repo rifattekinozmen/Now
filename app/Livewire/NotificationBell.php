@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\AppNotification;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -18,10 +19,15 @@ class NotificationBell extends Component
             return 0;
         }
 
-        return AppNotification::query()
-            ->forUser($user->id)
-            ->unread()
-            ->count();
+        // Cache unread count for 60 seconds per user
+        $cacheKey = "notifications.unread.{$user->id}";
+        
+        return Cache::remember($cacheKey, 60, function () use ($user) {
+            return AppNotification::query()
+                ->forUser($user->id)
+                ->unread()
+                ->count();
+        });
     }
 
     public function render(): View

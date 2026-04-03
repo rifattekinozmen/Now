@@ -8,7 +8,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Finance reports')] class extends Component
+new #[Lazy, Title('Finance reports')] class extends Component
 {
     public string $asOfDate = '';
 

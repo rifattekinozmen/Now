@@ -17,7 +17,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
-new #[Title('PIN pool')] class extends Component
+new #[Lazy, Title('PIN pool')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithFileUploads;

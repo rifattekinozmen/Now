@@ -16,7 +16,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Customer profile')] class extends Component
+new #[Lazy, Title('Customer profile')] class extends Component
 {
     public Customer $customer;
 

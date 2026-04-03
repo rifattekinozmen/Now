@@ -13,7 +13,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 
-new #[Title('Bank statement CSV import')] class extends Component
+new #[Lazy, Title('Bank statement CSV import')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithFileUploads;

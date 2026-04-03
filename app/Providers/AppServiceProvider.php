@@ -119,6 +119,25 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->registerBladeDirectives();
+        $this->registerCacheInvalidationListeners();
+    }
+
+    /**
+     * Register cache invalidation for sidebar menu when permissions change.
+     */
+    private function registerCacheInvalidationListeners(): void
+    {
+        // Listen for user updates to invalidate sidebar cache
+        \App\Models\User::updated(function ($user): void {
+            Cache::forget('sidebar-menu-' . $user->id);
+        });
+
+        // Listen for notification creation to invalidate count cache
+        if (class_exists(\App\Models\AppNotification::class)) {
+            \App\Models\AppNotification::created(function ($notification): void {
+                Cache::forget('notifications.unread.' . $notification->user_id);
+            });
+        }
     }
 
     /**

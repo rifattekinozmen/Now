@@ -12,7 +12,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Maintenance Schedules')] class extends Component
+new #[Lazy, Title('Maintenance Schedules')] class extends Component
 {
     use WithPagination;
 

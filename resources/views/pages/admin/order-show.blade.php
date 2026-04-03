@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Order detail')] class extends Component
+new #[Lazy, Title('Order detail')] class extends Component
 {
     use RequiresLogisticsAdmin;
 

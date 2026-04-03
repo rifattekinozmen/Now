@@ -8,7 +8,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Notifications')] class extends Component
+new #[Lazy, Title('Notifications')] class extends Component
 {
     use WithPagination;
 

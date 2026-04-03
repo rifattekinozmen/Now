@@ -13,7 +13,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Fleet analytics')] class extends Component
+new #[Lazy, Title('Fleet analytics')] class extends Component
 {
     public function mount(): void
     {

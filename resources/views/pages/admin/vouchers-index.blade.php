@@ -16,7 +16,7 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\WithPagination;
 
-new #[Title('Vouchers')] class extends Component
+new #[Lazy, Title('Vouchers')] class extends Component
 {
     use WithFileUploads;
     use WithPagination;

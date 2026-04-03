@@ -7,8 +7,10 @@ use App\Actions\Fortify\ResetUserPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -38,6 +40,43 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+
+        // Custom authenticator with detailed logging
+        Fortify::authenticateUsing(function (Request $request) {
+            $email = $request->input(Fortify::username());
+            $password = $request->input('password');
+            
+            Log::info('Fortify login attempt', [
+                'email' => $email,
+                'ip' => $request->ip(),
+            ]);
+
+            $user = \App\Models\User::where('email', $email)->first();
+            
+            if ($user) {
+                Log::info('User found', ['email' => $email, 'id' => $user->id]);
+                
+                if (password_verify($password, $user->password)) {
+                    Log::info('Password verified - authentication success', ['email' => $email]);
+                    return $user;
+                } else {
+                    Log::warning('Password verification failed', ['email' => $email]);
+                }
+            } else {
+                Log::warning('User not found', ['email' => $email]);
+            }
+            
+            return null;
+        });
+
+        $this->app->singleton(LoginResponse::class, function () {
+            return new class implements LoginResponse {
+                public function toResponse($request)
+                {
+                    return redirect()->intended(route('dashboard'));
+                }
+            };
+        });
     }
 
     /**

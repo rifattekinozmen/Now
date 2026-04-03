@@ -7,7 +7,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Fiscal opening balances')] class extends Component
+new #[Lazy, Title('Fiscal opening balances')] class extends Component
 {
     public int $filterFiscalYear;
 

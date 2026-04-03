@@ -11,7 +11,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 
-new #[Title('Shipment detail')] class extends Component
+new #[Lazy, Title('Shipment detail')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithFileUploads;

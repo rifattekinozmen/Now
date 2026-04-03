@@ -16,7 +16,7 @@ use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
 use Livewire\WithPagination;
 
-new #[Title('Customers')] class extends Component
+new #[Lazy, Title('Customers')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithFileUploads;

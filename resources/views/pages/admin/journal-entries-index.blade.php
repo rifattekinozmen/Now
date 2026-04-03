@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Journal entries')] class extends Component
+new #[Lazy, Title('Journal entries')] class extends Component
 {
     public function mount(): void
     {

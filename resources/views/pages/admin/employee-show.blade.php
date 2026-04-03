@@ -6,7 +6,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 
-new #[Title('Employee Details')] class extends Component
+new #[Lazy, Title('Employee Details')] class extends Component
 {
     public Employee $employee;
 

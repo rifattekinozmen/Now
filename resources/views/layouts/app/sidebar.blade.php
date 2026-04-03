@@ -24,6 +24,8 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
+                {{-- Cache sidebar menu for 1 hour (or until user logs out) --}}
+                @cache('sidebar-menu-' . auth()->id(), 3600)
                 @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
 
                     {{-- Lojistik Operasyon --}}
@@ -129,6 +131,7 @@
                     </flux:sidebar.group>
 
                 @endcanany
+                @endcache
             </flux:sidebar.nav>
 
             {{-- Profil: nav dışında sabit alta pinlendi, scrollbar profilü itmez --}}
