@@ -8,7 +8,9 @@ use App\Models\Order;
 use App\Services\Logistics\ExcelImportService;
 use App\Services\Logistics\FreightCalculationService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -242,12 +244,21 @@ new #[Lazy, Title('Orders')] class extends Component
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Customer>
+     * @return array<int, array{id: int, legal_name: string}>
      */
     #[Computed]
-    public function customerOptions()
+    public function customerOptions(): array
     {
-        return Customer::query()->orderBy('legal_name')->limit(500)->get();
+        $tenantId = auth()->user()?->tenant_id ?? 0;
+
+        return Cache::remember("customer-options.{$tenantId}", 300, function () {
+            return Customer::query()
+                ->orderBy('legal_name')
+                ->limit(500)
+                ->get()
+                ->map(fn (Customer $c) => ['id' => $c->id, 'legal_name' => $c->legal_name])
+                ->all();
+        });
     }
 
     public function estimateFreight(FreightCalculationService $freight): void
@@ -556,7 +567,7 @@ new #[Lazy, Title('Orders')] class extends Component
                 <flux:select wire:model="customer_id" :label="__('Customer')" required>
                     <option value="">{{ __('Select…') }}</option>
                     @foreach ($this->customerOptions as $c)
-                        <option value="{{ $c->id }}">{{ $c->legal_name }}</option>
+                        <option value="{{ $c['id'] }}">{{ $c['legal_name'] }}</option>
                     @endforeach
                 </flux:select>
 

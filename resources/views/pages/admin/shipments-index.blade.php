@@ -1,6 +1,5 @@
 <?php
 
-use App\Authorization\LogisticsPermission;
 use App\Enums\ShipmentStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Order;
@@ -8,7 +7,9 @@ use App\Models\Shipment;
 use App\Models\Vehicle;
 use App\Services\Logistics\ShipmentStatusTransitionService;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
@@ -221,19 +222,42 @@ new #[Lazy, Title('Shipments')] class extends Component
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Order>
+     * @return array<int, array{id: int, order_number: string, legal_name: string}>
      */
-    public function orderOptions()
+    public function orderOptions(): array
     {
-        return Order::query()->with('customer')->orderByDesc('id')->limit(200)->get();
+        $tenantId = auth()->user()?->tenant_id ?? 0;
+
+        return Cache::remember("order-options.{$tenantId}", 120, function () {
+            return Order::query()
+                ->with('customer:id,legal_name')
+                ->orderByDesc('id')
+                ->limit(200)
+                ->get()
+                ->map(fn (Order $o) => [
+                    'id' => $o->id,
+                    'order_number' => $o->order_number,
+                    'legal_name' => $o->customer?->legal_name ?? '—',
+                ])
+                ->all();
+        });
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Vehicle>
+     * @return array<int, array{id: int, plate: string}>
      */
-    public function vehicleOptions()
+    public function vehicleOptions(): array
     {
-        return Vehicle::query()->orderBy('plate')->limit(500)->get();
+        $tenantId = auth()->user()?->tenant_id ?? 0;
+
+        return Cache::remember("vehicle-options.{$tenantId}", 300, function () {
+            return Vehicle::query()
+                ->orderBy('plate')
+                ->limit(500)
+                ->get()
+                ->map(fn (Vehicle $v) => ['id' => $v->id, 'plate' => $v->plate])
+                ->all();
+        });
     }
 
     public function saveShipment(): void
@@ -280,7 +304,7 @@ new #[Lazy, Title('Shipments')] class extends Component
 
         try {
             $transitions->markDispatched($shipment);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             session()->flash('error', $e->getMessage());
         }
     }
@@ -294,7 +318,7 @@ new #[Lazy, Title('Shipments')] class extends Component
 
         try {
             $transitions->markDelivered($shipment);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             session()->flash('error', $e->getMessage());
         }
     }
@@ -308,7 +332,7 @@ new #[Lazy, Title('Shipments')] class extends Component
 
         try {
             $transitions->cancel($shipment);
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
             session()->flash('error', $e->getMessage());
         }
     }
@@ -388,14 +412,14 @@ new #[Lazy, Title('Shipments')] class extends Component
                 <flux:select wire:model="order_id" :label="__('Order')" required>
                     <option value="">{{ __('Select…') }}</option>
                     @foreach ($this->orderOptions() as $o)
-                        <option value="{{ $o->id }}">{{ $o->order_number }} — {{ $o->customer?->legal_name ?? '—' }}</option>
+                        <option value="{{ $o['id'] }}">{{ $o['order_number'] }} — {{ $o['legal_name'] }}</option>
                     @endforeach
                 </flux:select>
 
                 <flux:select wire:model="vehicle_id" :label="__('Vehicle (optional)')">
                     <option value="">{{ __('—') }}</option>
                     @foreach ($this->vehicleOptions() as $v)
-                        <option value="{{ $v->id }}">{{ $v->plate }}</option>
+                        <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
                     @endforeach
                 </flux:select>
 

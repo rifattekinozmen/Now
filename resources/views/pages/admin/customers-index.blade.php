@@ -4,10 +4,8 @@ use App\Authorization\LogisticsPermission;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Customer;
 use App\Services\Logistics\ExcelImportService;
-use App\Support\TenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
@@ -70,27 +68,17 @@ new #[Lazy, Title('Customers')] class extends Component
     public function customerStats(): array
     {
         $monthStart = now()->startOfMonth()->toDateTimeString();
-        $tenantId = TenantContext::id();
 
-        if ($tenantId !== null) {
-            $row = DB::selectOne(
-                'SELECT
-                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ?) AS total,
-                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ? AND created_at >= ?) AS new_this_month,
-                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ? AND tax_id IS NOT NULL AND tax_id != ?) AS with_tax_id,
-                    (SELECT ROUND(AVG(payment_term_days)) FROM customers WHERE tenant_id = ?) AS avg_payment_term',
-                [$tenantId, $tenantId, $monthStart, $tenantId, '', $tenantId]
-            );
-        } else {
-            $row = DB::selectOne(
-                'SELECT
-                    (SELECT COUNT(*) FROM customers) AS total,
-                    (SELECT COUNT(*) FROM customers WHERE created_at >= ?) AS new_this_month,
-                    (SELECT COUNT(*) FROM customers WHERE tax_id IS NOT NULL AND tax_id != ?) AS with_tax_id,
-                    (SELECT ROUND(AVG(payment_term_days)) FROM customers) AS avg_payment_term',
+        $row = Customer::query()
+            ->toBase()
+            ->selectRaw(
+                'COUNT(*) as total, '.
+                'SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as new_this_month, '.
+                'SUM(CASE WHEN tax_id IS NOT NULL AND tax_id != ? THEN 1 ELSE 0 END) as with_tax_id, '.
+                'ROUND(AVG(payment_term_days)) as avg_payment_term',
                 [$monthStart, '']
-            );
-        }
+            )
+            ->first();
 
         return [
             'total' => (int) ($row->total ?? 0),

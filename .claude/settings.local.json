@@ -29,7 +29,9 @@
       "Bash(sed -i 's/APP_LOCALE=en/APP_LOCALE=tr/' .env)",
       "Bash(sed -i 's/APP_FALLBACK_LOCALE=en/APP_FALLBACK_LOCALE=tr/' .env)",
       "Bash(grep -l \"x-admin.page-header\\\\|x-admin.filter-bar\" \"/c/Users/TekinOzmen/Desktop/Now/resources/views/pages/admin/\"⚡*.blade.php)",
-      "Bash(grep -l \"filtersOpen\" resources/views/pages/admin/*.blade.php)"
+      "Bash(grep -l \"filtersOpen\" resources/views/pages/admin/*.blade.php)",
+      "Bash(ls -1 /c/Users/TekinOzmen/Desktop/Now/app/Providers/*.php)",
+      "Bash(grep -r \"NotificationBell\\\\|GlobalSearch\" /c/Users/TekinOzmen/Desktop/Now/resources/views --include=*.php --include=*.blade.php)"
     ]
   }
 }

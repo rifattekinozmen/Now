@@ -16,6 +16,7 @@ use App\Models\Voucher;
 use App\Services\Logistics\FleetSummaryService;
 use App\Services\Logistics\TcmbExchangeRateService;
 use App\Support\TenantContext;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -58,50 +59,52 @@ new #[Title('Dashboard')] class extends Component
     #[Computed]
     public function dashboardKpis(): array
     {
-        $tenantId = TenantContext::id();
+        $tenantId = TenantContext::id() ?? 'all';
 
-        if ($tenantId !== null) {
-            $row = DB::selectOne(
-                'SELECT
-                    (SELECT COUNT(*) FROM customers WHERE tenant_id = ?) AS customers,
-                    (SELECT COUNT(*) FROM vehicles WHERE tenant_id = ?) AS vehicles,
-                    (SELECT COUNT(*) FROM orders WHERE tenant_id = ?) AS orders,
-                    (SELECT COUNT(*) FROM shipments WHERE tenant_id = ? AND status NOT IN (?, ?)) AS open_shipments,
-                    (SELECT COUNT(*) FROM delivery_numbers WHERE tenant_id = ? AND status = ?) AS available_pins',
-                [
-                    $tenantId,
-                    $tenantId,
-                    $tenantId,
-                    $tenantId,
-                    ShipmentStatus::Delivered->value,
-                    ShipmentStatus::Cancelled->value,
-                    $tenantId,
-                    DeliveryNumberStatus::Available->value,
-                ]
-            );
-        } else {
-            $row = DB::selectOne(
-                'SELECT
-                    (SELECT COUNT(*) FROM customers) AS customers,
-                    (SELECT COUNT(*) FROM vehicles) AS vehicles,
-                    (SELECT COUNT(*) FROM orders) AS orders,
-                    (SELECT COUNT(*) FROM shipments WHERE status NOT IN (?, ?)) AS open_shipments,
-                    (SELECT COUNT(*) FROM delivery_numbers WHERE status = ?) AS available_pins',
-                [
-                    ShipmentStatus::Delivered->value,
-                    ShipmentStatus::Cancelled->value,
-                    DeliveryNumberStatus::Available->value,
-                ]
-            );
-        }
+        return Cache::remember("dashboard.kpis.{$tenantId}", 60, function () use ($tenantId) {
+            if ($tenantId !== 'all') {
+                $row = DB::selectOne(
+                    'SELECT
+                        (SELECT COUNT(*) FROM customers WHERE tenant_id = ?) AS customers,
+                        (SELECT COUNT(*) FROM vehicles WHERE tenant_id = ?) AS vehicles,
+                        (SELECT COUNT(*) FROM orders WHERE tenant_id = ?) AS orders,
+                        (SELECT COUNT(*) FROM shipments WHERE tenant_id = ? AND status NOT IN (?, ?)) AS open_shipments,
+                        (SELECT COUNT(*) FROM delivery_numbers WHERE tenant_id = ? AND status = ?) AS available_pins',
+                    [
+                        $tenantId,
+                        $tenantId,
+                        $tenantId,
+                        $tenantId,
+                        ShipmentStatus::Delivered->value,
+                        ShipmentStatus::Cancelled->value,
+                        $tenantId,
+                        DeliveryNumberStatus::Available->value,
+                    ]
+                );
+            } else {
+                $row = DB::selectOne(
+                    'SELECT
+                        (SELECT COUNT(*) FROM customers) AS customers,
+                        (SELECT COUNT(*) FROM vehicles) AS vehicles,
+                        (SELECT COUNT(*) FROM orders) AS orders,
+                        (SELECT COUNT(*) FROM shipments WHERE status NOT IN (?, ?)) AS open_shipments,
+                        (SELECT COUNT(*) FROM delivery_numbers WHERE status = ?) AS available_pins',
+                    [
+                        ShipmentStatus::Delivered->value,
+                        ShipmentStatus::Cancelled->value,
+                        DeliveryNumberStatus::Available->value,
+                    ]
+                );
+            }
 
-        return [
-            'customers' => (int) ($row->customers ?? 0),
-            'vehicles' => (int) ($row->vehicles ?? 0),
-            'orders' => (int) ($row->orders ?? 0),
-            'open_shipments' => (int) ($row->open_shipments ?? 0),
-            'available_pins' => (int) ($row->available_pins ?? 0),
-        ];
+            return [
+                'customers' => (int) ($row->customers ?? 0),
+                'vehicles' => (int) ($row->vehicles ?? 0),
+                'orders' => (int) ($row->orders ?? 0),
+                'open_shipments' => (int) ($row->open_shipments ?? 0),
+                'available_pins' => (int) ($row->available_pins ?? 0),
+            ];
+        });
     }
 
     /**
@@ -110,36 +113,40 @@ new #[Title('Dashboard')] class extends Component
     #[Computed]
     public function shipmentStatusBreakdown(): array
     {
-        /** @var array<string, int> $byStatus */
-        $byStatus = Shipment::query()
-            ->selectRaw('status, COUNT(*) as c')
-            ->groupBy('status')
-            ->pluck('c', 'status')
-            ->map(fn ($n) => (int) $n)
-            ->all();
+        $tenantId = TenantContext::id() ?? 'all';
 
-        $total = array_sum($byStatus);
-        if ($total === 0) {
-            return [];
-        }
+        return Cache::remember("dashboard.shipment-status.{$tenantId}", 60, function () {
+            /** @var array<string, int> $byStatus */
+            $byStatus = Shipment::query()
+                ->selectRaw('status, COUNT(*) as c')
+                ->groupBy('status')
+                ->pluck('c', 'status')
+                ->map(fn ($n) => (int) $n)
+                ->all();
 
-        $rows = [];
-        foreach (ShipmentStatus::cases() as $case) {
-            $count = (int) ($byStatus[$case->value] ?? 0);
-            $rows[] = [
-                'status' => $case,
-                'label' => match ($case) {
-                    ShipmentStatus::Planned => __('Planned'),
-                    ShipmentStatus::Dispatched => __('Dispatched'),
-                    ShipmentStatus::Delivered => __('Delivered'),
-                    ShipmentStatus::Cancelled => __('Cancelled'),
-                },
-                'count' => $count,
-                'percent' => round(100 * $count / $total, 1),
-            ];
-        }
+            $total = array_sum($byStatus);
+            if ($total === 0) {
+                return [];
+            }
 
-        return $rows;
+            $rows = [];
+            foreach (ShipmentStatus::cases() as $case) {
+                $count = (int) ($byStatus[$case->value] ?? 0);
+                $rows[] = [
+                    'status' => $case,
+                    'label' => match ($case) {
+                        ShipmentStatus::Planned => __('Planned'),
+                        ShipmentStatus::Dispatched => __('Dispatched'),
+                        ShipmentStatus::Delivered => __('Delivered'),
+                        ShipmentStatus::Cancelled => __('Cancelled'),
+                    },
+                    'count' => $count,
+                    'percent' => round(100 * $count / $total, 1),
+                ];
+            }
+
+            return $rows;
+        });
     }
 
     /**
@@ -153,7 +160,7 @@ new #[Title('Dashboard')] class extends Component
             return ['total_vehicles' => 0, 'inspection_due_30d' => 0, 'active_shipments' => 0];
         }
 
-        return app(FleetSummaryService::class)->getFleetKpi($tenantId);
+        return Cache::remember("dashboard.fleet-kpi.{$tenantId}", 60, fn () => app(FleetSummaryService::class)->getFleetKpi($tenantId));
     }
 
     /**
@@ -164,12 +171,16 @@ new #[Title('Dashboard')] class extends Component
     #[Computed]
     public function pendingApprovals(): array
     {
-        return [
-            'vouchers'  => Voucher::query()->where('status', VoucherStatus::Pending->value)->count(),
-            'leaves'    => Leave::query()->where('status', LeaveStatus::Pending->value)->count(),
-            'payrolls'  => Payroll::query()->where('status', PayrollStatus::Draft->value)->count(),
-            'advances'  => Advance::query()->where('status', \App\Enums\AdvanceStatus::Pending->value)->count(),
-        ];
+        $tenantId = TenantContext::id() ?? 'all';
+
+        return Cache::remember("dashboard.pending-approvals.{$tenantId}", 30, function () {
+            return [
+                'vouchers'  => Voucher::query()->where('status', VoucherStatus::Pending->value)->count(),
+                'leaves'    => Leave::query()->where('status', LeaveStatus::Pending->value)->count(),
+                'payrolls'  => Payroll::query()->where('status', PayrollStatus::Draft->value)->count(),
+                'advances'  => Advance::query()->where('status', \App\Enums\AdvanceStatus::Pending->value)->count(),
+            ];
+        });
     }
 
     /**
@@ -180,17 +191,21 @@ new #[Title('Dashboard')] class extends Component
     #[Computed]
     public function upcomingDues(): array
     {
-        $rows = Order::query()
-            ->whereNotNull('due_date')
-            ->whereBetween('due_date', [now()->toDateString(), now()->addDays(7)->toDateString()])
-            ->whereIn('status', [\App\Enums\OrderStatus::Confirmed->value, \App\Enums\OrderStatus::InTransit->value])
-            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(freight_amount), 0) as total')
-            ->first();
+        $tenantId = TenantContext::id() ?? 'all';
 
-        return [
-            'count'         => (int) ($rows?->cnt ?? 0),
-            'total_freight' => (float) ($rows?->total ?? 0),
-        ];
+        return Cache::remember("dashboard.upcoming-dues.{$tenantId}", 60, function () {
+            $rows = Order::query()
+                ->whereNotNull('due_date')
+                ->whereBetween('due_date', [now()->toDateString(), now()->addDays(7)->toDateString()])
+                ->whereIn('status', [\App\Enums\OrderStatus::Confirmed->value, \App\Enums\OrderStatus::InTransit->value])
+                ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(freight_amount), 0) as total')
+                ->first();
+
+            return [
+                'count'         => (int) ($rows?->cnt ?? 0),
+                'total_freight' => (float) ($rows?->total ?? 0),
+            ];
+        });
     }
 
     /**
@@ -201,17 +216,22 @@ new #[Title('Dashboard')] class extends Component
     #[Computed]
     public function todaySummary(): array
     {
-        $todayOrders = Order::query()->whereDate('created_at', today())->count();
-        $todayShipments = Shipment::query()->whereDate('created_at', today())->count();
-        $pa = $this->pendingApprovals;
-        $pendingTotal = ($pa['vouchers'] ?? 0) + ($pa['leaves'] ?? 0) + ($pa['payrolls'] ?? 0) + ($pa['advances'] ?? 0);
+        $tenantId = TenantContext::id() ?? 'all';
+        $today = today()->toDateString();
 
-        return [
-            'today_orders'   => $todayOrders,
-            'today_shipments' => $todayShipments,
-            'pending_total'  => $pendingTotal,
-            'upcoming_dues'  => $this->upcomingDues['count'],
-        ];
+        return Cache::remember("dashboard.today-summary.{$tenantId}.{$today}", 30, function () {
+            $todayOrders = Order::query()->whereDate('created_at', today())->count();
+            $todayShipments = Shipment::query()->whereDate('created_at', today())->count();
+            $pa = $this->pendingApprovals;
+            $pendingTotal = ($pa['vouchers'] ?? 0) + ($pa['leaves'] ?? 0) + ($pa['payrolls'] ?? 0) + ($pa['advances'] ?? 0);
+
+            return [
+                'today_orders'   => $todayOrders,
+                'today_shipments' => $todayShipments,
+                'pending_total'  => $pendingTotal,
+                'upcoming_dues'  => $this->upcomingDues['count'],
+            ];
+        });
     }
 
     /**

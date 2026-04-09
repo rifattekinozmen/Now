@@ -145,7 +145,7 @@
         <livewire:global-search />
         @auth
             @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-                <livewire:notification-bell wire:poll.60s />
+                <livewire:notification-bell wire:poll.5m />
             @endcanany
         @endauth
         <!-- Mobile User Menu -->
