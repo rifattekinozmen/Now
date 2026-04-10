@@ -55,7 +55,7 @@ new #[Lazy, Title('Chart of accounts')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
     <x-admin.page-header :heading="__('Chart of accounts')">
         <x-slot name="actions">
             <flux:button :href="route('admin.finance.index')" variant="outline" wire:navigate>{{ __('Back to finance summary') }}</flux:button>

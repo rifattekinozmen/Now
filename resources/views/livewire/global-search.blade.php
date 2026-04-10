@@ -12,7 +12,7 @@
     "
 >
     @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-        <div class="flex w-full min-w-0 items-center gap-2 border-b border-border-app bg-card px-3 py-2 lg:px-4">
+        <div class="flex flex-1 min-w-0 items-center gap-2 px-3 py-2 lg:px-4">
             <flux:button
                 type="button"
                 variant="ghost"

@@ -31,7 +31,14 @@
       "Bash(grep -l \"x-admin.page-header\\\\|x-admin.filter-bar\" \"/c/Users/TekinOzmen/Desktop/Now/resources/views/pages/admin/\"⚡*.blade.php)",
       "Bash(grep -l \"filtersOpen\" resources/views/pages/admin/*.blade.php)",
       "Bash(ls -1 /c/Users/TekinOzmen/Desktop/Now/app/Providers/*.php)",
-      "Bash(grep -r \"NotificationBell\\\\|GlobalSearch\" /c/Users/TekinOzmen/Desktop/Now/resources/views --include=*.php --include=*.blade.php)"
+      "Bash(grep -r \"NotificationBell\\\\|GlobalSearch\" /c/Users/TekinOzmen/Desktop/Now/resources/views --include=*.php --include=*.blade.php)",
+      "Bash(vendor/bin/pint resources/views/layouts/app/sidebar.blade.php --format agent)",
+      "Bash(\"C:/Program Files/MySQL/MySQL Server 9.6/bin/mysql.exe\" -u root -e \"SELECT 1;\")",
+      "Bash(net stop:*)",
+      "Bash(grep -h \"^<div class=\" resources/views/pages/admin/*.blade.php)",
+      "Bash(grep -l \"max-w-4xl\\\\|max-w-5xl\\\\|max-w-6xl\" resources/views/pages/admin/*.blade.php)",
+      "Bash(grep -l \"max-w-6xl\" resources/views/pages/dashboard.blade.php resources/views/pages/settings/*.blade.php)",
+      "Bash(grep -n '{{ $slot }}' /c/laragon/www/Now/resources/views/layouts/app/sidebar.blade.php)"
     ]
   }
 }

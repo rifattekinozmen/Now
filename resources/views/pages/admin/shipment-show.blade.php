@@ -153,7 +153,7 @@ new #[Lazy, Title('Shipment detail')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-8 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 lg:p-8">
     @php
         $authUser = auth()->user();
         $canWriteShipments =

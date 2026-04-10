@@ -80,7 +80,7 @@ new #[Lazy, Title('Notifications')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
     <x-admin.page-header
         :heading="__('Notifications')"

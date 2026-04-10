@@ -251,7 +251,7 @@ new #[Lazy, Title('Finance summary')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
         <x-admin.page-header :heading="__('Finance summary')">
             <x-slot name="breadcrumb">
                 <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Finance summary') }}</span>

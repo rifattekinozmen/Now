@@ -316,7 +316,7 @@ new #[Lazy, Title('Customer profile')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
     <x-admin.page-header :heading="__('Customer profile')">
         <x-slot name="actions">
             <flux:button :href="route('admin.customers.index')" variant="ghost" wire:navigate>

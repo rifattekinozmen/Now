@@ -52,7 +52,7 @@ new #[Lazy, Title('Finance reports')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
     <x-admin.page-header :heading="__('Finance reports')">
         <x-slot name="actions">
             <flux:button :href="route('admin.finance.index')" variant="outline" wire:navigate>{{ __('Finance summary') }}</flux:button>

@@ -54,6 +54,10 @@
     }
 }
 
+ui-sidebar {
+    display: block;
+}
+
 [data-flux-field]:not(ui-radio, ui-checkbox) {
     @apply grid gap-2;
 }
