@@ -79,7 +79,7 @@
                 </div>
 
                 {{-- Collapsed: Operations fly-out dropdown --}}
-                <div class="hidden in-data-flux-sidebar-collapsed-desktop:flex justify-center mt-3">
+                <div class="hidden in-data-flux-sidebar-collapsed-desktop:flex justify-end mt-3">
                     <flux:dropdown position="right" align="start">
                         <flux:button icon="squares-2x2" variant="ghost" size="sm" square />
                         <flux:menu>
@@ -130,7 +130,7 @@
                 </div>
 
                 {{-- Collapsed: Finance fly-out dropdown --}}
-                <div class="hidden in-data-flux-sidebar-collapsed-desktop:flex justify-center mt-2">
+                <div class="hidden in-data-flux-sidebar-collapsed-desktop:flex justify-end mt-2">
                     <flux:dropdown position="right" align="start">
                         <flux:button icon="calculator" variant="ghost" size="sm" square />
                         <flux:menu>
@@ -173,7 +173,7 @@
                 </div>
 
                 {{-- Collapsed: HR fly-out dropdown --}}
-                <div class="hidden in-data-flux-sidebar-collapsed-desktop:flex justify-center mt-2">
+                <div class="hidden in-data-flux-sidebar-collapsed-desktop:flex justify-end mt-2">
                     <flux:dropdown position="right" align="start">
                         <flux:button icon="user-group" variant="ghost" size="sm" square />
                         <flux:menu>
@@ -201,7 +201,7 @@
         @endpersist
         </div>
 
-        <div class="flex min-w-0 flex-1 flex-col">
+        <div id="main-content" class="flex min-w-0 flex-1 flex-col overflow-y-auto h-dvh">
 
             {{-- Desktop top bar --}}
             <div class="sticky top-0 z-10 hidden h-14 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
@@ -377,32 +377,39 @@
                 background: #71717a;
             }
 
-            /* Page scrollbar */
-            html {
+            /* Prevent outer (html/body) scrollbar — only #main-content scrolls */
+            html, body {
+                overflow: hidden;
+                height: 100%;
+            }
+
+            /* Page scrollbar — content column scrolls, not body/html
+               so Flux's overflow:hidden on body doesn't kill the scrollbar */
+            #main-content {
                 scrollbar-width: thin;
                 scrollbar-color: #d4d4d8 transparent;
+                scrollbar-gutter: stable;
             }
-            html::-webkit-scrollbar {
+            #main-content::-webkit-scrollbar {
                 width: 6px;
             }
-            html::-webkit-scrollbar-track {
+            #main-content::-webkit-scrollbar-track {
                 background: transparent;
             }
-            html::-webkit-scrollbar-thumb {
+            #main-content::-webkit-scrollbar-thumb {
                 background: #d4d4d8;
                 border-radius: 9999px;
             }
-            html::-webkit-scrollbar-thumb:hover {
+            #main-content::-webkit-scrollbar-thumb:hover {
                 background: #a1a1aa;
             }
-            .dark html,
-            html.dark {
+            .dark #main-content {
                 scrollbar-color: #3f3f46 transparent;
             }
-            html.dark::-webkit-scrollbar-thumb {
+            .dark #main-content::-webkit-scrollbar-thumb {
                 background: #3f3f46;
             }
-            html.dark::-webkit-scrollbar-thumb:hover {
+            .dark #main-content::-webkit-scrollbar-thumb:hover {
                 background: #52525b;
             }
         </style>
