@@ -144,7 +144,7 @@ new #[Lazy, Title('Vouchers')] class extends Component
     /**
      * @return array{pending:int, approved_month:int, total_expense:float, total_income:float}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function kpiStats(): array
     {
         return [

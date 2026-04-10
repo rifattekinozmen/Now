@@ -129,7 +129,7 @@ new #[Lazy, Title('Pricing Conditions')] class extends Component
     /**
      * @return array{total: int, active: int, expiring_soon: int, avg_price_per_ton: float}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function kpiStats(): array
     {
         $all = PricingCondition::query()->get();

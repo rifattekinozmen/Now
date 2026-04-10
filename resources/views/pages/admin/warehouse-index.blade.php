@@ -59,7 +59,7 @@ new #[Lazy, Title('Warehouse')] class extends Component
     /**
      * @return array{warehouses: int, items: int, stock_records: int, total_quantity: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function warehouseStats(): array
     {
         return [
@@ -413,7 +413,7 @@ new #[Lazy, Title('Warehouse')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-7xl flex-col gap-8 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
     @php
         $authUser = auth()->user();
         $canWriteWarehouse =

@@ -123,7 +123,7 @@ new #[Lazy, Title('Cash Registers')] class extends Component
     /**
      * @return array{total: int, active: int, total_try: float, total_usd: float}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function kpiStats(): array
     {
         $all = CashRegister::query()->get();

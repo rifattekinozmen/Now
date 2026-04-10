@@ -127,7 +127,7 @@ new #[Lazy, Title('Trip Expenses')] class extends Component
     /**
      * @return array{total_this_month: float, top_type: string, avg_per_vehicle: float, total_count: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function kpiStats(): array
     {
         $thisMonth = TripExpense::query()

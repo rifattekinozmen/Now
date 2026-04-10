@@ -62,7 +62,7 @@ new #[Lazy, Title('Vehicles')] class extends Component
     /**
      * @return array{total: int, inspection_soon: int, with_brand: int, with_model: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function vehicleIndexStats(): array
     {
         $until = now()->addDays(30)->toDateString();

@@ -95,7 +95,7 @@ new #[Lazy, Title('Leave Requests')] class extends Component
     /**
      * @return array{pending:int, approved_this_month:int, total_days:int, unique_employees:int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function kpiStats(): array
     {
         return [

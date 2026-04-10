@@ -12,21 +12,15 @@
     "
 >
     @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-        <div class="flex flex-1 min-w-0 items-center gap-2 px-3 py-2 lg:px-4">
-            <flux:button
-                type="button"
-                variant="ghost"
-                size="sm"
-                class="shrink-0"
-                wire:click="openSearch"
-                icon="magnifying-glass"
-            >
-                {{ __('Search') }}
-            </flux:button>
-            <flux:text class="hidden text-xs text-zinc-500 sm:inline dark:text-zinc-400">
-                {{ __('Ctrl+K') }}
-            </flux:text>
-        </div>
+        <button
+            type="button"
+            wire:click="openSearch"
+            class="flex h-8 w-56 items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-500 transition hover:border-zinc-300 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:bg-zinc-700"
+        >
+            <svg class="size-3.5 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
+            <span class="flex-1 text-left">{{ __('Search…') }}</span>
+            <kbd class="hidden rounded border border-zinc-300 bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 sm:inline">Ctrl+K</kbd>
+        </button>
 
         @if ($open)
             <div

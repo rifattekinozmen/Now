@@ -58,7 +58,7 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
     /**
      * @return array{total: int, total_liters: float, intakes_this_month: int, avg_liters: float}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function fuelIntakeStats(): array
     {
         $monthStart = now()->startOfMonth()->toDateTimeString();

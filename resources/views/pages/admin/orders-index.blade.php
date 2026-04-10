@@ -105,7 +105,7 @@ new #[Lazy, Title('Orders')] class extends Component
     /**
      * @return array{total: int, draft: int, with_freight: int, currencies: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function orderIndexStats(): array
     {
         $draft = OrderStatus::Draft->value;

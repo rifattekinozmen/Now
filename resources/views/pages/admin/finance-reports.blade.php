@@ -27,7 +27,7 @@ new #[Lazy, Title('Finance reports')] class extends Component
      *     customer_overdue: list<array{customer_id: int, customer_name: string, overdue_amount: float, currency_code: string, max_overdue_days: int}>
      * }
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function agingSummary(): array
     {
         $user = auth()->user();

@@ -23,7 +23,7 @@ new #[Lazy, Title('Fleet analytics')] class extends Component
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, Vehicle>
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function vehiclesWithStats(): \Illuminate\Database\Eloquent\Collection
     {
         $cutoff = now()->subDays(30);
@@ -63,7 +63,7 @@ new #[Lazy, Title('Fleet analytics')] class extends Component
     /**
      * @return array{flagged: list<array{vehicle_id:int, plate:string, anomaly:string}>}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function fuelAnomalySummary(): array
     {
         $svc = app(AuditAiEvaluationService::class);

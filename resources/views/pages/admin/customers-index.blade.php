@@ -64,7 +64,7 @@ new #[Lazy, Title('Customers')] class extends Component
     /**
      * @return array{total: int, new_this_month: int, with_tax_id: int, avg_payment_term: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function customerStats(): array
     {
         $monthStart = now()->startOfMonth()->toDateTimeString();

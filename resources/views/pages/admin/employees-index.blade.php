@@ -77,7 +77,7 @@ new #[Lazy, Title('Employees')] class extends Component
     /**
      * @return array{total: int, drivers: int, docs_soon: int, with_national_id: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function employeeIndexStats(): array
     {
         $until = now()->addDays(30)->toDateString();

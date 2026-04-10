@@ -204,11 +204,37 @@
         <div class="flex min-w-0 flex-1 flex-col">
 
             {{-- Desktop top bar --}}
-            <div class="sticky top-0 z-10 hidden h-14 shrink-0 items-center border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
+            <div class="sticky top-0 z-10 hidden h-14 shrink-0 items-center gap-2 border-b border-zinc-200 bg-white px-4 dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
+
+                {{-- Breadcrumb / page title --}}
+                <div class="min-w-0 flex-1">
+                    @isset($title)
+                        <span class="truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $title }}</span>
+                    @endisset
+                </div>
+
+                {{-- Search trigger --}}
                 <livewire:global-search />
+
+                {{-- Dark mode toggle --}}
+                <button
+                    type="button"
+                    x-data
+                    @click="$flux.dark = !$flux.dark"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                    title="{{ __('Toggle dark mode') }}"
+                >
+                    <svg x-show="!$flux.dark" class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+                    </svg>
+                    <svg x-show="$flux.dark" class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+                    </svg>
+                </button>
+
                 @auth
                     @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
-                        <div class="shrink-0 px-2">
+                        <div class="shrink-0">
                             <livewire:notification-bell wire:poll.5m />
                         </div>
                     @endcanany
@@ -287,7 +313,45 @@
                 </flux:dropdown>
             </flux:header>
 
-            {{ $slot }}
+            <div class="pb-16 lg:pb-0">
+                {{ $slot }}
+            </div>
+
+            {{-- Mobile bottom nav --}}
+            <nav class="fixed bottom-0 left-0 right-0 z-30 flex h-16 items-center justify-around border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+                <a href="{{ route('dashboard') }}" wire:navigate class="flex flex-col items-center gap-0.5 px-3 py-2 text-zinc-500 dark:text-zinc-400 [&.active-mobile]:text-blue-600 dark:[&.active-mobile]:text-blue-400"
+                    wire:current.exact="active-mobile">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                    <span class="text-[10px] font-medium">{{ __('Dashboard') }}</span>
+                </a>
+
+                @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+                <a href="{{ route('admin.orders.index') }}" wire:navigate class="flex flex-col items-center gap-0.5 px-3 py-2 text-zinc-500 dark:text-zinc-400 [&.active-mobile]:text-blue-600 dark:[&.active-mobile]:text-blue-400"
+                    wire:current="active-mobile">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z" /></svg>
+                    <span class="text-[10px] font-medium">{{ __('Orders') }}</span>
+                </a>
+
+                <a href="{{ route('admin.shipments.index') }}" wire:navigate class="flex flex-col items-center gap-0.5 px-3 py-2 text-zinc-500 dark:text-zinc-400 [&.active-mobile]:text-blue-600 dark:[&.active-mobile]:text-blue-400"
+                    wire:current="active-mobile">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
+                    <span class="text-[10px] font-medium">{{ __('Shipments') }}</span>
+                </a>
+
+                <a href="{{ route('admin.vehicles.index') }}" wire:navigate class="flex flex-col items-center gap-0.5 px-3 py-2 text-zinc-500 dark:text-zinc-400 [&.active-mobile]:text-blue-600 dark:[&.active-mobile]:text-blue-400"
+                    wire:current="active-mobile">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" /></svg>
+                    <span class="text-[10px] font-medium">{{ __('Vehicles') }}</span>
+                </a>
+                @endcanany
+
+                {{-- Sidebar toggle (tüm menüye erişim) --}}
+                <button type="button" x-data @click="$dispatch('flux-sidebar-toggle')"
+                    class="flex flex-col items-center gap-0.5 px-3 py-2 text-zinc-500 dark:text-zinc-400">
+                    <svg class="size-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                    <span class="text-[10px] font-medium">{{ __('Menu') }}</span>
+                </button>
+            </nav>
         </div>
 
         @fluxScripts

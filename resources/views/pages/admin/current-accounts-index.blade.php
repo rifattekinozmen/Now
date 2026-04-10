@@ -84,7 +84,7 @@ new #[Lazy, Title('Current Accounts')] class extends Component
     /**
      * @return array{total: int, active: int, total_balance_try: float, overdue_count: int}
      */
-    #[Computed]
+    #[Computed(persist: true, seconds: 300)]
     public function kpiStats(): array
     {
         $all = CurrentAccount::query()->get();
