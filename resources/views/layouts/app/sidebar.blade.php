@@ -24,7 +24,7 @@
                     hr:  localStorage.getItem('sb-hr')  !== '0',
                     toggle(k) { this[k] = !this[k]; localStorage.setItem('sb-' + k, this[k] ? '1' : '0'); }
                 }"
-                style="overflow-y: auto; min-height: 0; flex: 1 1 0%;"
+                style="overflow-y: auto; min-height: 0; flex: 1 1 0%; scrollbar-width: thin; scrollbar-color: #3f3f46 transparent;"
                 class="px-2 py-3"
             >
 
@@ -291,6 +291,28 @@
         </div>
 
         @fluxScripts
+        <style>
+            /* Sidebar scrollbar */
+            [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar {
+                width: 4px;
+            }
+            [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+                background: #3f3f46;
+                border-radius: 9999px;
+            }
+            [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+                background: #52525b;
+            }
+            .dark [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb {
+                background: #52525b;
+            }
+            .dark [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
+                background: #71717a;
+            }
+        </style>
 
         {{-- Sidebar collapse state persistence via localStorage --}}
         <script>
