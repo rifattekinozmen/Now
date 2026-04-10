@@ -376,6 +376,35 @@
             .dark [data-flux-sidebar] div[style*="overflow-y: auto"]::-webkit-scrollbar-thumb:hover {
                 background: #71717a;
             }
+
+            /* Page scrollbar */
+            html {
+                scrollbar-width: thin;
+                scrollbar-color: #d4d4d8 transparent;
+            }
+            html::-webkit-scrollbar {
+                width: 6px;
+            }
+            html::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            html::-webkit-scrollbar-thumb {
+                background: #d4d4d8;
+                border-radius: 9999px;
+            }
+            html::-webkit-scrollbar-thumb:hover {
+                background: #a1a1aa;
+            }
+            .dark html,
+            html.dark {
+                scrollbar-color: #3f3f46 transparent;
+            }
+            html.dark::-webkit-scrollbar-thumb {
+                background: #3f3f46;
+            }
+            html.dark::-webkit-scrollbar-thumb:hover {
+                background: #52525b;
+            }
         </style>
 
         {{-- Sidebar collapse state persistence via localStorage --}}
