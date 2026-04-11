@@ -26,7 +26,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
     }
 
     /** @return array{total:int,totalAmount:float,thisMonth:float,topType:string} */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function expenseStats(): array
     {
         $expenses = TripExpense::query()
@@ -48,7 +48,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
     }
 
     /** @return array{total:int,thisMonth:float,last3Months:float} */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function fuelStats(): array
     {
         $intakes = $this->vehicle->fuelIntakes;
@@ -61,7 +61,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
     }
 
     /** @return array{total:int,upcoming:int,overdue:int,done:int} */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function maintenanceStats(): array
     {
         $schedules = $this->vehicle->maintenanceSchedules;

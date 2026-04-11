@@ -1,0 +1,670 @@
+:count selected
+Absent
+Account name
+Account type
+Actions
+Activate
+Active
+Active registers
+Activity log
+Add PIN
+Add address
+Add attendance record
+Add rows under Fiscal opening balances or pick another year.
+Address book
+Address line
+Advance
+Advanced filters
+Advances
+All
+All employees
+All notifications
+All statuses
+All types
+All vehicles
+Amount
+Annual
+Annual Leave
+Appearance
+Appearance settings
+Approve
+Approve attendance
+Approve attendance record?
+Approve this advance?
+Approve this leave request?
+Approve this payroll entry?
+Approve this voucher?
+Approved
+Approved by
+Approved this month
+Approved total
+Assets
+Assets net
+Assign
+Assign PIN to order
+Assigned PINs
+Attendance
+Attendance record
+Attendance tracking for employees.
+Auto-calculated deductions
+Available PINs
+Avg per vehicle
+Avg price/ton
+Avg. liters per intake
+Avg. payment term
+Avg. price
+Back to dashboard
+Back to finance summary
+Back to shipment
+Back to shipments
+Balance
+Balance (by type)
+Balance Sheet
+Balance sheet (by type)
+Balance sheet sections include opening balances for fiscal year :year.
+Balance sheet summary
+Bank Import
+Bank statement CSV import
+Bank statement import
+Base URL
+Base price
+Based on order date plus customer payment term (days).
+Bearer token
+Blood group
+Brand
+Breadcrumb
+Bulk import (CSV)
+CSV file
+Cancel
+Cancel this shipment?
+Cancelled
+Cannot dispatch: driver :name has an expired SRC certificate.
+Cannot dispatch: driver :name has an expired driving license.
+Cannot dispatch: driver :name has an expired psychotechnical certificate.
+Cannot dispatch: vehicle :plate has no inspection valid-until date.
+Cannot dispatch: vehicle :plate inspection expired on :date.
+Cash Registers
+Cash flow projection
+Cash flow projection (next :days days)
+Cash register
+Cash register name
+Cash registers
+Chart of Accounts
+Chart of accounts
+Check in
+Check out
+Clear date filters
+Clear signature
+Close
+Code
+Collection window from
+Collection window to
+Coming up in 14 days
+Company code
+Compensatory
+Compensatory Leave
+Completed date
+Configure third-party API keys and external service connections. Secret values are stored encrypted per company.
+Configured
+Confirm action
+Confirm deletion
+Confirmed
+Confirmed & in transit
+Contact name
+Contact phone
+Contract name
+Contract no
+Cost
+Cost this month
+Could not read the uploaded file.
+Count
+Created at
+Credit (opening)
+Credit limit
+Currency
+Current Accounts
+Current accounts
+Current balance
+Customer
+Customer SMS notifications via webhook (e.g. Netgsm, Iletimerkezi). Requires a service agreement.
+Customer deleted.
+Customer updated.
+Customers
+Dark
+Dashboard
+Date
+Days
+Deactivate
+Debit (opening)
+Deductions
+Default
+Delete
+Delete selected
+Delete selected available PINs?
+Delete selected cash registers?
+Delete selected current accounts?
+Delete selected customers? This also removes their orders and shipments.
+Delete selected employees?
+Delete selected fuel intakes?
+Delete selected fuel price records?
+Delete selected maintenance schedules?
+Delete selected orders? Related shipments will be removed.
+Delete selected pricing conditions?
+Delete selected shipments?
+Delete selected trip expenses?
+Delete selected vehicles?
+Delete this PIN?
+Delete this account? This cannot be undone.
+Delete this address?
+Delete this advance?
+Delete this attendance record?
+Delete this customer? This also removes their orders and shipments.
+Delete this expense?
+Delete this leave request?
+Delete this opening balance?
+Delete this payroll entry?
+Delete this pricing condition?
+Delete this schedule?
+Deleted :count records.
+Delivered
+Delivered at
+Delivery and billing addresses for this customer.
+Description
+Dispatch
+Dispatched
+Distance (km)
+District
+Docs expiring (30d)
+Document
+Documentation
+Documents
+Done
+Done this month
+Download XLSX template
+Download signature (PNG)
+Download template
+Draft
+Draft orders
+Draw with mouse or finger, then mark delivered.
+Driver
+Driver (optional)
+Driver performance
+Drivers
+Due in 7 days
+Due on :date
+Edit
+Edit address
+Edit attendance record
+Edit current account
+Edit customer
+Edit expense
+Edit opening balance
+Edit pricing condition
+Edit vehicle
+Employee
+Employee advance payment requests with Maker-Checker approval.
+Employees
+End date
+Endpoint URL
+English
+Enter to update
+Equity
+Estimate freight
+Estimated cost (₺)
+Exchange rate (optional)
+Expected collection date
+Expense
+Expense type
+Expiring (30d)
+Export CSV
+Export Logo XML
+Export orders CSV
+Filter by PIN status
+Filter by fiscal year
+Filter by shipment status
+Filter by status
+Filters
+Finance
+Finance Reports
+Finance Summary
+Finance reports
+Finance summary
+Finance summary and aging reports are under Finance.
+First name
+First row must be headers matching: İş Ortağı No, Vergi No, Ünvan, Ticari Unvan, Vade Gün.
+Fiscal opening balances
+Fiscal opening balances applied
+Fiscal year for openings
+Fleet
+Fleet Analytics
+Fleet analytics
+Freight
+Freight amount
+Freight amounts flagged for review
+Freight and sites
+Freight orders
+Freight pricing agreements per customer and route.
+Freight quote deviates more than :pct% from reference.
+Freight totals by currency
+Fri
+From
+From date
+Fuel Intakes
+Fuel Prices
+Fuel anomaly
+Fuel intake
+Fuel intakes
+Fuel price quote API. Requires a signed contract with TotalEnergies.
+Fuel prices
+Fuel types
+Fuel volume deviates more than :pct% from expected.
+Gross
+Gross salary
+Gross this month
+HR
+Half day
+Hide
+ID
+Import
+Import #:id saved with :count rows.
+Import CSV
+Import Excel
+Import errors
+Import row errors
+Imported rows: :count
+Imported: :c, skipped (already in pool): :s
+In Progress
+In transit
+Inactive
+Include fiscal year opening balances
+Income
+Income Tax
+Income statement (period)
+Incoming webhook for operational alerts (freight threshold, shipment events).
+Incoterms
+Inspection
+Inspection valid until
+Inspection within 30 days
+Intakes this month
+Integrations
+Invalid signature encoding.
+Invalid signature image format.
+Inventory & stock (placeholder)
+Journal Entries
+Journal entries
+KM
+KM at service
+Label
+Language
+Last name
+Late
+Late today
+Leave Requests
+Leave requests
+Leave type
+Legal name
+Liabilities
+Liabilities + equity (net)
+License class
+License valid until
+Lifecycle
+Lifecycle timeline
+Light
+Loading site
+Log out
+Logo Connect XML export parameters. Contact your Logo reseller for company and plant codes.
+Maintenance
+Maintenance Schedules
+Maintenance due in 30d
+Manage cash registers with balance tracking.
+Manage customer, employee and vehicle ledger accounts.
+Manage employee leave requests with Maker-Checker approval workflow.
+Manage employee payroll with draft → approved → paid lifecycle.
+Manage vouchers with Maker-Checker approval workflow.
+Mark all as read
+Mark as done?
+Mark as paid?
+Mark as repaid?
+Mark delivered
+Mark paid
+Mark repaid
+Material
+Material code
+Min tonnage
+Model
+Mon
+Monthly trend
+Name
+National ID
+Net
+Net paid this month
+Net salary
+Net tonnage (kg)
+New account
+New address
+New advance request
+New cash register
+New condition
+New current account
+New customer
+New employee
+New expense
+New leave request
+New opening balance
+New order
+New payroll entry
+New pricing condition
+New request
+New shipment
+New this month
+New vehicle
+New voucher
+Next month
+Next service KM
+No
+No PINs yet.
+No actions
+No activity recorded yet.
+No addresses saved yet.
+No advance requests yet.
+No attendance records yet.
+No available PIN matches this code.
+No cash registers yet.
+No current accounts yet.
+No customers yet.
+No driver shipment data for last 30 days.
+No employees yet.
+No entries for this day.
+No expiry
+No fiscal opening balances for this year.
+No freight amounts recorded.
+No freight outliers detected in this period.
+No leave requests yet.
+No maintenance schedules yet.
+No notifications yet.
+No opening balances for this fiscal year
+No orders found.
+No orders yet.
+No payroll entries yet.
+No pricing conditions yet.
+No projected inflows in this window.
+No shipment data yet.
+No shipments yet.
+No trip expenses yet.
+No vehicles found.
+No vehicles yet.
+No vouchers linked to this customer yet.
+No vouchers yet.
+Not configured
+Notes
+Notifications
+Odometer (km)
+Open finance reports
+Open orders
+Open pipeline
+Opening Balances
+Opening balances
+Opening balances are merged into the balance sheet summary when enabled there. Not statutory reporting.
+Operational audit (freight vs median)
+Operational reference only
+Operations
+Operations analytics
+Operations overview
+Ops Analytics
+Order #
+Order distribution, monthly shipment trend, driver performance (last 30 days).
+Order overview
+Order status
+Ordered at
+Orders
+Orders by status
+Overdue
+Overdue maintenance
+PIN
+PIN Pool
+PIN assigned
+PIN available
+PIN code
+PIN pool
+PIN used
+POD files and scanned waybills will be listed here in a later iteration.
+Paid
+Parse and save preview
+Payment Calendar
+Payment due calendar
+Payment term (days)
+Payroll
+Payroll #:id approved.
+Payroll #:id marked as paid.
+Pending
+Pending approval
+Pending approvals
+Pending vouchers
+Period
+Period end
+Period net activity by account type. Not a statutory balance sheet or financial statement.
+Period result (revenue + expense net)
+Period start
+Periodic
+Personnel list
+Phone
+Planned
+Plant code
+Plate
+Platform
+Postal code
+Present
+Preview
+Previous month
+Price per ton
+Price/ton
+Prices this month
+Pricing
+Pricing conditions
+Print POD
+Proof of delivery
+Proof of delivery (POD)
+Province
+Psychotechnical valid until
+Quick actions
+Read-only — lifecycle changes require an operator.
+Reason
+Reason (optional)
+Recent PINs
+Recent customers
+Recent orders
+Recent shipments
+Recent vouchers
+Record and track fuel, toll, repair and other vehicle expenses.
+Recorded currencies
+Reference no
+Refresh TCMB rates
+Register code
+Reject
+Reject this leave request?
+Reject this voucher?
+Reject?
+Rejected
+Rejected by admin.
+Related to
+Repaid
+Repaid total
+Repair
+Repayment
+Repayment date
+Report period
+Repository
+Request date
+Requested
+Reset projection window
+Revenue
+Route
+Route from
+Route to
+Row :row: :message
+Row :row: :msg
+SAS
+SAS / PO reference
+SAS / reference
+SAS no. (optional)
+SRC valid until
+Sat
+Save
+Save PIN
+Save as draft
+Save changes
+Save order
+Save shipment
+Saved successfully.
+Schedule maintenance
+Scheduled
+Scheduled date
+Search
+Search (PIN, SAS)
+Search (code, name)
+Search (name, national ID, phone)
+Search (name, tax ID, trade name)
+Search (order no, SAS, customer)
+Search (plate, brand, model)
+Search (shipment id, order no, plate)
+Search employee
+Search name / code
+Search name / route
+Section
+Select account
+Select employee...
+Select page
+Select vehicle...
+Select…
+Service provider
+Set as default
+Set as default address
+Settings
+Shipment
+Shipment detail
+Shipment overview
+Shipment progress
+Shipments
+Show
+Sick
+Sick Leave
+Signature
+Signature (optional)
+Signature image is too large.
+Signature must be a PNG image.
+Signed at
+Sites from past orders (archive)
+Start
+Start date
+Status
+Stock items
+Stock movements, warehouses, and transfers will be added in a later iteration. This route is wired for navigation parity with the logistics ERP checklist.
+Stock records
+Storage location
+Street, building no.
+Submit for approval
+Sum of freight
+Summary
+Sun
+System
+TRY freight sum
+Tax ID
+Tenant KPIs, FX cache, and shipment distribution.
+Term
+These orders deviate more than 20% from the median freight in the filtered period.
+This action cannot be undone.
+This month (TRY)
+This shipment was cancelled.
+Thu
+Timeline
+Tire
+Title
+To
+To date
+Today absent
+Today present
+Today's orders
+Today's shipments
+Tonnage
+Top expense type
+Total
+Total PINs
+Total TRY balance
+Total accounts
+Total approved days
+Total balance (TRY)
+Total customers
+Total employees
+Total expense
+Total freight (TRY eq.)
+Total income
+Total liters (tenant)
+Total orders
+Total quantity
+Total records
+Total registers
+Total shipments
+Total tonnage
+Total warehouses
+TotalEnergies API is not implemented yet (stub).
+TotalEnergies integration is disabled or API key is missing.
+Totals are not tax, legal, or accounting advice. Use your own controls for compliance.
+Tracking and QR
+Trade name
+Transfer
+Trial Balance
+Trial balance
+Trip Expenses
+Trip expenses
+Trips (30d)
+Tue
+Turkish
+Type
+Unable to load report for this period.
+Unloading site
+Unpaid
+Unpaid Leave
+Unread only
+Upcoming (14 days)
+Upcoming dues
+Update the appearance settings for your account
+Upload CSV
+Upload document
+Use your browser print dialog to save as PDF.
+Used PINs
+Valid from
+Valid until
+Vehicle
+Vehicle (optional)
+Vehicle preventive maintenance calendar and service tracking.
+Vehicle trips, tonnage, maintenance, and fuel anomaly overview (last 30 days).
+Vehicles
+View
+View calendar
+Voucher date
+Voucher type
+Vouchers
+Warehouse
+Webhook URL
+Wed
+Weekly absences
+WhatsApp Business API for customer notifications. Requires WhatsApp Business API access.
+With brand set
+With model set
+With national ID
+With tax ID
+Yes
+days
+e.g. Main Warehouse, HQ, Site B
+freight total
+last 30 days
+optional
+or
+orders
+secret
+unread
+—
+— None —
+— Select customer —
+— Select employee —
+— Select vehicle —

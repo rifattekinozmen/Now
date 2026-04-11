@@ -64,7 +64,7 @@ new #[Lazy, Title('Shipments')] class extends Component
     /**
      * @return array{total: int, planned: int, dispatched: int, delivered: int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function shipmentIndexStats(): array
     {
         $planned = ShipmentStatus::Planned->value;

@@ -39,7 +39,10 @@
       "Bash(grep -l \"max-w-4xl\\\\|max-w-5xl\\\\|max-w-6xl\" resources/views/pages/admin/*.blade.php)",
       "Bash(grep -l \"max-w-6xl\" resources/views/pages/dashboard.blade.php resources/views/pages/settings/*.blade.php)",
       "Bash(grep -n '{{ $slot }}' /c/laragon/www/Now/resources/views/layouts/app/sidebar.blade.php)",
-      "Bash(grep -rn 'function mount\\\\|function render\\\\|protected $queryString\\\\|->stats\\\\b\\\\|Stats\\\\b\\\\|stats\\(\\)' /c/laragon/www/Now/app/Livewire/ '--include=*.php' -l)"
+      "Bash(grep -rn 'function mount\\\\|function render\\\\|protected $queryString\\\\|->stats\\\\b\\\\|Stats\\\\b\\\\|stats\\(\\)' /c/laragon/www/Now/app/Livewire/ '--include=*.php' -l)",
+      "Bash(php -r ':*)",
+      "Bash(ls storage/framework/views/*.tmp)",
+      "Bash(find resources/views/pages/admin/ -name \"*.blade.php\" -exec sed -i 's/#\\\\[Computed\\(persist: true, seconds: 300\\)\\\\]/#[Computed]/g' {} \\\\;)"
     ]
   }
 }

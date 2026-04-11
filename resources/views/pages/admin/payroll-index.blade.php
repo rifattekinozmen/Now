@@ -92,7 +92,7 @@ new #[Lazy, Title('Payroll')] class extends Component
     /**
      * @return array{draft:int, approved:int, paid_this_month:float, gross_this_month:float}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function kpiStats(): array
     {
         $thisMonth = now()->format('Y-m');

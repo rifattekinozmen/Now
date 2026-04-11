@@ -59,7 +59,7 @@ new #[Lazy, Title('Warehouse')] class extends Component
     /**
      * @return array{warehouses: int, items: int, stock_records: int, total_quantity: int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function warehouseStats(): array
     {
         return [

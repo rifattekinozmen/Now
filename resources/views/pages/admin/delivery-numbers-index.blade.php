@@ -71,7 +71,7 @@ new #[Lazy, Title('PIN pool')] class extends Component
     /**
      * @return array{total: int, available: int, assigned: int, used: int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function pinIndexStats(): array
     {
         $available = DeliveryNumberStatus::Available->value;

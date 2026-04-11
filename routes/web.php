@@ -34,6 +34,13 @@ Route::get('/locale/{locale}', function (string $locale) {
     session(['locale' => $locale]);
     App::setLocale($locale);
 
+    if ($user = auth()->user()) {
+        foreach (['tr', 'en'] as $lang) {
+            cache()->forget('sidebar-menu-v4-' . $user->id . '-' . $lang);
+            cache()->forget('orders-stats-' . $user->tenant_id . '-' . $lang);
+        }
+    }
+
     return redirect()->back();
 })->name('locale.switch');
 

@@ -105,7 +105,7 @@ new #[Lazy, Title('Orders')] class extends Component
     /**
      * @return array{total: int, draft: int, with_freight: int, currencies: int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function orderIndexStats(): array
     {
         $draft = OrderStatus::Draft->value;
@@ -491,7 +491,7 @@ new #[Lazy, Title('Orders')] class extends Component
         </flux:callout>
     @endif
 
-    @cache('orders-stats-' . auth()->user()->tenant_id, 30)
+    @cache('orders-stats-' . auth()->user()->tenant_id . '-' . app()->getLocale(), 30)
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total orders') }}</flux:text>

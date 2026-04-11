@@ -49,7 +49,7 @@ new #[Lazy, Title('Trial balance')] class extends Component
     /**
      * @return array<string, array{type: string, total_debit: string, total_credit: string, net: string}>
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function byTypeSummary(): array
     {
         return app(TrialBalanceService::class)->summarizeByAccountType($this->accountRows);

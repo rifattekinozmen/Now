@@ -94,7 +94,7 @@ new #[Lazy, Title('Advances')] class extends Component
     /**
      * @return array{pending:int, approved_total:float, repaid_total:float, outstanding:float}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function kpiStats(): array
     {
         $approvedTotal = (float) Advance::query()->approved()->sum('amount');

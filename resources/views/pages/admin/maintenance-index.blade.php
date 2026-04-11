@@ -117,7 +117,7 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     /**
      * @return array{upcoming_7d:int, overdue:int, done_this_month:int, total_cost_this_month:float}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function kpiStats(): array
     {
         return [

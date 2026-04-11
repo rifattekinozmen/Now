@@ -115,7 +115,9 @@ new #[Title('Dashboard')] class extends Component
     {
         $tenantId = TenantContext::id() ?? 'all';
 
-        return Cache::remember("dashboard.shipment-status.{$tenantId}", 60, function () {
+        $locale = app()->getLocale();
+
+        return Cache::remember("dashboard.shipment-status.{$tenantId}.{$locale}", 60, function () {
             /** @var array<string, int> $byStatus */
             $byStatus = Shipment::query()
                 ->selectRaw('status, COUNT(*) as c')

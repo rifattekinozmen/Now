@@ -68,7 +68,7 @@ new #[Lazy, Title('Attendance')] class extends Component
     /**
      * @return array{today_present:int, today_absent:int, today_late:int, weekly_absences:int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function kpiStats(): array
     {
         $today = now()->toDateString();

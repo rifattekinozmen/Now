@@ -61,7 +61,7 @@ new #[Lazy, Title('Fuel prices')] class extends Component
     /**
      * @return array{total: int, prices_this_month: int, avg_price: float, fuel_types_count: int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function fuelPriceStats(): array
     {
         $monthStart = now()->startOfMonth()->toDateString();

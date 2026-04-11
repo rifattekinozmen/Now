@@ -46,7 +46,7 @@
                     {{ __('Notifications') }}
                 </flux:sidebar.item>
 
-                @cache('sidebar-menu-v4-' . auth()->id(), 3600)
+                @cache('sidebar-menu-v4-' . auth()->id() . '-' . app()->getLocale(), 3600)
                 @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
 
                 {{-- ═══════════════════════════════════════ --}}

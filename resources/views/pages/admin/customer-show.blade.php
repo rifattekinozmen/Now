@@ -249,7 +249,7 @@ new #[Lazy, Title('Customer profile')] class extends Component
     /**
      * @return array{total_income:float, total_expense:float, balance:float, pending_count:int}
      */
-    #[Computed(persist: true, seconds: 300)]
+    #[Computed]
     public function accountSummary(): array
     {
         $orderIds = Order::query()->where('customer_id', $this->customer->id)->pluck('id');
