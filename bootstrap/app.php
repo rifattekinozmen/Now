@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureLogisticsAccess;
+use App\Http\Middleware\EnsurePersonnelAccess;
 use App\Http\Middleware\SetLocaleFromSession;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
@@ -24,6 +25,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('logistics:scan-document-expiry')
             ->dailyAt('08:05')
             ->withoutOverlapping(15);
+
+        $schedule->command('logistics:send-payment-due-reminders', ['--days=7'])
+            ->dailyAt('08:30')
+            ->withoutOverlapping(15);
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
@@ -32,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'logistics.access' => EnsureLogisticsAccess::class,
+            'personnel.access' => EnsurePersonnelAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

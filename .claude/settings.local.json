@@ -42,7 +42,13 @@
       "Bash(grep -rn 'function mount\\\\|function render\\\\|protected $queryString\\\\|->stats\\\\b\\\\|Stats\\\\b\\\\|stats\\(\\)' /c/laragon/www/Now/app/Livewire/ '--include=*.php' -l)",
       "Bash(php -r ':*)",
       "Bash(ls storage/framework/views/*.tmp)",
-      "Bash(find resources/views/pages/admin/ -name \"*.blade.php\" -exec sed -i 's/#\\\\[Computed\\(persist: true, seconds: 300\\)\\\\]/#[Computed]/g' {} \\\\;)"
+      "Bash(find resources/views/pages/admin/ -name \"*.blade.php\" -exec sed -i 's/#\\\\[Computed\\(persist: true, seconds: 300\\)\\\\]/#[Computed]/g' {} \\\\;)",
+      "Bash(grep -n \"period\\\\|gross\\\\|net_salary\\\\|deductions\" \"C:\\\\laragon\\\\www\\\\Now\\\\database\\\\migrations\"/*payroll*)",
+      "Bash(grep -n \"base_salary\\\\|salary\" \"C:\\\\laragon\\\\www\\\\Now\\\\database\\\\migrations\"/*employee*)",
+      "Bash(wc -l /c/laragon/www/Now/resources/views/pages/admin/bank*.blade.php)",
+      "Bash(grep -n 'getProperty\\\\|getComputed\\\\|getAccounts\\\\|getItems\\\\|getEntries\\\\|index_only\\\\|$this->entries\\\\|$this->items' C:/laragon/www/Now/resources/views/pages/admin/fleet-analytics.blade.php)",
+      "Bash(grep -A5 \"sku\" C:/laragon/www/Now/database/migrations/*inventory_items*)",
+      "Bash(grep -r \"sku\" C:/laragon/www/Now/database/migrations/*.php)"
     ]
   }
 }

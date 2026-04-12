@@ -122,7 +122,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `work-orders` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.work-orders-index` (Livewire SFC — inline CRUD, KPI, filtre, bulk delete) | VAR _(Sprint 8.2 — 2026-04-11)_ |
 
 ### admin/warehouses
 
@@ -146,7 +146,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `vehicle-tyres` **index_only** | KISMI |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.vehicle-tyres-index` (Livewire SFC — inline CRUD, KPI, filtre, tread depth uyarısı) | VAR _(Sprint 8.3 — 2026-04-11)_ |
 
 ### admin/maintenance-schedules
 
@@ -204,7 +204,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `show`, `bulk-create`, `pdf` | `payrolls` **index_only** | KISMI / YOK (pdf, bulk) |
+| `index`, `create`, `show`, `bulk-create`, `pdf` | `payrolls` **index_only** + `PayrollPrintController` (`admin.hr.payroll.print`) | KISMI _(pdf: tarayıcı print — Sprint 8.4; bulk: YOK)_ _(2026-04-11)_ |
 
 ---
 
@@ -238,13 +238,13 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `show`, `edit`, `summary` | `vehicle-finances` **index_only** | KISMI / YOK |
+| `index`, `create`, `show`, `edit`, `summary` | `pages::admin.vehicle-finances-index` (Livewire SFC — inline CRUD, KPI, filtre, mark paid, bulk delete) | VAR _(Sprint 10 — 2026-04-12)_ |
 
 ### admin/trip-expenses
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `trip-expenses` **index_only** | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.trip-expenses-index` (Livewire SFC — inline CRUD, KPI, filtre, bulk delete) | VAR _(Sprint 10 — 2026-04-12)_ |
 
 ### admin/finance_reports
 
@@ -358,7 +358,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `payroll-approved`, `payment-due-reminder`, `document-expiry-reminder`, `fuel-price-weekly-report` | — | YOK |
+| `payroll-approved`, `payment-due-reminder`, `document-expiry-reminder`, `fuel-price-weekly-report` | `resources/views/emails/*` + `app/Mail/*` (4 Mailable, queue desteği) | VAR _(Sprint 8.1 — 2026-04-11)_ |
 
 ---
 
@@ -378,6 +378,6 @@ Her faz bitince: ilgili modül için **Pest** (`assertSuccessful`, mümkünse ç
 
 ---
 
-*Son güncelleme: 2026-03-29 — Finans özeti (vade penceresi, Logo XML), banka CSV import, AuditAI servis kuralları.*
+*Son güncelleme: 2026-04-12 — Sprint 8: Work Orders VAR, Vehicle Tyres VAR, Email şablonları VAR, Payroll PDF KISMI (tarayıcı print). Sprint 10: Trip Expenses VAR, Vehicle Finances VAR.*
 
 *Dosya yolu: `Docs/views-port-checklist.md`.*

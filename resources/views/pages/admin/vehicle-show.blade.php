@@ -2,8 +2,10 @@
 
 use App\Enums\ExpenseType;
 use App\Enums\MaintenanceStatus;
+use App\Enums\TyreStatus;
 use App\Models\TripExpense;
 use App\Models\Vehicle;
+use App\Models\VehicleTyre;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -20,7 +22,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
     public function mount(int $id): void
     {
         $this->vehicle = Vehicle::query()
-            ->with(['tenant', 'shipments.order', 'fuelIntakes', 'maintenanceSchedules'])
+            ->with(['tenant', 'shipments.order', 'fuelIntakes', 'maintenanceSchedules', 'vehicleTyres'])
             ->findOrFail($id);
         Gate::authorize('view', $this->vehicle);
     }
@@ -57,6 +59,20 @@ new #[Lazy, Title('Vehicle')] class extends Component
             'total'       => $intakes->count(),
             'thisMonth'   => (float) $intakes->filter(fn ($f) => $f->intake_date?->isCurrentMonth())->sum('liters'),
             'last3Months' => (float) $intakes->filter(fn ($f) => $f->intake_date?->greaterThanOrEqualTo(now()->subMonths(3)))->sum('liters'),
+        ];
+    }
+
+    /** @return array{total:int,active:int,worn:int,replacedThisMonth:int} */
+    #[Computed]
+    public function tyreStats(): array
+    {
+        $tyres = $this->vehicle->vehicleTyres;
+
+        return [
+            'total'              => $tyres->count(),
+            'active'             => $tyres->filter(fn ($t) => $t->status === TyreStatus::Active)->count(),
+            'worn'               => $tyres->filter(fn ($t) => $t->status === TyreStatus::Worn)->count(),
+            'replacedThisMonth'  => $tyres->filter(fn ($t) => $t->status === TyreStatus::Removed && $t->removed_at?->isCurrentMonth())->count(),
         ];
     }
 
@@ -127,6 +143,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
         <flux:tab name="shipments" icon="cube">{{ __('Shipments') }}</flux:tab>
         <flux:tab name="fuel" icon="bolt">{{ __('Fuel intakes') }}</flux:tab>
         <flux:tab name="maintenance" icon="wrench-screwdriver">{{ __('Maintenance') }}</flux:tab>
+        <flux:tab name="tyres" icon="circle-stack">{{ __('Tyres') }}</flux:tab>
         <flux:tab name="expenses" icon="banknotes">{{ __('Expenses') }}</flux:tab>
         <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
@@ -319,6 +336,75 @@ new #[Lazy, Title('Vehicle')] class extends Component
                 <flux:button variant="outline" icon="plus" :href="route('admin.maintenance.index')" wire:navigate>
                     {{ __('Schedule maintenance') }}
                 </flux:button>
+            </div>
+        </flux:card>
+    @endif
+
+    {{-- TAB: Tyres --}}
+    @if ($tab === 'tyres')
+        <div class="grid gap-3 sm:grid-cols-4">
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total tyres') }}</flux:text>
+                <flux:heading size="lg">{{ $this->tyreStats['total'] }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Active') }}</flux:text>
+                <flux:heading size="lg" class="text-green-600">{{ $this->tyreStats['active'] }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Worn') }}</flux:text>
+                <flux:heading size="lg" class="{{ $this->tyreStats['worn'] > 0 ? 'text-yellow-500' : '' }}">{{ $this->tyreStats['worn'] }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Replaced (this month)') }}</flux:text>
+                <flux:heading size="lg">{{ $this->tyreStats['replacedThisMonth'] }}</flux:heading>
+            </flux:card>
+        </div>
+        <flux:card class="p-4">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                    <thead>
+                        <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                            <th class="py-2 pe-3 font-medium">{{ __('Position') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Brand') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Size') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                            <th class="py-2 pe-3 font-medium">{{ __('Installed') }}</th>
+                            <th class="py-2 pe-3 font-medium text-end">{{ __('Tread depth (mm)') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($vehicle->vehicleTyres->sortBy('position') as $tyre)
+                            @php $lowTread = $tyre->tread_depth_mm !== null && $tyre->tread_depth_mm < 3; @endphp
+                            <tr class="{{ $lowTread ? 'bg-red-50 dark:bg-red-950/30' : '' }}">
+                                <td class="py-2 pe-3 font-medium">{{ $tyre->position->label() }}</td>
+                                <td class="py-2 pe-3">{{ $tyre->brand ?? '—' }}</td>
+                                <td class="py-2 pe-3 font-mono text-xs">{{ $tyre->size ?? '—' }}</td>
+                                <td class="py-2 pe-3">
+                                    <flux:badge color="{{ $tyre->status->color() }}" size="sm">{{ $tyre->status->label() }}</flux:badge>
+                                </td>
+                                <td class="py-2 pe-3 text-zinc-500">
+                                    {{ $tyre->installed_at?->format('d M Y') ?? '—' }}
+                                    @if ($tyre->km_installed)
+                                        <span class="block text-xs">{{ number_format($tyre->km_installed) }} km</span>
+                                    @endif
+                                </td>
+                                <td class="py-2 pe-3 text-end font-mono {{ $lowTread ? 'font-bold text-red-600' : '' }}">
+                                    {{ $tyre->tread_depth_mm !== null ? $tyre->tread_depth_mm.' mm' : '—' }}
+                                    @if ($lowTread) <span class="ms-1 text-xs">⚠️</span> @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="py-6 text-center text-zinc-500">{{ __('No tyres yet.') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4">
+                <flux:button variant="outline" icon="arrow-top-right-on-square" :href="route('admin.vehicle-tyres.index')" wire:navigate>
+                    {{ __('Manage all tyres') }}</flux:button>
             </div>
         </flux:card>
     @endif

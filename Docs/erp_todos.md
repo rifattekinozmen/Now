@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
-> Son güncelleme: 2026-04-02
-> Mevcut: Sprint 1 + Sprint 2 + Sprint 3 + Sprint 4 + Sprint 5 + Sprint 6 + Sprint 7 tamamlandı
+> Son güncelleme: 2026-04-11
+> Mevcut: Sprint 1–8 tamamlandı
 
 ## Durum Özeti
 
@@ -14,10 +14,56 @@
 | 5 | Analytics + Dashboard Güçlendirme | ✅ TAMAM |
 | 6 | Entegrasyonlar + Adres Defteri | ✅ TAMAM |
 | 7 | Analytics Bug Fix + Sidebar + UI Tutarlılığı | ✅ TAMAM |
+| 8 | İş Emirleri + Lastik Yönetimi + Email + Bordro PDF | ✅ TAMAM |
 
 ---
 
-## SPRINT 1 — Finans: Kasa + Fiş (Maker-Checker) ✅
+## SPRINT 8 — İş Emirleri + Lastik Yönetimi + Email Bildirimleri + Bordro PDF ✅
+
+### TODO-11.1: Work Orders (İş Emirleri) Modülü ✅
+- [x] Migration: work_orders (tenant_id, vehicle_id?, employee_id?, title, description, type, status, scheduled_at, completed_at, cost, notes, meta)
+- [x] Enums: WorkOrderType (preventive/corrective/inspection/other), WorkOrderStatus (pending/in_progress/completed/cancelled)
+- [x] Model: BelongsToTenant, fillable, vehicle()/employee() ilişkileri
+- [x] WorkOrderFactory + WorkOrderPolicy
+- [x] Livewire SFC sayfası: 4 KPI kart, filtreler, inline modal, bulk delete, sort
+- [x] Route: `admin/work-orders` → `pages::admin.work-orders-index`
+- [x] Sidebar: Operasyon grubuna "İş Emirleri" item
+- [x] tr.json + en.json: yeni çeviri anahtarları
+- [x] Pest: tenant izolasyon + CRUD + policy testi
+
+### TODO-11.2: Vehicle Tyres (Lastik Yönetimi) Modülü ✅
+- [x] Migration: vehicle_tyres (tenant_id, vehicle_id, brand, size, position, installed_at, km_installed, removed_at, km_removed, status, tread_depth_mm, supplier, notes, meta)
+- [x] Enums: TyrePosition (7 pozisyon), TyreStatus (active/worn/damaged/removed)
+- [x] Model: BelongsToTenant, vehicle() ilişkisi
+- [x] VehicleTyreFactory + VehicleTyrePolicy
+- [x] Livewire SFC sayfası: 4 KPI kart, filtreler, inline modal, bulk delete
+- [x] Route: `admin/vehicle-tyres` → `pages::admin.vehicle-tyres-index`
+- [x] Sidebar: Operasyon grubu altına "Lastik Yönetimi"
+- [ ] vehicle-show.blade.php Lastikler sekmesini gerçek veriyle doldur _(ertelenmiş)_
+- [x] tr.json + en.json çeviriler
+- [x] Pest: tenant izolasyon + CRUD testi
+
+### TODO-11.3: Email Bildirimleri ✅
+- [x] app/Mail/PayrollApprovedMail.php
+- [x] app/Mail/DocumentExpiryReminderMail.php
+- [x] app/Mail/PaymentDueReminderMail.php
+- [x] app/Mail/FuelPriceWeeklyReportMail.php
+- [x] resources/views/emails/*.blade.php (4 şablon)
+- [x] payroll-index approve() → PayrollApprovedMail::to($employee->user)->queue()
+- [x] ScanDocumentExpiryCommand → DocumentExpiryReminderMail dispatch
+- [x] Yeni `logistics:send-payment-due-reminders` command + günlük schedule
+- [x] Pest: mail assertion testleri
+
+### TODO-11.4: Payroll PDF (Bordro Yazdır) ✅
+- [x] PayrollPrintController: GET admin/hr/payroll/{payroll}/print
+- [x] resources/views/admin/payroll-print.blade.php (print-friendly CSS)
+- [x] Route + Policy guard (tenant + admin)
+- [x] payroll-index.blade.php: "Yazdır" butonu ekle
+- [x] Pest: assertSuccessful + tenant guard testi
+
+---
+
+## SPRINT 1 — Finans: Kasa + Fiş (Maker-Checker) ✅ — Finans: Kasa + Fiş (Maker-Checker) ✅
 
 ### TODO-4.1: CashRegister Migration + Model ✅
 - [x] Migration: tenant_id, name, code, currency_code, current_balance, is_active, description, meta

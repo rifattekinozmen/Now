@@ -2,18 +2,26 @@
 
 Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederken bağlam olarak kullanılır.
 
-## Current Focus (2026-04-02)
+## Current Focus (2026-04-12)
 
-**Sprint 7 tamamlandı — 353/353 test geçiyor.**
+**Sprint 9 devam ediyor — Sprint 8 tamamlandı (371/371 test geçiyor).**
 
-- **Analytics bug fix:** `fleet-analytics` + `operations-analytics` sayfaları çalışır durumda; `summarizeFuelIntakeAnomalies` ve `summarizeFreightOutliersAgainstMedian` doğru tenant_id + Carbon parametreleriyle çağrılıyor.
-- **Shipments:** `driver_employee_id` nullable FK kolonu eklendi (migration `2026_04_02_072925`); `Shipment` modeline `driver()` ilişkisi eklendi.
-- **Sidebar:** `.env` locale `tr`; tüm sidebar grup başlıkları ve item isimleri Türkçe; `tr.json` duplicate key’ler temizlendi.
-- **UI tutarlılığı:** Tüm admin index sayfaları standart desene getirildi — 4 KPI kart, `filtersOpen` açılır filtre, sort okları, checkbox + bulk delete.
+### Sprint 9 kapsamı:
+- **9.1 Employee show:** KPI kartları eklendi, payroll sekmesi alan hataları düzeltildi (`period_year` → `period_start`, `base_gross_salary` → `gross_salary`), Print linki eklendi.
+- **9.2 Payroll bulk generate:** Toplu bordro oluşturma (ay + brüt ücret seçimi, mevcut kayıtları atlar).
+- **9.3 Fuel intakes filtre:** Vehicle dropdown + tarih aralığı filtresi + Clear filters butonu eklendi.
 
-### Bir sonraki öncelikli adımlar:
-- TotalEnergies canlı API endpoint doğrulaması (yer tutucu URL dışı)
-- Banka ekstresi görüntü-only PDF için harici OCR entegrasyonu
+### Sprint 8 özeti (tamamlandı 2026-04-11):
+
+### Sprint 7 özeti (tamamlandı 2026-04-02):
+- Analytics bug fix: fleet-analytics + operations-analytics tenant_id + Carbon parametreleri düzeltildi.
+- Shipments: `driver_employee_id` nullable FK kolonu eklendi.
+- Sidebar: locale `tr`, duplicate key temizliği.
+- UI tutarlılığı: 14 admin sayfasında 4 KPI kart, filtersOpen, sort okları, bulk delete.
+
+### Pending (dış bağımlılıklı):
+- TotalEnergies canlı API endpoint doğrulaması
+- Banka ekstresi görüntü-only PDF OCR
 - Logo XML şema genişletmesi
 
 ## Rol matrisi (özet)

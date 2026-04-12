@@ -2,11 +2,13 @@
 
 use App\Authorization\LogisticsPermission;
 use App\Enums\PayrollStatus;
+use App\Mail\PayrollApprovedMail;
 use App\Models\Employee;
 use App\Models\Payroll;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -24,6 +26,12 @@ new #[Lazy, Title('Payroll')] class extends Component
     public string $period_end     = '';
     public string $gross_salary   = '';
     public string $currency_code  = 'TRY';
+
+    // Bulk generate
+    public bool $showBulkGenerate   = false;
+    public string $bulkPeriodMonth  = '';
+    public string $bulkGrossSalary  = '';
+    public string $bulkCurrencyCode = 'TRY';
 
     // Filters
     public string $filterEmployee  = '';
@@ -44,8 +52,9 @@ new #[Lazy, Title('Payroll')] class extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', Payroll::class);
-        $this->period_start = now()->startOfMonth()->format('Y-m-d');
-        $this->period_end   = now()->endOfMonth()->format('Y-m-d');
+        $this->period_start    = now()->startOfMonth()->format('Y-m-d');
+        $this->period_end      = now()->endOfMonth()->format('Y-m-d');
+        $this->bulkPeriodMonth = now()->format('Y-m');
     }
 
     public function updatedFilterEmployee(): void { $this->resetPage(); }
@@ -238,6 +247,13 @@ new #[Lazy, Title('Payroll')] class extends Component
             'approved_at' => now(),
         ]);
 
+        // Email notification to employee if they have a user account with email
+        $payroll->load('employee.user');
+        $employeeEmail = $payroll->employee?->user?->email ?? $payroll->employee?->email;
+        if ($employeeEmail) {
+            Mail::to($employeeEmail)->queue(new PayrollApprovedMail($payroll));
+        }
+
         session()->flash('success', __('Payroll #:id approved.', ['id' => $id]));
     }
 
@@ -261,6 +277,66 @@ new #[Lazy, Title('Payroll')] class extends Component
         Gate::authorize('delete', $payroll);
         $payroll->delete();
         $this->resetPage();
+    }
+
+    /** Toplu bordro: seçili ay + ortak brüt ücret ile tüm çalışanlara draft bordro oluşturur (zaten varsa atlar). */
+    public function bulkGenerate(): void
+    {
+        $user = auth()->user();
+        if (! ($user instanceof \App\Models\User) || ! LogisticsPermission::canWrite($user, LogisticsPermission::PAYROLL_WRITE)) {
+            abort(403);
+        }
+
+        $this->validate([
+            'bulkPeriodMonth'  => ['required', 'regex:/^\d{4}-\d{2}$/'],
+            'bulkGrossSalary'  => ['required', 'numeric', 'min:1', 'max:9999999'],
+            'bulkCurrencyCode' => ['required', 'in:TRY,USD,EUR'],
+        ]);
+
+        [$year, $month] = explode('-', $this->bulkPeriodMonth);
+        $periodStart = \Carbon\Carbon::createFromDate((int) $year, (int) $month, 1)->startOfMonth();
+        $periodEnd   = $periodStart->copy()->endOfMonth();
+
+        $gross = (float) $this->bulkGrossSalary;
+        $sgk   = round($gross * 0.14, 2);
+        $tax   = round(($gross - $sgk) * 0.15, 2);
+        $net   = round($gross - $sgk - $tax, 2);
+
+        $employees = Employee::query()->get();
+        $created   = 0;
+        $skipped   = 0;
+
+        foreach ($employees as $emp) {
+            $exists = Payroll::query()
+                ->where('employee_id', $emp->id)
+                ->whereDate('period_start', $periodStart->toDateString())
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            Payroll::query()->create([
+                'employee_id'   => $emp->id,
+                'period_start'  => $periodStart->toDateString(),
+                'period_end'    => $periodEnd->toDateString(),
+                'gross_salary'  => $gross,
+                'deductions'    => ['sgk_employee' => $sgk, 'income_tax' => $tax],
+                'net_salary'    => $net,
+                'currency_code' => $this->bulkCurrencyCode,
+                'status'        => PayrollStatus::Draft->value,
+            ]);
+            $created++;
+        }
+
+        $this->showBulkGenerate = false;
+        $this->bulkGrossSalary  = '';
+        $this->resetPage();
+        session()->flash('success', __('Bulk generate complete: :created created, :skipped skipped.', [
+            'created' => $created,
+            'skipped' => $skipped,
+        ]));
     }
 
     private function resetForm(): void
@@ -296,12 +372,49 @@ new #[Lazy, Title('Payroll')] class extends Component
     >
         <x-slot name="actions">
             @if ($canWrite)
+                <flux:button type="button" variant="outline" wire:click="$set('showBulkGenerate', true)" icon="squares-plus">
+                    {{ __('Bulk generate') }}
+                </flux:button>
                 <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
                     {{ __('New payroll entry') }}
                 </flux:button>
             @endif
         </x-slot>
     </x-admin.page-header>
+
+    {{-- Bulk Generate Panel --}}
+    @if ($showBulkGenerate)
+        <flux:card class="p-4 border-2 border-blue-200 dark:border-blue-800">
+            <flux:heading size="sm" class="mb-3">{{ __('Bulk generate payrolls') }}</flux:heading>
+            <flux:text class="mb-4 text-sm text-zinc-500">
+                {{ __('Creates draft payrolls for all employees with a base salary for the selected month. Existing records are skipped.') }}
+            </flux:text>
+            <div class="flex flex-wrap items-end gap-3">
+                <div>
+                    <flux:label>{{ __('Period (YYYY-MM)') }}</flux:label>
+                    <flux:input type="month" wire:model="bulkPeriodMonth" />
+                </div>
+                <div>
+                    <flux:label>{{ __('Gross salary') }}</flux:label>
+                    <flux:input type="number" wire:model="bulkGrossSalary" min="1" step="0.01" placeholder="0.00" class="w-40" />
+                </div>
+                <div>
+                    <flux:label>{{ __('Currency') }}</flux:label>
+                    <flux:select wire:model="bulkCurrencyCode" class="w-28">
+                        <option value="TRY">TRY</option>
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                    </flux:select>
+                </div>
+                <flux:button type="button" variant="primary" wire:click="bulkGenerate" wire:loading.attr="disabled">
+                    {{ __('Generate') }}
+                </flux:button>
+                <flux:button type="button" variant="ghost" wire:click="$set('showBulkGenerate', false)">
+                    {{ __('Cancel') }}
+                </flux:button>
+            </div>
+        </flux:card>
+    @endif
 
     {{-- KPI Cards --}}
     <div class="grid gap-3 sm:grid-cols-4">
@@ -478,6 +591,12 @@ new #[Lazy, Title('Payroll')] class extends Component
                                     <flux:button size="sm" variant="ghost"
                                         wire:click="confirmAction({{ $payroll->id }}, 'paid')"
                                     >{{ __('Mark paid') }}</flux:button>
+                                @endif
+                                @if (! $payroll->status->isDraft())
+                                    <a href="{{ route('admin.hr.payroll.print', $payroll) }}" target="_blank"
+                                        class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700">
+                                        🖨️ {{ __('Print') }}
+                                    </a>
                                 @endif
                                 @if ($canWrite && $payroll->status->isDraft())
                                     <flux:button size="sm" variant="ghost"

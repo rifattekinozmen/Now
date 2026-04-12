@@ -144,7 +144,7 @@ test('bank statement import page loads for logistics user', function () {
 
     $this->get(route('admin.finance.bank-statement-csv'))
         ->assertSuccessful()
-        ->assertSee(__('Bank statement import'), false);
+        ->assertSee(__('Bank statement CSV import'), false);
 });
 
 test('payment due calendar page loads for logistics user', function () {

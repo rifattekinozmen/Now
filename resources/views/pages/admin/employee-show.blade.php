@@ -2,6 +2,7 @@
 
 use App\Models\Employee;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -20,6 +21,18 @@ new #[Lazy, Title('Employee Details')] class extends Component
             ->findOrFail($id);
 
         Gate::authorize('view', $this->employee);
+    }
+
+    /** @return array{totalLeaves:int,pendingLeaves:int,totalAdvances:float,draftPayrolls:int} */
+    #[Computed]
+    public function kpiStats(): array
+    {
+        return [
+            'totalLeaves'   => $this->employee->leaves->count(),
+            'pendingLeaves' => $this->employee->leaves->filter(fn ($l) => $l->status->value === 'pending')->count(),
+            'totalAdvances' => (float) $this->employee->advances->sum('amount'),
+            'draftPayrolls' => $this->employee->payrolls->filter(fn ($p) => $p->status->value === 'draft')->count(),
+        ];
     }
 }; ?>
 
@@ -47,6 +60,30 @@ new #[Lazy, Title('Employee Details')] class extends Component
         <flux:button variant="ghost" icon="arrow-left" :href="route('admin.employees.index')" wire:navigate>
             {{ __('Back') }}
         </flux:button>
+    </div>
+
+    {{-- KPI Cards --}}
+    <div class="grid gap-3 sm:grid-cols-4">
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500">{{ __('Total leaves') }}</flux:text>
+            <flux:heading size="lg">{{ $this->kpiStats['totalLeaves'] }}</flux:heading>
+        </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500">{{ __('Pending leaves') }}</flux:text>
+            <flux:heading size="lg" class="{{ $this->kpiStats['pendingLeaves'] > 0 ? 'text-yellow-500' : '' }}">
+                {{ $this->kpiStats['pendingLeaves'] }}
+            </flux:heading>
+        </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500">{{ __('Total advances (TRY)') }}</flux:text>
+            <flux:heading size="lg">{{ number_format($this->kpiStats['totalAdvances'], 2) }}</flux:heading>
+        </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500">{{ __('Draft payrolls') }}</flux:text>
+            <flux:heading size="lg" class="{{ $this->kpiStats['draftPayrolls'] > 0 ? 'text-yellow-500' : '' }}">
+                {{ $this->kpiStats['draftPayrolls'] }}
+            </flux:heading>
+        </flux:card>
     </div>
 
     {{-- Tabs --}}
@@ -244,17 +281,18 @@ new #[Lazy, Title('Employee Details')] class extends Component
                             <th class="py-2 pe-3 font-medium text-end">{{ __('Deductions') }}</th>
                             <th class="py-2 pe-3 font-medium text-end">{{ __('Net Pay') }}</th>
                             <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
+                            <th class="py-2 pe-3 font-medium"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        @forelse ($employee->payrolls->sortByDesc('period_month')->sortByDesc('period_year') as $payroll)
+                        @forelse ($employee->payrolls->sortByDesc('period_start') as $payroll)
                             <tr>
                                 <td class="py-2 pe-3 font-medium">
-                                    {{ $payroll->period_year }}-{{ str_pad((string)$payroll->period_month, 2, '0', STR_PAD_LEFT) }}
+                                    {{ $payroll->period_start?->format('Y-m') ?? '—' }}
                                 </td>
-                                <td class="py-2 pe-3 text-end font-mono">{{ number_format((float) $payroll->base_gross_salary, 2) }}</td>
+                                <td class="py-2 pe-3 text-end font-mono">{{ number_format((float) $payroll->gross_salary, 2) }}</td>
                                 <td class="py-2 pe-3 text-end font-mono text-red-600">
-                                    -{{ number_format((float) $payroll->total_deductions, 2) }}
+                                    -{{ number_format($payroll->totalDeductions(), 2) }}
                                 </td>
                                 <td class="py-2 pe-3 text-end font-mono font-bold text-green-600">
                                     {{ number_format((float) $payroll->net_salary, 2) }} {{ $payroll->currency_code }}
@@ -262,14 +300,27 @@ new #[Lazy, Title('Employee Details')] class extends Component
                                 <td class="py-2 pe-3">
                                     <flux:badge color="{{ $payroll->status->color() }}" size="sm">{{ $payroll->status->label() }}</flux:badge>
                                 </td>
+                                <td class="py-2 pe-3">
+                                    @if ($payroll->status->value !== 'draft')
+                                        <a href="{{ route('admin.hr.payroll.print', $payroll) }}" target="_blank"
+                                           class="text-xs text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                            {{ __('Print') }}
+                                        </a>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="py-6 text-center text-zinc-500">{{ __('No payroll records found.') }}</td>
+                                <td colspan="6" class="py-6 text-center text-zinc-500">{{ __('No payroll records found.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+            <div class="mt-4">
+                <flux:button variant="outline" icon="arrow-top-right-on-square" :href="route('admin.hr.payroll.index')" wire:navigate>
+                    {{ __('Manage payroll') }}
+                </flux:button>
             </div>
         </flux:card>
     @endif

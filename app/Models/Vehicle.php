@@ -72,4 +72,20 @@ class Vehicle extends Model
     {
         return $this->hasMany(MaintenanceSchedule::class);
     }
+
+    /**
+     * @return HasMany<VehicleTyre, $this>
+     */
+    public function vehicleTyres(): HasMany
+    {
+        return $this->hasMany(VehicleTyre::class);
+    }
+
+    /**
+     * @return HasMany<VehicleFinance, $this>
+     */
+    public function vehicleFinances(): HasMany
+    {
+        return $this->hasMany(VehicleFinance::class);
+    }
 }

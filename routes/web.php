@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DownloadVehicleImportTemplateController;
 use App\Http\Controllers\Admin\ExportCustomerCsvController;
 use App\Http\Controllers\Admin\ExportFinanceOrdersCsvController;
 use App\Http\Controllers\Admin\ExportLogoOrdersXmlController;
+use App\Http\Controllers\Admin\PayrollPrintController;
 use App\Http\Controllers\Admin\ShipmentPodDeliveryPhotoController;
 use App\Http\Controllers\Admin\ShipmentPodPrintController;
 use App\Http\Controllers\Admin\ShipmentPodSignatureController;
@@ -36,8 +37,8 @@ Route::get('/locale/{locale}', function (string $locale) {
 
     if ($user = auth()->user()) {
         foreach (['tr', 'en'] as $lang) {
-            cache()->forget('sidebar-menu-v4-' . $user->id . '-' . $lang);
-            cache()->forget('orders-stats-' . $user->tenant_id . '-' . $lang);
+            cache()->forget('sidebar-menu-v4-'.$user->id.'-'.$lang);
+            cache()->forget('orders-stats-'.$user->tenant_id.'-'.$lang);
         }
     }
 
@@ -79,6 +80,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('delivery-numbers/template.xlsx', DownloadPinImportTemplateController::class)->name('delivery-numbers.template.xlsx');
             Route::livewire('warehouse', 'pages::admin.warehouse-index')->name('warehouse.index');
             Route::livewire('warehouse/{warehouse}', 'pages::admin.warehouse-show')->name('warehouse.show');
+            Route::livewire('inventory', 'pages::admin.inventory-index')->name('inventory.index');
             Route::livewire('finance', 'pages::admin.finance-index')->name('finance.index');
             Route::livewire('finance/reports', 'pages::admin.finance-reports')->name('finance.reports');
             Route::livewire('finance/payment-due-calendar', 'pages::admin.finance-payment-due-calendar')->name('finance.payment-due-calendar');
@@ -91,19 +93,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/cash-registers', 'pages::admin.cash-registers-index')->name('finance.cash-registers.index');
             Route::livewire('finance/vouchers', 'pages::admin.vouchers-index')->name('finance.vouchers.index');
             Route::livewire('finance/current-accounts', 'pages::admin.current-accounts-index')->name('finance.current-accounts.index');
+            Route::livewire('finance/bank-accounts', 'pages::admin.bank-accounts-index')->name('finance.bank-accounts.index');
             Route::livewire('pricing-conditions', 'pages::admin.pricing-conditions-index')->name('pricing-conditions.index');
             Route::livewire('trip-expenses', 'pages::admin.trip-expenses-index')->name('trip-expenses.index');
+            Route::livewire('vehicle-finances', 'pages::admin.vehicle-finances-index')->name('vehicle-finances.index');
 
             // HR Module
             Route::prefix('hr')->name('hr.')->group(function (): void {
                 Route::livewire('leaves', 'pages::admin.leaves-index')->name('leaves.index');
                 Route::livewire('advances', 'pages::admin.advances-index')->name('advances.index');
                 Route::livewire('payroll', 'pages::admin.payroll-index')->name('payroll.index');
+                Route::get('payroll/{payroll}/print', PayrollPrintController::class)->name('payroll.print');
                 Route::livewire('attendance', 'pages::admin.attendance-index')->name('attendance.index');
             });
 
             // Operations
             Route::livewire('maintenance', 'pages::admin.maintenance-index')->name('maintenance.index');
+            Route::livewire('work-orders', 'pages::admin.work-orders-index')->name('work-orders.index');
+            Route::livewire('vehicle-tyres', 'pages::admin.vehicle-tyres-index')->name('vehicle-tyres.index');
 
             // Notifications
             Route::livewire('notifications', 'pages::admin.notifications-index')->name('notifications.index');
@@ -114,5 +121,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
     });
 });
+
+// Personnel Portal — employee self-service
+Route::middleware(['auth', 'verified', 'personnel.access'])
+    ->prefix('personnel')
+    ->name('personnel.')
+    ->group(function (): void {
+        Route::livewire('dashboard', 'pages::personnel.dashboard')->name('dashboard');
+        Route::livewire('my-payrolls', 'pages::personnel.my-payrolls')->name('payrolls.index');
+        Route::livewire('my-leaves', 'pages::personnel.my-leaves')->name('leaves.index');
+        Route::livewire('my-advances', 'pages::personnel.my-advances')->name('advances.index');
+    });
 
 require __DIR__.'/settings.php';

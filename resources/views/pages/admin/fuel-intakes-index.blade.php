@@ -33,7 +33,10 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
 
     public string $recorded_at = '';
 
-    public string $filterSearch = '';
+    public string $filterSearch   = '';
+    public string $filterVehicle  = '';
+    public string $filterDateFrom = '';
+    public string $filterDateTo   = '';
 
     public string $sortColumn = 'recorded_at';
 
@@ -50,10 +53,13 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
         $this->recorded_at = now()->timezone(config('app.timezone'))->format('Y-m-d\TH:i');
     }
 
-    public function updatedFilterSearch(): void
-    {
-        $this->resetPage();
-    }
+    public function updatedFilterSearch(): void { $this->resetPage(); }
+
+    public function updatedFilterVehicle(): void { $this->resetPage(); }
+
+    public function updatedFilterDateFrom(): void { $this->resetPage(); }
+
+    public function updatedFilterDateTo(): void { $this->resetPage(); }
 
     /**
      * @return array{total: int, total_liters: float, intakes_this_month: int, avg_liters: float}
@@ -85,15 +91,34 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
     /**
      * @return Builder<FuelIntake>
      */
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Vehicle>
+     */
+    #[Computed]
+    public function vehicles(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Vehicle::query()->orderBy('plate')->get();
+    }
+
     private function intakesQuery(): Builder
     {
         $q = FuelIntake::query()->with('vehicle');
 
         if ($this->filterSearch !== '') {
             $term = '%'.addcslashes($this->filterSearch, '%_\\').'%';
-            $q->where(function (Builder $qq) use ($term): void {
-                $qq->whereHas('vehicle', fn (Builder $vq) => $vq->where('plate', 'like', $term));
-            });
+            $q->whereHas('vehicle', fn (Builder $vq) => $vq->where('plate', 'like', $term));
+        }
+
+        if ($this->filterVehicle !== '') {
+            $q->where('vehicle_id', (int) $this->filterVehicle);
+        }
+
+        if ($this->filterDateFrom !== '') {
+            $q->where('recorded_at', '>=', $this->filterDateFrom.' 00:00:00');
+        }
+
+        if ($this->filterDateTo !== '') {
+            $q->where('recorded_at', '<=', $this->filterDateTo.' 23:59:59');
         }
 
         $allowed = ['id', 'recorded_at', 'liters', 'vehicle_id'];
@@ -325,9 +350,28 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
             <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
                 {{ $filtersOpen ? __('Hide') : __('Show') }}
             </flux:button>
+            @if ($filterVehicle !== '' || $filterDateFrom !== '' || $filterDateTo !== '' || $filterSearch !== '')
+                <flux:button type="button" variant="ghost" size="sm"
+                    wire:click="$set('filterVehicle',''); $set('filterDateFrom',''); $set('filterDateTo',''); $set('filterSearch','')">
+                    {{ __('Clear filters') }}
+                </flux:button>
+            @endif
         </div>
         @if ($filtersOpen)
-            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="max-w-md" />
+            <div class="mt-3 flex flex-wrap gap-3">
+                <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="w-48" />
+                <div>
+                    <flux:label>{{ __('Vehicle') }}</flux:label>
+                    <flux:select wire:model.live="filterVehicle" class="w-48">
+                        <option value="">{{ __('All vehicles') }}</option>
+                        @foreach ($this->vehicles as $v)
+                            <option value="{{ $v->id }}">{{ $v->plate }}</option>
+                        @endforeach
+                    </flux:select>
+                </div>
+                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="w-36" />
+                <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="w-36" />
+            </div>
         @endif
     </x-admin.filter-bar>
 
