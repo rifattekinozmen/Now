@@ -94,6 +94,95 @@ ui-sidebar {
     display: block;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR COLOR THEMES
+   @layer dışı CSS — Tailwind utility'lerini ezer (!important gerekmez)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Brand: Mavi → Kırmızı ── */
+[data-theme="brand"] ui-sidebar {
+    background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 100%) !important;
+    border-right-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="brand"] ui-sidebar a,
+[data-theme="brand"] ui-sidebar button {
+    color: rgba(255, 255, 255, 0.80) !important;
+}
+[data-theme="brand"] ui-sidebar a:hover,
+[data-theme="brand"] ui-sidebar button:hover {
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    color: #ffffff !important;
+}
+[data-theme="brand"] ui-sidebar [class*="bg-zinc-100"],
+[data-theme="brand"] ui-sidebar [class*="bg-zinc-800"] {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+}
+[data-theme="brand"] ui-sidebar p,
+[data-theme="brand"] ui-sidebar [class*="text-zinc-4"],
+[data-theme="brand"] ui-sidebar [class*="text-zinc-5"] {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+[data-theme="brand"] ui-sidebar [class*="border"] {
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* ── Ocean: Teal → İndigo ── */
+[data-theme="ocean"] ui-sidebar {
+    background: linear-gradient(180deg, #134e4a 0%, #312e81 100%) !important;
+    border-right-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="ocean"] ui-sidebar a,
+[data-theme="ocean"] ui-sidebar button {
+    color: rgba(255, 255, 255, 0.80) !important;
+}
+[data-theme="ocean"] ui-sidebar a:hover,
+[data-theme="ocean"] ui-sidebar button:hover {
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    color: #ffffff !important;
+}
+[data-theme="ocean"] ui-sidebar [class*="bg-zinc-100"],
+[data-theme="ocean"] ui-sidebar [class*="bg-zinc-800"] {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+}
+[data-theme="ocean"] ui-sidebar p,
+[data-theme="ocean"] ui-sidebar [class*="text-zinc-4"],
+[data-theme="ocean"] ui-sidebar [class*="text-zinc-5"] {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+[data-theme="ocean"] ui-sidebar [class*="border"] {
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
+/* ── Warm: Amber → Turuncu ── */
+[data-theme="warm"] ui-sidebar {
+    background: linear-gradient(180deg, #92400e 0%, #c2410c 100%) !important;
+    border-right-color: rgba(255, 255, 255, 0.12) !important;
+}
+[data-theme="warm"] ui-sidebar a,
+[data-theme="warm"] ui-sidebar button {
+    color: rgba(255, 255, 255, 0.80) !important;
+}
+[data-theme="warm"] ui-sidebar a:hover,
+[data-theme="warm"] ui-sidebar button:hover {
+    background-color: rgba(255, 255, 255, 0.10) !important;
+    color: #ffffff !important;
+}
+[data-theme="warm"] ui-sidebar [class*="bg-zinc-100"],
+[data-theme="warm"] ui-sidebar [class*="bg-zinc-800"] {
+    background-color: rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+}
+[data-theme="warm"] ui-sidebar p,
+[data-theme="warm"] ui-sidebar [class*="text-zinc-4"],
+[data-theme="warm"] ui-sidebar [class*="text-zinc-5"] {
+    color: rgba(255, 255, 255, 0.45) !important;
+}
+[data-theme="warm"] ui-sidebar [class*="border"] {
+    border-color: rgba(255, 255, 255, 0.10) !important;
+}
+
 [data-flux-field]:not(ui-radio, ui-checkbox) {
     @apply grid gap-2;
 }
