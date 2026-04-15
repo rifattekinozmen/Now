@@ -95,92 +95,82 @@ ui-sidebar {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   SIDEBAR COLOR THEMES
-   @layer dışı CSS — Tailwind utility'lerini ezer (!important gerekmez)
+   FULL-PAGE COLOR THEMES
+   background-attachment:fixed → body + sidebar tek kesintisiz gradient
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Brand: Mavi → Kırmızı ── */
+[data-theme="brand"] body {
+    background: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 45%, #dc2626 100%) fixed !important;
+}
+[data-theme="brand"] body > div {
+    background: transparent !important;
+}
 [data-theme="brand"] ui-sidebar {
-    background: linear-gradient(180deg, #1e3a8a 0%, #1d4ed8 100%) !important;
-    border-right-color: rgba(255, 255, 255, 0.12) !important;
+    background: linear-gradient(135deg, #1d4ed8 0%, #4f46e5 45%, #dc2626 100%) fixed !important;
+    border-right-color: rgba(255, 255, 255, 0.15) !important;
 }
-[data-theme="brand"] ui-sidebar a,
-[data-theme="brand"] ui-sidebar button {
-    color: rgba(255, 255, 255, 0.80) !important;
-}
-[data-theme="brand"] ui-sidebar a:hover,
-[data-theme="brand"] ui-sidebar button:hover {
-    background-color: rgba(255, 255, 255, 0.10) !important;
-    color: #ffffff !important;
-}
-[data-theme="brand"] ui-sidebar [class*="bg-zinc-100"],
-[data-theme="brand"] ui-sidebar [class*="bg-zinc-800"] {
-    background-color: rgba(255, 255, 255, 0.18) !important;
-    color: #ffffff !important;
-}
-[data-theme="brand"] ui-sidebar p,
-[data-theme="brand"] ui-sidebar [class*="text-zinc-4"],
-[data-theme="brand"] ui-sidebar [class*="text-zinc-5"] {
-    color: rgba(255, 255, 255, 0.45) !important;
-}
-[data-theme="brand"] ui-sidebar [class*="border"] {
-    border-color: rgba(255, 255, 255, 0.10) !important;
+[data-theme="brand"] #main-content {
+    background: rgba(255, 255, 255, 0.06) !important;
 }
 
 /* ── Ocean: Teal → İndigo ── */
+[data-theme="ocean"] body {
+    background: linear-gradient(135deg, #0d9488 0%, #0ea5e9 45%, #4f46e5 100%) fixed !important;
+}
+[data-theme="ocean"] body > div {
+    background: transparent !important;
+}
 [data-theme="ocean"] ui-sidebar {
-    background: linear-gradient(180deg, #134e4a 0%, #312e81 100%) !important;
-    border-right-color: rgba(255, 255, 255, 0.12) !important;
+    background: linear-gradient(135deg, #0d9488 0%, #0ea5e9 45%, #4f46e5 100%) fixed !important;
+    border-right-color: rgba(255, 255, 255, 0.15) !important;
 }
-[data-theme="ocean"] ui-sidebar a,
-[data-theme="ocean"] ui-sidebar button {
-    color: rgba(255, 255, 255, 0.80) !important;
-}
-[data-theme="ocean"] ui-sidebar a:hover,
-[data-theme="ocean"] ui-sidebar button:hover {
-    background-color: rgba(255, 255, 255, 0.10) !important;
-    color: #ffffff !important;
-}
-[data-theme="ocean"] ui-sidebar [class*="bg-zinc-100"],
-[data-theme="ocean"] ui-sidebar [class*="bg-zinc-800"] {
-    background-color: rgba(255, 255, 255, 0.18) !important;
-    color: #ffffff !important;
-}
-[data-theme="ocean"] ui-sidebar p,
-[data-theme="ocean"] ui-sidebar [class*="text-zinc-4"],
-[data-theme="ocean"] ui-sidebar [class*="text-zinc-5"] {
-    color: rgba(255, 255, 255, 0.45) !important;
-}
-[data-theme="ocean"] ui-sidebar [class*="border"] {
-    border-color: rgba(255, 255, 255, 0.10) !important;
+[data-theme="ocean"] #main-content {
+    background: rgba(255, 255, 255, 0.06) !important;
 }
 
 /* ── Warm: Amber → Turuncu ── */
+[data-theme="warm"] body {
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #dc2626 100%) fixed !important;
+}
+[data-theme="warm"] body > div {
+    background: transparent !important;
+}
 [data-theme="warm"] ui-sidebar {
-    background: linear-gradient(180deg, #92400e 0%, #c2410c 100%) !important;
-    border-right-color: rgba(255, 255, 255, 0.12) !important;
+    background: linear-gradient(135deg, #f59e0b 0%, #f97316 50%, #dc2626 100%) fixed !important;
+    border-right-color: rgba(255, 255, 255, 0.15) !important;
 }
-[data-theme="warm"] ui-sidebar a,
-[data-theme="warm"] ui-sidebar button {
-    color: rgba(255, 255, 255, 0.80) !important;
+[data-theme="warm"] #main-content {
+    background: rgba(255, 255, 255, 0.06) !important;
 }
-[data-theme="warm"] ui-sidebar a:hover,
-[data-theme="warm"] ui-sidebar button:hover {
-    background-color: rgba(255, 255, 255, 0.10) !important;
+
+/* ── Tüm renkli temalar: sidebar metin ve kenar stilleri ── */
+[data-theme="brand"] ui-sidebar a,  [data-theme="brand"] ui-sidebar button,
+[data-theme="ocean"] ui-sidebar a,  [data-theme="ocean"] ui-sidebar button,
+[data-theme="warm"]  ui-sidebar a,  [data-theme="warm"]  ui-sidebar button {
+    color: rgba(255, 255, 255, 0.82) !important;
+}
+[data-theme="brand"] ui-sidebar a:hover,  [data-theme="brand"] ui-sidebar button:hover,
+[data-theme="ocean"] ui-sidebar a:hover,  [data-theme="ocean"] ui-sidebar button:hover,
+[data-theme="warm"]  ui-sidebar a:hover,  [data-theme="warm"]  ui-sidebar button:hover {
+    background-color: rgba(255, 255, 255, 0.12) !important;
     color: #ffffff !important;
 }
-[data-theme="warm"] ui-sidebar [class*="bg-zinc-100"],
-[data-theme="warm"] ui-sidebar [class*="bg-zinc-800"] {
+[data-theme="brand"] ui-sidebar [class*="bg-zinc"],
+[data-theme="ocean"] ui-sidebar [class*="bg-zinc"],
+[data-theme="warm"]  ui-sidebar [class*="bg-zinc"] {
     background-color: rgba(255, 255, 255, 0.18) !important;
     color: #ffffff !important;
 }
-[data-theme="warm"] ui-sidebar p,
-[data-theme="warm"] ui-sidebar [class*="text-zinc-4"],
-[data-theme="warm"] ui-sidebar [class*="text-zinc-5"] {
+[data-theme="brand"] ui-sidebar p, [data-theme="brand"] ui-sidebar [class*="text-zinc-4"], [data-theme="brand"] ui-sidebar [class*="text-zinc-5"],
+[data-theme="ocean"] ui-sidebar p, [data-theme="ocean"] ui-sidebar [class*="text-zinc-4"], [data-theme="ocean"] ui-sidebar [class*="text-zinc-5"],
+[data-theme="warm"]  ui-sidebar p, [data-theme="warm"]  ui-sidebar [class*="text-zinc-4"], [data-theme="warm"]  ui-sidebar [class*="text-zinc-5"] {
     color: rgba(255, 255, 255, 0.45) !important;
 }
-[data-theme="warm"] ui-sidebar [class*="border"] {
-    border-color: rgba(255, 255, 255, 0.10) !important;
+[data-theme="brand"] ui-sidebar [class*="border"],
+[data-theme="ocean"] ui-sidebar [class*="border"],
+[data-theme="warm"]  ui-sidebar [class*="border"] {
+    border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 [data-flux-field]:not(ui-radio, ui-checkbox) {
