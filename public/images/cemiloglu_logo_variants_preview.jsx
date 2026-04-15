@@ -19,10 +19,10 @@ export default function CemilogluLogos() {
       <ThemeBlock title="Light Theme" outerBg="#ffffff" outerText="#111827">
         <div style={{ background: "#ffffff", boxShadow: "0 20px 60px rgba(0,0,0,0.10)", borderRadius: 16, padding: "32px 48px", display: "inline-flex" }}>
           <Logo
-            gradId="grad-light"
-            cubeColor="#111827"
-            cStroke="#111111"
-            hasGrad={false}
+            gradId="gl"
+            cColor="#111827"
+            fontWeight={300}
+            letterSpacing="0.08em"
           />
         </div>
       </ThemeBlock>
@@ -31,10 +31,10 @@ export default function CemilogluLogos() {
       <ThemeBlock title="Dark Theme" outerBg="#000000" outerText="#ffffff">
         <div style={{ background: "linear-gradient(135deg,#1f2937,#111827)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", borderRadius: 16, padding: "32px 48px", display: "inline-flex" }}>
           <Logo
-            gradId="grad-dark"
-            cubeColor="#ffffff"
-            cStroke="#ffffff"
-            hasGrad={false}
+            gradId="gd"
+            cColor="#ffffff"
+            fontWeight={500}
+            letterSpacing="0.01em"
           />
         </div>
       </ThemeBlock>
@@ -43,15 +43,12 @@ export default function CemilogluLogos() {
       <ThemeBlock title="Brand Theme (Blue / Red)" outerBg="linear-gradient(to right,#1d4ed8,#4f46e5,#dc2626)" outerText="#ffffff">
         <div style={{ background: "rgba(255,255,255,0.10)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 16, padding: "32px 48px", display: "inline-flex" }}>
           <Logo
-            gradId="grad-brand"
-            hasGrad={true}
-            gradFrom="#3b82f6"
-            gradTo="#ef4444"
-            glowFrom="rgba(59,130,246,0.40)"
-            glowTo="rgba(239,68,68,0.40)"
-            textGradFrom="#60a5fa"
-            textGradTo="#f87171"
-            cStroke="#ffffff"
+            gradId="gb"
+            gradFrom="#3b82f6" gradTo="#ef4444"
+            textFrom="#60a5fa" textTo="#f87171"
+            glowFrom="rgba(59,130,246,0.45)" glowTo="rgba(239,68,68,0.45)"
+            fontWeight={700}
+            letterSpacing="-0.02em"
           />
         </div>
       </ThemeBlock>
@@ -60,15 +57,12 @@ export default function CemilogluLogos() {
       <ThemeBlock title="Ocean Theme (Teal / Indigo)" outerBg="linear-gradient(to right,#0d9488,#4338ca)" outerText="#ffffff">
         <div style={{ background: "rgba(255,255,255,0.10)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.18)", borderRadius: 16, padding: "32px 48px", display: "inline-flex" }}>
           <Logo
-            gradId="grad-ocean"
-            hasGrad={true}
-            gradFrom="#2dd4bf"
-            gradTo="#818cf8"
-            glowFrom="rgba(45,212,191,0.40)"
-            glowTo="rgba(129,140,248,0.40)"
-            textGradFrom="#5eead4"
-            textGradTo="#a5b4fc"
-            cStroke="#ffffff"
+            gradId="go"
+            gradFrom="#2dd4bf" gradTo="#818cf8"
+            textFrom="#5eead4" textTo="#a5b4fc"
+            glowFrom="rgba(45,212,191,0.45)" glowTo="rgba(129,140,248,0.45)"
+            fontWeight={400}
+            letterSpacing="0.03em"
           />
         </div>
       </ThemeBlock>
@@ -77,15 +71,12 @@ export default function CemilogluLogos() {
       <ThemeBlock title="Warm Theme (Amber / Orange)" outerBg="linear-gradient(to right,#f59e0b,#ea580c)" outerText="#1c0f00">
         <div style={{ background: "rgba(255,255,255,0.18)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 16, padding: "32px 48px", display: "inline-flex" }}>
           <Logo
-            gradId="grad-warm"
-            hasGrad={true}
-            gradFrom="#fbbf24"
-            gradTo="#f97316"
-            glowFrom="rgba(251,191,36,0.40)"
-            glowTo="rgba(249,115,22,0.40)"
-            textGradFrom="#fcd34d"
-            textGradTo="#fb923c"
-            cStroke="#1c0f00"
+            gradId="gw"
+            gradFrom="#fbbf24" gradTo="#f97316"
+            textFrom="#fcd34d" textTo="#fb923c"
+            glowFrom="rgba(251,191,36,0.45)" glowTo="rgba(249,115,22,0.45)"
+            fontWeight={600}
+            letterSpacing="-0.01em"
           />
         </div>
       </ThemeBlock>
@@ -104,15 +95,12 @@ export default function CemilogluLogos() {
       >
         <div style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.20)", borderRadius: 16, padding: "32px 48px", display: "inline-flex" }}>
           <Logo
-            gradId="grad-custom"
-            hasGrad={true}
-            gradFrom={customFrom}
-            gradTo={customTo}
-            glowFrom={customFrom + "66"}
-            glowTo={customTo + "66"}
-            textGradFrom={customFrom}
-            textGradTo={customTo}
-            cStroke="#ffffff"
+            gradId="gc"
+            gradFrom={customFrom} gradTo={customTo}
+            textFrom={customFrom} textTo={customTo}
+            glowFrom={customFrom + "77"} glowTo={customTo + "77"}
+            fontWeight={600}
+            letterSpacing="-0.01em"
           />
         </div>
       </ThemeBlock>
@@ -122,68 +110,91 @@ export default function CemilogluLogos() {
 }
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
+// cColor  → düz tema için icon + metin rengi
+// gradFrom/gradTo → gradient tema için C arc stroke rengi
+// textFrom/textTo → gradient tema için metin rengi (ayrı ton)
+// glowFrom/glowTo → icon arka planı glow rengi
 function Logo({
   gradId,
-  hasGrad = false,
-  cubeColor = null,
-  cStroke = "#ffffff",
+  cColor,
   gradFrom, gradTo,
+  textFrom, textTo,
   glowFrom, glowTo,
-  textGradFrom, textGradTo,
+  fontWeight = 500,
+  letterSpacing = "0",
 }) {
-  const fill   = hasGrad ? `url(#${gradId})` : cubeColor;
-  const stroke = hasGrad ? `url(#${gradId})` : cubeColor;
+  const hasGrad = !!(gradFrom && gradTo);
+  const cStroke = hasGrad ? `url(#${gradId})` : cColor;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
 
-      {/* Icon */}
+      {/* ── Icon — sadece C şekli ── */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "center",
         width: 64, height: 64, borderRadius: 16,
         background: hasGrad ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.04)",
-        position: "relative", overflow: "hidden",
+        position: "relative",
       }}>
-        {/* Glow — orijinal: absolute inset-0 bg-gradient-to-br blur-xl */}
+        {/* Glow: sadece gradient temalar */}
         {hasGrad && (
           <div style={{
-            position: "absolute", inset: 0,
+            position: "absolute", inset: 0, borderRadius: 16,
             background: `linear-gradient(135deg,${glowFrom},${glowTo})`,
-            filter: "blur(24px)",
+            filter: "blur(20px)",
           }} />
         )}
 
-        <svg viewBox="0 0 24 24" width={36} height={36} style={{ position: "relative", zIndex: 1 }}>
+        <svg
+          viewBox="0 0 24 24"
+          width={36}
+          height={36}
+          style={{ position: "relative", zIndex: 1, overflow: "visible" }}
+        >
           <defs>
+            {/* gradientUnits="userSpaceOnUse" + viewBox koordinatları → stroke'ta da çalışır */}
             {hasGrad && (
-              <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor={gradFrom} />
-                <stop offset="100%" stopColor={gradTo} />
+              <linearGradient
+                id={gradId}
+                x1="0" y1="12" x2="24" y2="12"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%"   stopColor={gradFrom} />
+                <stop offset="100%" stopColor={gradTo}   />
               </linearGradient>
             )}
           </defs>
 
-          {/* Cube top */}
-          <path d="M12 2 3 7l9 5 9-5-9-5Z" fill={fill} opacity="0.95" />
-
-          {/* Cube lines */}
-          <path d="M3 7v10l9 5 9-5V7" fill="none" stroke={stroke} strokeWidth="1.6" />
-
-          {/* C shape */}
-          <path d="M16 9a4 4 0 1 0 0 6" fill="none" stroke={cStroke} strokeWidth="2.2" strokeLinecap="round" />
+          {/*
+            C şekli: M17 7 a7 7 0 1 0 0 10
+            - Merkez ≈ (12, 12), yarıçap ≈ 7
+            - Sağa açık C, yukarıdan (17,7) sola dolanarak aşağıya (17,17)
+          */}
+          <path
+            d="M17 7a7 7 0 1 0 0 10"
+            fill="none"
+            stroke={cStroke}
+            strokeWidth="2.5"
+            strokeLinecap="round"
+          />
         </svg>
       </div>
 
-      {/* Text */}
+      {/* ── Metin ── */}
       <span style={{
-        fontSize: 30,
-        fontWeight: 600,
-        letterSpacing: "-0.02em",
-        lineHeight: 1,
         fontFamily: "Inter, Poppins, system-ui, sans-serif",
+        fontSize: 30,
+        fontWeight,
+        letterSpacing,
+        lineHeight: 1,
         ...(hasGrad
-          ? { background: `linear-gradient(to right,${textGradFrom},${textGradTo})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }
-          : { color: cubeColor }),
+          ? {
+              background: `linear-gradient(to right,${textFrom},${textTo})`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }
+          : { color: cColor }),
       }}>
         Cemiloğlu
       </span>
@@ -213,7 +224,7 @@ function ColorPickerRow({ label, value, onChange }) {
       <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.70)", fontFamily: "Inter,system-ui,sans-serif", letterSpacing: "0.06em" }}>
         {label}
       </span>
-      <div style={{ position: "relative", width: 22, height: 22, borderRadius: 6, overflow: "hidden", border: "2px solid rgba(255,255,255,0.40)", boxShadow: "0 2px 4px rgba(0,0,0,0.20)" }}>
+      <div style={{ position: "relative", width: 22, height: 22, borderRadius: 6, overflow: "hidden", border: "2px solid rgba(255,255,255,0.40)" }}>
         <div style={{ width: "100%", height: "100%", background: value }} />
         <input type="color" value={value} onChange={e => onChange(e.target.value)}
           style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }} />
