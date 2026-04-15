@@ -49,7 +49,13 @@
       "Bash(grep -n 'getProperty\\\\|getComputed\\\\|getAccounts\\\\|getItems\\\\|getEntries\\\\|index_only\\\\|$this->entries\\\\|$this->items' C:/laragon/www/Now/resources/views/pages/admin/fleet-analytics.blade.php)",
       "Bash(grep -A5 \"sku\" C:/laragon/www/Now/database/migrations/*inventory_items*)",
       "Bash(grep -r \"sku\" C:/laragon/www/Now/database/migrations/*.php)",
-      "Bash(wc -l C:/laragon/www/Now/resources/views/pages/personnel/*.blade.php)"
+      "Bash(wc -l C:/laragon/www/Now/resources/views/pages/personnel/*.blade.php)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "mcp__laravel-boost__application-info",
+      "Bash(find /c/laragon/www/Now -path \"*/resources/views/*\" -name \"*.blade.php\" -exec grep -l \"extends Component\" {} \\\\;)",
+      "Bash(grep -r '$flux\\\\.' /c/laragon/www/Now/resources '--include=*.blade.php')",
+      "Bash(npm run:*)"
     ]
   }
 }
