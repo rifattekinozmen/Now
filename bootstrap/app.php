@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureCustomerAccess;
 use App\Http\Middleware\EnsureLogisticsAccess;
 use App\Http\Middleware\EnsurePersonnelAccess;
 use App\Http\Middleware\SetLocaleFromSession;
@@ -36,8 +37,9 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'logistics.access' => EnsureLogisticsAccess::class,
-            'personnel.access' => EnsurePersonnelAccess::class,
+            'logistics.access'  => EnsureLogisticsAccess::class,
+            'personnel.access'  => EnsurePersonnelAccess::class,
+            'customer.access'   => EnsureCustomerAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,

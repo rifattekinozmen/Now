@@ -93,6 +93,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/cash-registers', 'pages::admin.cash-registers-index')->name('finance.cash-registers.index');
             Route::livewire('finance/vouchers', 'pages::admin.vouchers-index')->name('finance.vouchers.index');
             Route::livewire('finance/current-accounts', 'pages::admin.current-accounts-index')->name('finance.current-accounts.index');
+            Route::livewire('finance/account-transactions', 'pages::admin.account-transactions-index')->name('finance.account-transactions.index');
             Route::livewire('finance/bank-accounts', 'pages::admin.bank-accounts-index')->name('finance.bank-accounts.index');
             Route::livewire('pricing-conditions', 'pages::admin.pricing-conditions-index')->name('pricing-conditions.index');
             Route::livewire('trip-expenses', 'pages::admin.trip-expenses-index')->name('trip-expenses.index');

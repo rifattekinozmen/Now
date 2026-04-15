@@ -4,6 +4,7 @@ use App\Models\ChartAccount;
 use App\Models\FiscalOpeningBalance;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -142,7 +143,8 @@ new #[Lazy, Title('Fiscal opening balances')] class extends Component
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, FiscalOpeningBalance>
      */
-    public function getRowsProperty(): \Illuminate\Database\Eloquent\Collection
+    #[Computed]
+    public function rows(): \Illuminate\Database\Eloquent\Collection
     {
         return FiscalOpeningBalance::query()
             ->with('chartAccount')
@@ -154,7 +156,8 @@ new #[Lazy, Title('Fiscal opening balances')] class extends Component
     /**
      * @return \Illuminate\Database\Eloquent\Collection<int, ChartAccount>
      */
-    public function getAccountsProperty(): \Illuminate\Database\Eloquent\Collection
+    #[Computed]
+    public function accounts(): \Illuminate\Database\Eloquent\Collection
     {
         return ChartAccount::query()->orderBy('code')->get();
     }
@@ -184,9 +187,9 @@ new #[Lazy, Title('Fiscal opening balances')] class extends Component
             <flux:heading size="lg" class="mb-4">{{ $this->editingId ? __('Edit opening balance') : __('New opening balance') }}</flux:heading>
             <form wire:submit="saveEntry" class="grid gap-4 sm:grid-cols-2">
                 <flux:select wire:model="chart_account_id" :label="__('Account')" required>
-                    <flux:select.option value="">{{ __('Select account') }}</flux:select.option>
+                    <option value="">{{ __('Select account') }}</option>
                     @foreach ($this->accounts as $acct)
-                        <flux:select.option value="{{ $acct->id }}">{{ $acct->code }} — {{ $acct->name }}</flux:select.option>
+                        <option value="{{ $acct->id }}">{{ $acct->code }} — {{ $acct->name }}</option>
                     @endforeach
                 </flux:select>
                 <flux:input wire:model="entryFiscalYear" type="number" min="2000" max="2100" :label="__('Fiscal year')" required />

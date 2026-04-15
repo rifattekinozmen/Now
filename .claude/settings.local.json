@@ -48,7 +48,8 @@
       "Bash(wc -l /c/laragon/www/Now/resources/views/pages/admin/bank*.blade.php)",
       "Bash(grep -n 'getProperty\\\\|getComputed\\\\|getAccounts\\\\|getItems\\\\|getEntries\\\\|index_only\\\\|$this->entries\\\\|$this->items' C:/laragon/www/Now/resources/views/pages/admin/fleet-analytics.blade.php)",
       "Bash(grep -A5 \"sku\" C:/laragon/www/Now/database/migrations/*inventory_items*)",
-      "Bash(grep -r \"sku\" C:/laragon/www/Now/database/migrations/*.php)"
+      "Bash(grep -r \"sku\" C:/laragon/www/Now/database/migrations/*.php)",
+      "Bash(wc -l C:/laragon/www/Now/resources/views/pages/personnel/*.blade.php)"
     ]
   }
 }

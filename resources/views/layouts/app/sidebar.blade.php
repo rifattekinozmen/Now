@@ -135,6 +135,7 @@
                     <flux:sidebar.item icon="banknotes" :href="route('admin.finance.cash-registers.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Cash Registers') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="document-check" :href="route('admin.finance.vouchers.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Vouchers') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="credit-card" :href="route('admin.finance.current-accounts.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Current Accounts') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="arrows-right-left" :href="route('admin.finance.account-transactions.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Transactions') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="building-library" :href="route('admin.finance.bank-accounts.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Bank Accounts') }}</flux:sidebar.item>
                 </div>
 
@@ -156,6 +157,7 @@
                             <flux:menu.item :href="route('admin.finance.cash-registers.index')" icon="banknotes" wire:navigate>{{ __('Cash Registers') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.vouchers.index')" icon="document-check" wire:navigate>{{ __('Vouchers') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.current-accounts.index')" icon="credit-card" wire:navigate>{{ __('Current Accounts') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.finance.account-transactions.index')" icon="arrows-right-left" wire:navigate>{{ __('Transactions') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.bank-accounts.index')" icon="building-library" wire:navigate>{{ __('Bank Accounts') }}</flux:menu.item>
                         </flux:menu>
                     </flux:dropdown>
