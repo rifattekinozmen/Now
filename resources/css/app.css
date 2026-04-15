@@ -41,6 +41,42 @@
         --color-card: #171717;
         --color-border-app: #404040;
     }
+
+    /* Brand: Blue → Red */
+    [data-theme="brand"] {
+        --color-accent: #3b82f6;
+        --color-accent-content: #3b82f6;
+        --color-accent-foreground: #ffffff;
+    }
+    .dark[data-theme="brand"] {
+        --color-accent: #60a5fa;
+        --color-accent-content: #60a5fa;
+        --color-accent-foreground: #1e3a8a;
+    }
+
+    /* Ocean: Teal → Indigo */
+    [data-theme="ocean"] {
+        --color-accent: #0d9488;
+        --color-accent-content: #0d9488;
+        --color-accent-foreground: #ffffff;
+    }
+    .dark[data-theme="ocean"] {
+        --color-accent: #2dd4bf;
+        --color-accent-content: #2dd4bf;
+        --color-accent-foreground: #042f2e;
+    }
+
+    /* Warm: Amber → Orange */
+    [data-theme="warm"] {
+        --color-accent: #d97706;
+        --color-accent-content: #d97706;
+        --color-accent-foreground: #ffffff;
+    }
+    .dark[data-theme="warm"] {
+        --color-accent: #fbbf24;
+        --color-accent-content: #fbbf24;
+        --color-accent-foreground: #451a03;
+    }
 }
 
 @layer base {

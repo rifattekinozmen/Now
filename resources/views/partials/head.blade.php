@@ -12,3 +12,9 @@
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
 @fluxAppearance
+<script>
+    (function () {
+        var t = localStorage.getItem('now.color-theme');
+        if (t && t !== 'default') document.documentElement.setAttribute('data-theme', t);
+    })();
+</script>
