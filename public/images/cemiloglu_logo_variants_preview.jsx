@@ -2,65 +2,87 @@ import React, { useState } from "react";
 
 // ─── Tema konfigürasyonları ───────────────────────────────────────────────────
 const THEMES = {
+  // ── Orijinal 3 tema (birebir orjin_cemiloglu_logo_variants_preview.jsx'ten) ──
   light: {
     label: "Light",
-    pageBg: "#f8fafc",
-    pageStyle: { background: "#f8fafc" },
+    pageStyle: { background: "#f1f5f9" },                          // sayfa: açık gri
     cardStyle: { background: "#ffffff", boxShadow: "0 20px 60px rgba(0,0,0,0.10)" },
-    textColor: "#0f172a",
+    textColor: "#0f172a",                                          // currentColor → koyu
     labelColor: "rgba(15,23,42,0.55)",
-    iconBg: "rgba(0,0,0,0.05)",
-    cStroke: "#111111",
+    iconBg: "#f5f5f5",                                             // bg-gray-100 (solid)
+    cubeColor: "#0f172a",                                          // küp rengi
+    cStroke: "#111111",                                            // C şekli: #111
     gradFrom: null,
     gradTo: null,
+    glowFrom: null,
+    glowTo: null,
     isDark: false,
   },
   dark: {
     label: "Dark",
-    pageStyle: { background: "#09090b" },
-    cardStyle: { background: "linear-gradient(135deg,#18181b,#27272a)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" },
-    textColor: "#f4f4f5",
-    labelColor: "rgba(244,244,245,0.50)",
-    iconBg: "rgba(255,255,255,0.06)",
-    cStroke: "#ffffff",
+    pageStyle: { background: "#000000" },                          // bg-black
+    cardStyle: { background: "linear-gradient(135deg,#1f2937,#111827)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" },
+    textColor: "#ffffff",                                          // currentColor → beyaz
+    labelColor: "rgba(255,255,255,0.50)",
+    iconBg: "rgba(255,255,255,0.05)",                              // bg-white/5
+    cubeColor: "#ffffff",                                          // küp rengi
+    cStroke: "#ffffff",                                            // C şekli: #fff
     gradFrom: null,
     gradTo: null,
+    glowFrom: null,
+    glowTo: null,
     isDark: true,
   },
   brand: {
     label: "Brand",
-    pageStyle: { background: "linear-gradient(135deg,#1d4ed8,#4f46e5,#dc2626)" },
-    cardStyle: { background: "rgba(255,255,255,0.10)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.18)" },
+    pageStyle: { background: "linear-gradient(to right,#1d4ed8,#4f46e5,#dc2626)" }, // from-blue-700 via-indigo-600 to-red-600
+    cardStyle: { background: "rgba(255,255,255,0.10)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.20)" },
     textColor: "#ffffff",
     labelColor: "rgba(255,255,255,0.55)",
-    iconBg: "rgba(255,255,255,0.12)",
-    cStroke: "#ffffff",
-    gradFrom: "#3b82f6",
-    gradTo: "#ef4444",
+    iconBg: "rgba(255,255,255,0.10)",                              // bg-white/10
+    cubeColor: null,                                               // gradient kullanılacak
+    cStroke: "#ffffff",                                            // brand'de beyaz
+    gradFrom: "#3b82f6",                                           // blue-500
+    gradTo: "#ef4444",                                             // red-500
+    glowFrom: "rgba(59,130,246,0.40)",                             // from-blue-500/40
+    glowTo: "rgba(239,68,68,0.40)",                                // to-red-500/40
+    textGradFrom: "#60a5fa",                                       // from-blue-400
+    textGradTo: "#f87171",                                         // to-red-400
     isDark: true,
   },
+  // ── Ek temalar ───────────────────────────────────────────────────────────────
   ocean: {
     label: "Ocean",
-    pageStyle: { background: "linear-gradient(135deg,#0d9488,#4338ca)" },
+    pageStyle: { background: "linear-gradient(to right,#0d9488,#4338ca)" },
     cardStyle: { background: "rgba(255,255,255,0.10)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.18)" },
     textColor: "#ffffff",
     labelColor: "rgba(255,255,255,0.55)",
-    iconBg: "rgba(255,255,255,0.12)",
+    iconBg: "rgba(255,255,255,0.10)",
+    cubeColor: null,
     cStroke: "#ffffff",
     gradFrom: "#2dd4bf",
     gradTo: "#818cf8",
+    glowFrom: "rgba(45,212,191,0.40)",
+    glowTo: "rgba(129,140,248,0.40)",
+    textGradFrom: "#5eead4",
+    textGradTo: "#a5b4fc",
     isDark: true,
   },
   warm: {
     label: "Warm",
-    pageStyle: { background: "linear-gradient(135deg,#f59e0b,#ea580c)" },
+    pageStyle: { background: "linear-gradient(to right,#f59e0b,#ea580c)" },
     cardStyle: { background: "rgba(255,255,255,0.18)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.25)" },
     textColor: "#1c0f00",
     labelColor: "rgba(28,15,0,0.55)",
     iconBg: "rgba(255,255,255,0.20)",
+    cubeColor: null,
     cStroke: "#1c0f00",
     gradFrom: "#fbbf24",
     gradTo: "#f97316",
+    glowFrom: "rgba(251,191,36,0.40)",
+    glowTo: "rgba(249,115,22,0.40)",
+    textGradFrom: "#fcd34d",
+    textGradTo: "#fb923c",
     isDark: false,
   },
 };
@@ -76,14 +98,19 @@ export default function CemilogluLogos() {
   const cfg = isCustom
     ? {
         label: "Custom",
-        pageStyle: { background: `linear-gradient(135deg,${customFrom},${customTo})` },
+        pageStyle: { background: `linear-gradient(to right,${customFrom},${customTo})` },
         cardStyle: { background: "rgba(255,255,255,0.12)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.20)" },
         textColor: "#ffffff",
         labelColor: "rgba(255,255,255,0.55)",
-        iconBg: "rgba(255,255,255,0.12)",
+        iconBg: "rgba(255,255,255,0.10)",
+        cubeColor: null,
         cStroke: "#ffffff",
         gradFrom: customFrom,
         gradTo: customTo,
+        glowFrom: `${customFrom}66`,
+        glowTo: `${customTo}66`,
+        textGradFrom: customFrom,
+        textGradTo: customTo,
         isDark: true,
       }
     : THEMES[active];
@@ -180,10 +207,16 @@ export default function CemilogluLogos() {
 // ─── Logo bileşeni ────────────────────────────────────────────────────────────
 function Logo({ cfg, gradId }) {
   const hasGrad = !!(cfg.gradFrom && cfg.gradTo);
+  // Küp rengi: gradient temalarda url(#id), düz temalarda cubeColor
+  const cubeColor = hasGrad ? `url(#${gradId})` : cfg.cubeColor;
+  // Metin gradient renkleri (brand: blue-400→red-400, diğerleri: kendi gradyanları)
+  const textFrom = cfg.textGradFrom || cfg.gradFrom;
+  const textTo   = cfg.textGradTo   || cfg.gradTo;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-      {/* Icon */}
+
+      {/* ── Icon container ── */}
       <div
         style={{
           display: "flex",
@@ -198,14 +231,14 @@ function Logo({ cfg, gradId }) {
           transition: "background 0.4s ease",
         }}
       >
-        {/* Glow — sadece gradyanlı temalar */}
-        {hasGrad && (
+        {/* Glow — orijinaldeki bg-gradient-to-br blur-xl mantığıyla */}
+        {hasGrad && cfg.glowFrom && (
           <div
             style={{
               position: "absolute",
               inset: 0,
-              background: `radial-gradient(circle at 50% 50%, ${cfg.gradFrom}66, ${cfg.gradTo}66)`,
-              filter: "blur(14px)",
+              background: `linear-gradient(135deg, ${cfg.glowFrom}, ${cfg.glowTo})`,
+              filter: "blur(24px)",              // blur-xl = 24px
             }}
           />
         )}
@@ -223,19 +256,19 @@ function Logo({ cfg, gradId }) {
           {/* Küp — üst yüzey */}
           <path
             d="M12 2 3 7l9 5 9-5-9-5Z"
-            fill={hasGrad ? `url(#${gradId})` : cfg.textColor}
+            fill={cubeColor}
             opacity="0.95"
           />
 
-          {/* Küp — kenar çizgileri */}
+          {/* Küp — yan kenarlar */}
           <path
             d="M3 7v10l9 5 9-5V7"
             fill="none"
-            stroke={hasGrad ? `url(#${gradId})` : cfg.textColor}
+            stroke={cubeColor}
             strokeWidth="1.6"
           />
 
-          {/* C şekli */}
+          {/* C şekli — orijinal: light → #111, diğerleri → #fff */}
           <path
             d="M16 9a4 4 0 1 0 0 6"
             fill="none"
@@ -246,29 +279,30 @@ function Logo({ cfg, gradId }) {
         </svg>
       </div>
 
-      {/* Metin */}
+      {/* ── Metin ── */}
       <div style={{ display: "flex", flexDirection: "column" }}>
         <span
           style={{
-            fontSize: 32,
+            fontSize: 30,
             fontWeight: 600,
             letterSpacing: "-0.02em",
             lineHeight: 1,
             fontFamily: "Inter, Poppins, system-ui, sans-serif",
+            // Gradient temalar: bg-gradient-to-r bg-clip-text text-transparent mantığı
             ...(hasGrad
               ? {
-                  background: `linear-gradient(90deg, ${cfg.gradFrom}, ${cfg.gradTo})`,
+                  background: `linear-gradient(to right, ${textFrom}, ${textTo})`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
                 }
               : { color: cfg.textColor }),
-            transition: "color 0.4s ease",
           }}
         >
           Cemiloğlu
         </span>
       </div>
+
     </div>
   );
 }
