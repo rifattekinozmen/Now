@@ -194,5 +194,12 @@ new #[Lazy, Title('My Dashboard')] class extends Component
                 <flux:text class="text-sm text-zinc-500">{{ __('View and download your payslips') }}</flux:text>
             </flux:link>
         </flux:card>
+        <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            <flux:link :href="route('personnel.shifts.index')" wire:navigate class="flex flex-col gap-1 no-underline">
+                <flux:icon.clock class="size-6 text-orange-500" />
+                <flux:heading size="sm">{{ __('My shifts') }}</flux:heading>
+                <flux:text class="text-sm text-zinc-500">{{ __('View your scheduled shifts') }}</flux:text>
+            </flux:link>
+        </flux:card>
     </div>
 </div>

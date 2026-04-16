@@ -6,7 +6,9 @@ use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
+use App\Models\Document;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\PricingCondition;
 use App\Models\Voucher;
 use Illuminate\Database\Eloquent\Builder;
@@ -223,10 +225,56 @@ new #[Lazy, Title('Customer profile')] class extends Component
 
     public function setTab(string $tab): void
     {
-        $allowed = ['orders', 'accounts', 'locations', 'contacts', 'pricing'];
+        $allowed = ['orders', 'accounts', 'locations', 'contacts', 'pricing', 'documents', 'payments'];
         if (in_array($tab, $allowed, true)) {
             $this->activeTab = $tab;
         }
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Document>
+     */
+    #[Computed]
+    public function customerDocuments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Document::query()
+            ->where('documentable_type', Customer::class)
+            ->where('documentable_id', $this->customer->id)
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
+     * @return array{total: int, completed: int, pending: int, total_amount: float}
+     */
+    #[Computed]
+    public function paymentStats(): array
+    {
+        $base = Payment::query()
+            ->where('payable_type', Customer::class)
+            ->where('payable_id', $this->customer->id);
+
+        return [
+            'total'        => (int) $base->clone()->count(),
+            'completed'    => (int) $base->clone()->where('status', \App\Enums\PaymentStatus::Completed->value)->count(),
+            'pending'      => (int) $base->clone()->where('status', \App\Enums\PaymentStatus::Pending->value)->count(),
+            'total_amount' => (float) $base->clone()->where('status', \App\Enums\PaymentStatus::Completed->value)->sum('amount'),
+        ];
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Payment>
+     */
+    #[Computed]
+    public function customerPayments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Payment::query()
+            ->where('payable_type', Customer::class)
+            ->where('payable_id', $this->customer->id)
+            ->orderByDesc('payment_date')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get();
     }
 
     /**
@@ -358,6 +406,12 @@ new #[Lazy, Title('Customer profile')] class extends Component
         </flux:button>
         <flux:button type="button" size="sm" :variant="$activeTab === 'pricing' ? 'primary' : 'ghost'" wire:click="setTab('pricing')">
             {{ __('Pricing / freight') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'documents' ? 'primary' : 'ghost'" wire:click="setTab('documents')">
+            {{ __('Documents') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'payments' ? 'primary' : 'ghost'" wire:click="setTab('payments')">
+            {{ __('Payments') }}
         </flux:button>
     </div>
 
@@ -620,6 +674,122 @@ new #[Lazy, Title('Customer profile')] class extends Component
                     @endforeach
                 </dl>
             @endif
+        </flux:card>
+    @elseif ($activeTab === 'documents')
+        <flux:card class="p-4">
+            <flux:heading size="lg" class="mb-4">{{ __('Documents') }}</flux:heading>
+            @if ($this->customerDocuments->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No documents for this customer yet.') }}</flux:text>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Title') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Category') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('File type') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Expires at') }}</th>
+                                <th class="py-2 font-medium">{{ __('Uploaded') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($this->customerDocuments as $doc)
+                                <tr>
+                                    <td class="py-2 pe-4 font-medium text-zinc-900 dark:text-zinc-100">{{ $doc->title }}</td>
+                                    <td class="py-2 pe-4">
+                                        @if ($doc->category)
+                                            <flux:badge color="{{ $doc->category->color() }}" size="sm">{{ $doc->category->label() }}</flux:badge>
+                                        @else
+                                            <span class="text-zinc-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4 text-xs font-mono text-zinc-500">
+                                        {{ $doc->file_type?->value ?? '—' }}
+                                    </td>
+                                    <td class="py-2 pe-4 {{ $doc->expires_at && $doc->expires_at->isPast() ? 'text-red-600 font-semibold' : 'text-zinc-500' }}">
+                                        {{ $doc->expires_at?->format('d M Y') ?? '—' }}
+                                    </td>
+                                    <td class="py-2 text-xs text-zinc-400 whitespace-nowrap">
+                                        {{ $doc->created_at->format('d M Y') }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </flux:card>
+    @elseif ($activeTab === 'payments')
+        {{-- Payment KPI --}}
+        <div class="grid gap-3 sm:grid-cols-4">
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total payments') }}</flux:text>
+                <flux:heading size="lg">{{ $this->paymentStats['total'] }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Completed') }}</flux:text>
+                <flux:heading size="lg" class="text-green-600">{{ $this->paymentStats['completed'] }}</flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Pending') }}</flux:text>
+                <flux:heading size="lg" class="{{ $this->paymentStats['pending'] > 0 ? 'text-yellow-500' : '' }}">
+                    {{ $this->paymentStats['pending'] }}
+                </flux:heading>
+            </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Total paid') }}</flux:text>
+                <flux:heading size="lg" class="text-green-600">
+                    {{ number_format($this->paymentStats['total_amount'], 2) }}
+                </flux:heading>
+            </flux:card>
+        </div>
+        <flux:card class="p-4">
+            <flux:heading size="sm" class="mb-3">{{ __('Payment history') }}</flux:heading>
+            @if ($this->customerPayments->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No payments for this customer yet.') }}</flux:text>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Date') }}</th>
+                                <th class="py-2 pe-4 font-medium text-end">{{ __('Amount') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Method') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Status') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Reference no.') }}</th>
+                                <th class="py-2 font-medium">{{ __('Notes') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($this->customerPayments as $payment)
+                                <tr>
+                                    <td class="py-2 pe-4 whitespace-nowrap">{{ $payment->payment_date?->format('d M Y') ?? '—' }}</td>
+                                    <td class="py-2 pe-4 text-end font-mono font-semibold">
+                                        {{ number_format((float) $payment->amount, 2) }} {{ $payment->currency_code }}
+                                    </td>
+                                    <td class="py-2 pe-4">
+                                        <flux:badge color="{{ $payment->payment_method->color() }}" size="sm">
+                                            {{ $payment->payment_method->label() }}
+                                        </flux:badge>
+                                    </td>
+                                    <td class="py-2 pe-4">
+                                        <flux:badge color="{{ $payment->status->color() }}" size="sm">
+                                            {{ $payment->status->label() }}
+                                        </flux:badge>
+                                    </td>
+                                    <td class="py-2 pe-4 font-mono text-xs text-zinc-500">{{ $payment->reference_no ?? '—' }}</td>
+                                    <td class="py-2 max-w-xs truncate text-zinc-500">{{ $payment->notes ?? '—' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+            <div class="mt-3">
+                <flux:button :href="route('admin.finance.payments.index')" variant="ghost" size="sm" wire:navigate>
+                    {{ __('All payments') }}
+                </flux:button>
+            </div>
         </flux:card>
     @else
         <flux:card class="p-4">

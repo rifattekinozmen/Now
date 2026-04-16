@@ -34,10 +34,46 @@ new #[Lazy, Title('Shipment detail')] class extends Component
     /** @var mixed */
     public $pod_photo = null;
 
+    // Return / Damage tab fields
+    public bool $returnIsReturn = false;
+    public string $returnReason = '';
+    /** @var mixed */
+    public $returnPhoto = null;
+
     public function mount(Shipment $shipment): void
     {
         Gate::authorize('view', $shipment);
-        $this->shipment = $shipment->load(['order.customer', 'vehicle']);
+        $this->shipment      = $shipment->load(['order.customer', 'vehicle']);
+        $this->returnIsReturn = (bool) $shipment->is_return;
+        $this->returnReason  = $shipment->return_reason ?? '';
+    }
+
+    public function saveReturn(): void
+    {
+        Gate::authorize('update', $this->shipment);
+
+        $validated = $this->validate([
+            'returnIsReturn' => ['boolean'],
+            'returnReason'   => ['nullable', 'string', 'max:1000'],
+            'returnPhoto'    => ['nullable', 'image', 'max:5120'],
+        ]);
+
+        $data = [
+            'is_return'     => $validated['returnIsReturn'],
+            'return_reason' => $validated['returnIsReturn'] && filled($validated['returnReason'])
+                ? $validated['returnReason']
+                : null,
+        ];
+
+        if ($this->returnPhoto) {
+            $data['return_photo_path'] = $this->returnPhoto->store('shipment-returns', 'local');
+            $this->returnPhoto = null;
+        }
+
+        $this->shipment->update($data);
+        $this->shipment->refresh();
+
+        session()->flash('success', __('Return information saved.'));
     }
 
     public function shipmentStatusLabel(ShipmentStatus $status): string
@@ -146,7 +182,7 @@ new #[Lazy, Title('Shipment detail')] class extends Component
 
     public function setShipmentTab(string $tab): void
     {
-        $allowed = ['overview', 'tracking', 'timeline', 'operations'];
+        $allowed = ['overview', 'tracking', 'timeline', 'operations', 'return'];
         if (in_array($tab, $allowed, true)) {
             $this->activeTab = $tab;
         }
@@ -202,6 +238,15 @@ new #[Lazy, Title('Shipment detail')] class extends Component
         </flux:button>
         <flux:button type="button" size="sm" :variant="$activeTab === 'operations' ? 'primary' : 'ghost'" wire:click="setShipmentTab('operations')">
             {{ __('Operations') }}
+        </flux:button>
+        <flux:button type="button" size="sm"
+            :variant="$activeTab === 'return' ? 'danger' : 'ghost'"
+            wire:click="setShipmentTab('return')"
+        >
+            @if ($s->is_return)
+                <span class="mr-1 inline-block size-2 rounded-full bg-red-500"></span>
+            @endif
+            {{ __('Return / Damage') }}
         </flux:button>
     </div>
 
@@ -502,5 +547,85 @@ new #[Lazy, Title('Shipment detail')] class extends Component
             </div>
         </flux:card>
         @endif
+    @endif
+
+    {{-- ═══════════════════════════════════════ --}}
+    {{-- Return / Damage Tab --}}
+    {{-- ═══════════════════════════════════════ --}}
+    @if ($activeTab === 'return')
+    <flux:card class="p-6">
+        <div class="flex items-center gap-3 mb-6">
+            <flux:heading size="lg">{{ __('Return / Damage') }}</flux:heading>
+            @if ($s->is_return)
+                <flux:badge color="red">{{ __('Marked as return') }}</flux:badge>
+            @endif
+        </div>
+
+        @php
+            $canManageReturn = auth()->user()?->can(\App\Authorization\LogisticsPermission::ADMIN);
+        @endphp
+
+        @if ($canManageReturn)
+        <form wire:submit="saveReturn" class="flex flex-col gap-4 max-w-lg">
+            <flux:field>
+                <div class="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        id="is_return_toggle"
+                        wire:model.live="returnIsReturn"
+                        class="h-4 w-4 rounded border-gray-300 text-primary"
+                    />
+                    <label for="is_return_toggle" class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                        {{ __('Mark as return / damaged delivery') }}
+                    </label>
+                </div>
+            </flux:field>
+
+            @if ($returnIsReturn)
+            <flux:field>
+                <flux:label>{{ __('Return reason') }}</flux:label>
+                <flux:textarea wire:model="returnReason" rows="3"
+                    :placeholder="__('Describe the reason: carrier error, product damage, wetness, etc.')" />
+                <flux:error name="returnReason" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Return photo') }}</flux:label>
+                @if ($s->return_photo_path)
+                    <div class="mb-2">
+                        <flux:badge color="green" size="sm">{{ __('Photo uploaded') }}</flux:badge>
+                        <span class="text-xs text-zinc-400 ml-1">{{ basename($s->return_photo_path) }}</span>
+                    </div>
+                @endif
+                <input type="file" wire:model="returnPhoto" accept="image/*"
+                    class="block w-full text-sm text-zinc-500 file:mr-4 file:rounded file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium" />
+                <flux:error name="returnPhoto" />
+            </flux:field>
+            @endif
+
+            <div class="flex gap-2">
+                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+            </div>
+        </form>
+        @else
+            {{-- Read-only view --}}
+            @if ($s->is_return)
+                <dl class="grid gap-3 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-xs text-zinc-500">{{ __('Return reason') }}</dt>
+                        <dd class="font-medium">{{ $s->return_reason ?? '—' }}</dd>
+                    </div>
+                    @if ($s->return_photo_path)
+                    <div>
+                        <dt class="text-xs text-zinc-500">{{ __('Return photo') }}</dt>
+                        <dd><flux:badge color="green" size="sm">{{ __('Photo uploaded') }}</flux:badge></dd>
+                    </div>
+                    @endif
+                </dl>
+            @else
+                <flux:text class="text-zinc-400">{{ __('No return recorded for this shipment.') }}</flux:text>
+            @endif
+        @endif
+    </flux:card>
     @endif
 </div>

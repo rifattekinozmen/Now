@@ -121,9 +121,10 @@ new #[Lazy, Title('Notifications')] class extends Component
     {{-- Notifications list --}}
     <flux:card class="divide-y divide-zinc-100 p-0 dark:divide-zinc-800">
         @forelse ($this->paginatedNotifications as $notification)
-            <div
-                class="flex cursor-pointer items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 {{ ! $notification->is_read ? 'bg-blue-50/50 dark:bg-blue-900/10' : '' }}"
-                wire:click="markRead({{ $notification->id }})"
+            <a
+                href="{{ route('admin.notifications.show', $notification) }}"
+                wire:navigate
+                class="flex cursor-pointer items-start gap-3 px-4 py-3 no-underline transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50 {{ ! $notification->is_read ? 'bg-blue-50/50 dark:bg-blue-900/10' : '' }}"
             >
                 <div class="mt-0.5 flex-shrink-0">
                     @if (! $notification->is_read)
@@ -143,10 +144,8 @@ new #[Lazy, Title('Notifications')] class extends Component
                         {{ $notification->created_at?->diffForHumans() }}
                     </flux:text>
                 </div>
-                @if ($notification->url)
-                    <flux:icon icon="arrow-top-right-on-square" class="mt-1 h-4 w-4 flex-shrink-0 text-zinc-400" />
-                @endif
-            </div>
+                <flux:icon icon="chevron-right" class="mt-1 h-4 w-4 flex-shrink-0 text-zinc-300" />
+            </a>
         @empty
             <div class="py-12 text-center text-zinc-500">
                 {{ __('No notifications yet.') }}

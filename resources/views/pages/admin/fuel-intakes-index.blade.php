@@ -5,6 +5,7 @@ use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\FuelIntake;
 use App\Models\Vehicle;
 use App\Services\Logistics\ExcelImportService;
+use App\Services\Logistics\FuelAnomalyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -258,7 +259,14 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
             $row->update($data);
         } else {
             Gate::authorize('create', FuelIntake::class);
-            FuelIntake::query()->create($data);
+            $intake = FuelIntake::query()->create($data);
+
+            $anomaly = app(FuelAnomalyService::class)->notifyIfAnomaly($intake);
+            if ($anomaly->isAnomaly) {
+                session()->flash('anomaly_warning', __('Fuel anomaly detected: consumption deviated :pct% from reference.', [
+                    'pct' => round($anomaly->deviationPercent, 1),
+                ]));
+            }
         }
 
         $this->editingId = null;
@@ -374,6 +382,12 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
             </div>
         @endif
     </x-admin.filter-bar>
+
+    @if (session()->has('anomaly_warning'))
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            {{ session('anomaly_warning') }}
+        </flux:callout>
+    @endif
 
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">

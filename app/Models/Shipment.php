@@ -24,6 +24,9 @@ use Illuminate\Support\Str;
     'meta',
     'public_reference_token',
     'pod_payload',
+    'is_return',
+    'return_reason',
+    'return_photo_path',
 ])]
 class Shipment extends Model
 {
@@ -67,6 +70,7 @@ class Shipment extends Model
             'delivered_at' => 'datetime',
             'meta' => 'array',
             'pod_payload' => 'array',
+            'is_return' => 'boolean',
         ];
     }
 

@@ -147,7 +147,7 @@ new #[Lazy, Title('My Payslips')] class extends Component
                             <td class="py-2 text-end">
                                 @if ($payroll->status !== \App\Enums\PayrollStatus::Draft)
                                     <flux:link
-                                        :href="route('admin.hr.payroll.print', $payroll)"
+                                        :href="route('personnel.payrolls.print', $payroll)"
                                         target="_blank"
                                         class="text-xs"
                                     >

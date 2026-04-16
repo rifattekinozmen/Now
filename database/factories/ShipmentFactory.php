@@ -26,6 +26,9 @@ class ShipmentFactory extends Factory
             'dispatched_at' => null,
             'delivered_at' => null,
             'meta' => null,
+            'is_return' => false,
+            'return_reason' => null,
+            'return_photo_path' => null,
         ];
     }
 }

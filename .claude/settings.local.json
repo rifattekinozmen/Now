@@ -55,7 +55,12 @@
       "mcp__laravel-boost__application-info",
       "Bash(find /c/laragon/www/Now -path \"*/resources/views/*\" -name \"*.blade.php\" -exec grep -l \"extends Component\" {} \\\\;)",
       "Bash(grep -r '$flux\\\\.' /c/laragon/www/Now/resources '--include=*.blade.php')",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(ls app/Models/Document*)",
+      "Bash(ls resources/views/pages/admin/document*)",
+      "Bash(php -r \"echo count\\(file\\('C:/laragon/www/Now/resources/views/pages/admin/shifts-index.blade.php'\\)\\);\")",
+      "Bash(grep -n \"customer_id\\\\|payable_type\\\\|payable_id\\\\|documentable\" C:/laragon/www/Now/database/migrations/*payments*)",
+      "Bash(grep -rn \"customer_id\\\\|payable\" C:/laragon/www/Now/database/migrations/*payment*)"
     ]
   }
 }

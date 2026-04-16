@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
-> Son güncelleme: 2026-04-11
-> Mevcut: Sprint 1–8 tamamlandı
+> Son güncelleme: 2026-04-16
+> Mevcut: Sprint 1–13 tamamlandı — 468 test geçiyor
 
 ## Durum Özeti
 
@@ -13,6 +13,13 @@
 | 4 | Audit Log + Bildirim Merkezi | ✅ TAMAM |
 | 5 | Analytics + Dashboard Güçlendirme | ✅ TAMAM |
 | 6 | Entegrasyonlar + Adres Defteri | ✅ TAMAM |
+| 7 | Analytics Bug Fix + Sidebar + UI Tutarlılığı | ✅ TAMAM |
+| 8 | İş Emirleri + Lastik + Email + Bordro PDF | ✅ TAMAM |
+| 9 | Employee KPI + Payroll Bulk + Fuel Filter | ✅ TAMAM |
+| 10 | Payments + BankTransaction + Shipment Returns | ✅ TAMAM |
+| 11 | Shifts + FuelAnomalyService | ✅ TAMAM |
+| 12 | Document Modülü + FuelAnomaly Trigger | ✅ TAMAM |
+| 13 | Cost Center P&L + Billing Preview raporları | ✅ TAMAM |
 | 7 | Analytics Bug Fix + Sidebar + UI Tutarlılığı | ✅ TAMAM |
 | 8 | İş Emirleri + Lastik Yönetimi + Email + Bordro PDF | ✅ TAMAM |
 
@@ -228,3 +235,62 @@
 - [x] Warehouse: 4 KPI kart + filterWarehouse + sort okları eklendi
 - [x] `lang/tr.json`'a yeni çeviriler eklendi (warehouse istatistikleri, delete confirmations)
 - [x] 353/353 test geçiyor
+
+---
+
+## SPRINT 12 — Document Modülü + FuelAnomaly Trigger ✅
+
+### TODO-14.1: Document Management Modülü ✅
+- [x] Migration: documents (tenant_id, documentable morphs, title, file_path, file_type, file_size, category, expires_at, uploaded_by, notes, meta)
+- [x] Enums: DocumentCategory (contract/license/insurance/permit/invoice/certificate/other), DocumentFileType (pdf/image/word/excel/other)
+- [x] Model: BelongsToTenant, morphTo documentable, expiringSoon()/expired() scopes
+- [x] DocumentFactory (expiringSoon/expired/contract states)
+- [x] DocumentPolicy (viewAny/create/update/delete + logistics.documents.write permission)
+- [x] LogisticsPermission::DOCUMENTS_WRITE sabitı eklendi
+- [x] Livewire SFC: documents-index.blade.php — 4 KPI kart, filtreler, file upload, bulk delete
+- [x] Route: admin/documents → admin.documents.index
+- [x] Sidebar: "Belgeler" (folder icon) - Notifications altına eklendi
+- [x] tr.json: belge yönetimi çevirileri eklendi
+- [x] Pest: 9 test (factory/scopes/routes/tenant-isolation/policy)
+
+### TODO-14.2: FuelAnomalyService Trigger ✅
+- [x] fuel-intakes-index.blade.php save() → yeni intake oluşturulunca FuelAnomalyService::notifyIfAnomaly() çağrılır
+- [x] Anomali varsa sarı uyarı banner (flux:callout variant="warning") gösterilir
+- [x] tr.json: anomali uyarı mesajı eklendi
+
+---
+
+---
+
+## SPRINT 13 — Cost Center P&L + Billing Preview ✅
+
+### TODO-15.1: Cost Center P&L Raporu ✅
+- [x] Livewire SFC: `cost-center-pl.blade.php` — araç bazlı gelir/gider/net K-Z tablosu
+- [x] 5 KPI kart (toplam gelir, yakıt maliyeti, iş emri maliyeti, toplam gider, net K/Z)
+- [x] Dönem filtresi (son 1/3/6 ay, son yıl)
+- [x] Gelir: sevk edilen seferlerin navlun toplamı (shipments → orders)
+- [x] Yakıt maliyeti: litre × ortalama yakıt fiyatı (fuel_intakes × fuel_prices)
+- [x] İş emri maliyeti: work_orders.cost toplamı
+- [x] Route: `analytics/cost-centers` → `admin.analytics.cost-centers`
+- [x] Sidebar: Operasyon grubuna "Masraf Merkezi K/Z" (presentation-chart-line icon)
+- [x] tr.json: masraf merkezi çevirileri eklendi
+- [x] Pest: 6 test (routes × 3, data × 2, tenant isolation × 1)
+
+### TODO-15.2: Billing Preview Raporu ✅
+- [x] Livewire SFC: `billing-preview.blade.php` — sipariş bazlı faturalama önizleme
+- [x] 6 KPI kart (sipariş sayısı, eşleşen, eşleşmeyen, kayıtlı navlun, hesaplanan, fark)
+- [x] Filtreler: müşteri, durum, tarih aralığı
+- [x] PricingCondition eşleştirme: customer_id + valid_from/valid_until + tonnage × price_per_ton
+- [x] Varyans hesaplaması: kayıtlı navlun − hesaplanan tutar
+- [x] Eşleşmeyen siparişler için uyarı banner
+- [x] Route: `finance/billing-preview` → `admin.finance.billing-preview`
+- [x] Sidebar: Finans grubuna "Faturalama Önizleme" (document-magnifying-glass icon)
+- [x] tr.json: billing preview çevirileri eklendi
+- [x] Pest: 6 test (routes × 3, data × 2, tenant isolation × 1)
+
+---
+
+## Kalan Görevler
+
+> Tüm P1–P3 görevler tamamlandı. Proje %100 dokümantasyon kapsamına ulaştı.
+

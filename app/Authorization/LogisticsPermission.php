@@ -48,6 +48,10 @@ final class LogisticsPermission
 
     public const TRIP_EXPENSES_WRITE = 'logistics.trip-expenses.write';
 
+    public const SHIFTS_WRITE = 'logistics.shifts.write';
+
+    public const DOCUMENTS_WRITE = 'logistics.documents.write';
+
     /**
      * Admin kullanıcılar view iznini de kapsar (ADMIN ⊇ VIEW).
      */

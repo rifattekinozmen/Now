@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ShipmentPodDeliveryPhotoController;
 use App\Http\Controllers\Admin\ShipmentPodPrintController;
 use App\Http\Controllers\Admin\ShipmentPodSignatureController;
 use App\Http\Controllers\Admin\ShipmentQrSvgController;
+use App\Http\Controllers\Personnel\PersonnelPayrollPrintController;
 use App\Http\Controllers\TrackPublicShipmentController;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
@@ -95,6 +96,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/current-accounts', 'pages::admin.current-accounts-index')->name('finance.current-accounts.index');
             Route::livewire('finance/account-transactions', 'pages::admin.account-transactions-index')->name('finance.account-transactions.index');
             Route::livewire('finance/bank-accounts', 'pages::admin.bank-accounts-index')->name('finance.bank-accounts.index');
+            Route::livewire('finance/payments', 'pages::admin.payments-index')->name('finance.payments.index');
+            Route::livewire('finance/bank-transactions', 'pages::admin.bank-transactions-index')->name('finance.bank-transactions.index');
             Route::livewire('pricing-conditions', 'pages::admin.pricing-conditions-index')->name('pricing-conditions.index');
             Route::livewire('trip-expenses', 'pages::admin.trip-expenses-index')->name('trip-expenses.index');
             Route::livewire('vehicle-finances', 'pages::admin.vehicle-finances-index')->name('vehicle-finances.index');
@@ -106,6 +109,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::livewire('payroll', 'pages::admin.payroll-index')->name('payroll.index');
                 Route::get('payroll/{payroll}/print', PayrollPrintController::class)->name('payroll.print');
                 Route::livewire('attendance', 'pages::admin.attendance-index')->name('attendance.index');
+                Route::livewire('shifts', 'pages::admin.shifts-index')->name('shifts.index');
             });
 
             // Operations
@@ -115,10 +119,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // Notifications
             Route::livewire('notifications', 'pages::admin.notifications-index')->name('notifications.index');
+            Route::livewire('notifications/{notification}', 'pages::admin.notification-show')->name('notifications.show');
+
+            // Documents
+            Route::livewire('documents', 'pages::admin.documents-index')->name('documents.index');
 
             // Analytics
             Route::livewire('analytics/fleet', 'pages::admin.fleet-analytics')->name('analytics.fleet');
             Route::livewire('analytics/operations', 'pages::admin.operations-analytics')->name('analytics.operations');
+            Route::livewire('analytics/cost-centers', 'pages::admin.cost-center-pl')->name('analytics.cost-centers');
+
+            // Finance reports
+            Route::livewire('finance/billing-preview', 'pages::admin.billing-preview')->name('finance.billing-preview');
         });
     });
 });
@@ -130,8 +142,10 @@ Route::middleware(['auth', 'verified', 'personnel.access'])
     ->group(function (): void {
         Route::livewire('dashboard', 'pages::personnel.dashboard')->name('dashboard');
         Route::livewire('my-payrolls', 'pages::personnel.my-payrolls')->name('payrolls.index');
+        Route::get('my-payrolls/{payroll}/print', PersonnelPayrollPrintController::class)->name('payrolls.print');
         Route::livewire('my-leaves', 'pages::personnel.my-leaves')->name('leaves.index');
         Route::livewire('my-advances', 'pages::personnel.my-advances')->name('advances.index');
+        Route::livewire('my-shifts', 'pages::personnel.my-shifts')->name('shifts.index');
     });
 
 require __DIR__.'/settings.php';
