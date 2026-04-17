@@ -8,11 +8,42 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'slug'])]
+#[Fillable(['name', 'slug', 'archived_at'])]
 class Tenant extends Model
 {
     /** @use HasFactory<TenantFactory> */
     use HasFactory;
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'archived_at' => 'datetime',
+        ];
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
+     */
+    public function scopeActive(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->whereNull('archived_at');
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<static>  $query
+     */
+    public function scopeArchived(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->whereNotNull('archived_at');
+    }
 
     /**
      * @return HasMany<User, $this>

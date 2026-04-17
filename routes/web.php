@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ShipmentPodPrintController;
 use App\Http\Controllers\Admin\ShipmentPodSignatureController;
 use App\Http\Controllers\Admin\ShipmentQrSvgController;
 use App\Http\Controllers\Personnel\PersonnelPayrollPrintController;
+use App\Http\Controllers\SwitchTenantController;
 use App\Http\Controllers\TrackPublicShipmentController;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Auth;
@@ -51,6 +52,8 @@ Route::get('/locale/{locale}', function (string $locale) {
 Route::get('track/shipment/{token}', TrackPublicShipmentController::class)->name('track.shipment');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::post('tenant/switch/{tenant}', SwitchTenantController::class)->name('tenant.switch');
+
     Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
     Route::middleware(['logistics.access'])->group(function () {

@@ -9,6 +9,9 @@ use App\Models\User;
  */
 final class LogisticsPermission
 {
+    /** Platform sahibi — tüm tenant'ları oluşturur, arşivler, siler. */
+    public const SUPER_ADMIN = 'platform.super_admin';
+
     public const ADMIN = 'logistics.admin';
 
     /** Salt okunur panel (liste/rapor; yazma ve toplu işlemler `ADMIN` gerektirir.) */

@@ -11,6 +11,9 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
+    /** Platform sahibi — tüm şirketleri yönetir. */
+    public const ROLE_SUPER_ADMIN = 'super-admin';
+
     public const ROLE_TENANT_USER = 'tenant-user';
 
     /** Sadece `logistics.view` — operasyon yazamaz. */
@@ -33,6 +36,10 @@ class RolesAndPermissionsSeeder extends Seeder
     public static function ensureDefaults(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $permSuperAdmin = Permission::findOrCreate(LogisticsPermission::SUPER_ADMIN, 'web');
+        $roleSuperAdmin = Role::findOrCreate(self::ROLE_SUPER_ADMIN, 'web');
+        $roleSuperAdmin->syncPermissions([$permSuperAdmin]);
 
         $permAdmin = Permission::findOrCreate(LogisticsPermission::ADMIN, 'web');
         $permView = Permission::findOrCreate(LogisticsPermission::VIEW, 'web');

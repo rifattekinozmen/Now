@@ -6,6 +6,8 @@ final class TenantContext
 {
     public static function id(): ?int
     {
-        return auth()->user()?->tenant_id;
+        $user = auth()->user();
+
+        return $user?->active_tenant_id ?? $user?->tenant_id;
     }
 }

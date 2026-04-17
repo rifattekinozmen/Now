@@ -123,6 +123,22 @@ class UserFactory extends Factory
         });
     }
 
+    /**
+     * Platform super-admin — tüm şirketleri yönetir.
+     */
+    public function superAdmin(): static
+    {
+        return $this->afterCreating(function (User $user): void {
+            RolesAndPermissionsSeeder::ensureDefaults();
+            $role = Role::query()->where('name', RolesAndPermissionsSeeder::ROLE_SUPER_ADMIN)->first();
+            if ($role === null) {
+                return;
+            }
+            $user->assignRole($role);
+            $user->forgetCachedPermissions();
+        });
+    }
+
     public function configure(): static
     {
         return $this->afterCreating(function (User $user): void {

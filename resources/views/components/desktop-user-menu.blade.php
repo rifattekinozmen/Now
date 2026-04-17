@@ -1,3 +1,8 @@
+@php
+    $userTenants = auth()->user()->tenants()->orderBy('name')->get();
+    $activeTenantId = auth()->user()->active_tenant_id ?? auth()->user()->tenant_id;
+@endphp
+
 <flux:dropdown position="bottom" align="start">
     <flux:sidebar.profile
         :name="auth()->user()->name"
@@ -17,6 +22,33 @@
                 <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
             </div>
         </div>
+
+        @if($userTenants->count() > 1)
+            <flux:menu.separator />
+            <flux:menu.heading>{{ __('Switch company') }}</flux:menu.heading>
+            <flux:menu.radio.group>
+                @foreach($userTenants as $t)
+                    @if($t->id === $activeTenantId)
+                        <flux:menu.item icon="check" disabled>
+                            {{ $t->name }}
+                        </flux:menu.item>
+                    @else
+                        <form method="POST" action="{{ route('tenant.switch', $t) }}" class="w-full">
+                            @csrf
+                            <flux:menu.item
+                                as="button"
+                                type="submit"
+                                icon="building-office"
+                                class="w-full cursor-pointer"
+                            >
+                                {{ $t->name }}
+                            </flux:menu.item>
+                        </form>
+                    @endif
+                @endforeach
+            </flux:menu.radio.group>
+        @endif
+
         <flux:menu.separator />
         <flux:menu.heading>{{ __('Language') }}</flux:menu.heading>
         <flux:menu.radio.group>

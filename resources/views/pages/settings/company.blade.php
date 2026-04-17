@@ -4,11 +4,16 @@ use App\Authorization\LogisticsPermission;
 use App\Models\Tenant;
 use App\Models\TenantSetting;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\WithFileUploads;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 
 new #[Title('Company profile')] class extends Component
 {
+    use WithFileUploads;
+
     public string $companyName          = '';
     public string $companyTaxId         = '';
     public string $companyAddress       = '';
@@ -17,6 +22,12 @@ new #[Title('Company profile')] class extends Component
     public string $companyEmail         = '';
     public string $companyWebsite       = '';
     public string $minimumFreightAmount = '';
+
+    /** Mevcut kayıtlı logo yolu (storage/public). */
+    public string $currentLogoPath = '';
+
+    /** Yeni yüklenen geçici dosya. */
+    public ?TemporaryUploadedFile $logoFile = null;
 
     public function mount(): void
     {
@@ -35,6 +46,7 @@ new #[Title('Company profile')] class extends Component
         $this->companyEmail   = TenantSetting::get($tid, 'company_email')    ?? '';
         $this->companyWebsite       = TenantSetting::get($tid, 'company_website')         ?? '';
         $this->minimumFreightAmount = TenantSetting::get($tid, 'minimum_freight_amount') ?? '';
+        $this->currentLogoPath      = TenantSetting::get($tid, 'company_logo')            ?? '';
     }
 
     public function save(): void
@@ -52,11 +64,28 @@ new #[Title('Company profile')] class extends Component
             'companyEmail'   => ['nullable', 'email', 'max:200'],
             'companyWebsite'       => ['nullable', 'url', 'max:200'],
             'minimumFreightAmount' => ['nullable', 'numeric', 'min:0'],
+            'logoFile'             => ['nullable', 'image', 'max:2048'],
         ]);
 
         $tid = (int) Auth::user()->tenant_id;
 
+        // Logo yüklendiyse kaydet
+        if ($this->logoFile) {
+            if ($this->currentLogoPath) {
+                Storage::disk('public')->delete($this->currentLogoPath);
+            }
+            $path = $this->logoFile->store('tenant-logos/'.$tid, 'public');
+            TenantSetting::set($tid, 'company_logo', $path);
+            $this->currentLogoPath = $path;
+            $this->logoFile = null;
+        }
+
         Tenant::where('id', $tid)->update(['name' => $this->companyName]);
+
+        // Şirket adı değişince sidebar önbelleğini temizle
+        foreach (['tr', 'en'] as $lang) {
+            cache()->forget('sidebar-menu-v4-'.Auth::id().'-'.$lang);
+        }
 
         TenantSetting::set($tid, 'company_tax_id',   filled($this->companyTaxId)   ? $this->companyTaxId   : null);
         TenantSetting::set($tid, 'company_address',  filled($this->companyAddress) ? $this->companyAddress : null);
@@ -67,6 +96,25 @@ new #[Title('Company profile')] class extends Component
         TenantSetting::set($tid, 'minimum_freight_amount', filled($this->minimumFreightAmount) ? $this->minimumFreightAmount : null);
 
         session()->flash('status', __('Company profile saved.'));
+    }
+
+    public function removeLogo(): void
+    {
+        if (! Auth::user()?->can(LogisticsPermission::ADMIN)) {
+            abort(403);
+        }
+
+        $tid = (int) Auth::user()->tenant_id;
+
+        if ($this->currentLogoPath) {
+            Storage::disk('public')->delete($this->currentLogoPath);
+        }
+
+        TenantSetting::set($tid, 'company_logo', null);
+        $this->currentLogoPath = '';
+        $this->logoFile = null;
+
+        session()->flash('status', __('Logo removed.'));
     }
 }; ?>
 
@@ -79,6 +127,54 @@ new #[Title('Company profile')] class extends Component
     @endif
 
     <form wire:submit.prevent="save" class="space-y-5">
+
+        {{-- ── Logo ── --}}
+        <div>
+            <flux:label class="mb-2 block">{{ __('Company logo') }}</flux:label>
+            <flux:description class="mb-3">{{ __('Shown in the sidebar. PNG, JPG or SVG, max 2 MB.') }}</flux:description>
+
+            <div class="flex items-center gap-4">
+                {{-- Önizleme --}}
+                <div class="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
+                    @if ($logoFile)
+                        <img src="{{ $logoFile->temporaryUrl() }}" class="size-full object-contain" alt="preview" />
+                    @elseif ($currentLogoPath)
+                        <img src="{{ Storage::disk('public')->url($currentLogoPath) }}" class="size-full object-contain" alt="logo" />
+                    @else
+                        <x-app-logo-icon class="size-8 fill-current text-zinc-400" />
+                    @endif
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label class="cursor-pointer">
+                        <input type="file" wire:model="logoFile" accept="image/*" class="sr-only" />
+                        <flux:button tag="span" size="sm" variant="outline" icon="arrow-up-tray">
+                            {{ $currentLogoPath ? __('Replace logo') : __('Upload logo') }}
+                        </flux:button>
+                    </label>
+
+                    @if ($currentLogoPath)
+                        <flux:button
+                            size="sm"
+                            variant="ghost"
+                            icon="trash"
+                            wire:click="removeLogo"
+                            wire:confirm="{{ __('Remove the company logo?') }}"
+                            class="text-red-500 hover:text-red-600"
+                        >
+                            {{ __('Remove') }}
+                        </flux:button>
+                    @endif
+                </div>
+            </div>
+
+            @error('logoFile')
+                <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <flux:separator class="my-2" />
+
         <flux:field>
             <flux:label>{{ __('Company name') }} <span class="text-red-500">*</span></flux:label>
             <flux:input wire:model="companyName" />

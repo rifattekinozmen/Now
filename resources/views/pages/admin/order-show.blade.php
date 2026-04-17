@@ -5,9 +5,11 @@ use App\Enums\OrderStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Document;
 use App\Models\Order;
+use App\Models\TenantSetting;
 use App\Support\OrderLifecyclePresentation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -20,10 +22,84 @@ new #[Lazy, Title('Order detail')] class extends Component
 
     public string $activeTab = 'overview';
 
+    // Freight edit fields
+    public string $editSasNo         = '';
+    public string $editFreightAmount = '';
+    public string $editCurrencyCode  = 'TRY';
+    public string $editDistanceKm    = '';
+    public string $editTonnage       = '';
+    public string $editLoadingSite   = '';
+    public string $editUnloadingSite = '';
+    public string $editDueDate       = '';
+
     public function mount(Order $order): void
     {
         Gate::authorize('view', $order);
         $this->order = $order->load(['customer', 'shipments.vehicle']);
+
+        $o = $this->order;
+        $this->editSasNo         = $o->sas_no ?? '';
+        $this->editFreightAmount = $o->freight_amount !== null ? (string) $o->freight_amount : '';
+        $this->editCurrencyCode  = $o->currency_code ?? 'TRY';
+        $this->editDistanceKm    = $o->distance_km !== null ? (string) $o->distance_km : '';
+        $this->editTonnage       = $o->tonnage !== null ? (string) $o->tonnage : '';
+        $this->editLoadingSite   = $o->loading_site ?? '';
+        $this->editUnloadingSite = $o->unloading_site ?? '';
+        $this->editDueDate       = $o->due_date?->format('Y-m-d') ?? '';
+    }
+
+    public function saveFreight(): void
+    {
+        if (! Auth::user()?->can(LogisticsPermission::ADMIN)) {
+            session()->flash('error', __('Only admins can edit orders.'));
+
+            return;
+        }
+
+        Gate::authorize('update', $this->order);
+
+        if ($this->order->isLocked()) {
+            session()->flash('error', __('This order is locked and cannot be modified.'));
+
+            return;
+        }
+
+        $validated = $this->validate([
+            'editSasNo'         => ['nullable', 'string', 'max:64'],
+            'editFreightAmount' => ['nullable', 'numeric', 'min:0'],
+            'editCurrencyCode'  => ['required', 'string', 'size:3', Rule::in(['TRY', 'EUR', 'USD'])],
+            'editDistanceKm'    => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'editTonnage'       => ['nullable', 'numeric', 'min:0.1', 'max:999'],
+            'editLoadingSite'   => ['nullable', 'string', 'max:5000'],
+            'editUnloadingSite' => ['nullable', 'string', 'max:5000'],
+            'editDueDate'       => ['nullable', 'date'],
+        ]);
+
+        $freightAmt = filled($validated['editFreightAmount']) ? (float) $validated['editFreightAmount'] : null;
+
+        $status = $this->order->status;
+        if ($freightAmt !== null && $freightAmt > 0 && $status === OrderStatus::Draft) {
+            $tenantId = (int) Auth::user()->tenant_id;
+            $minFreight = TenantSetting::get($tenantId, 'minimum_freight_amount');
+            if ($minFreight !== null && $freightAmt < (float) $minFreight) {
+                $status = OrderStatus::PendingPriceApproval;
+            }
+        }
+
+        $this->order->update([
+            'sas_no'          => filled($validated['editSasNo']) ? $validated['editSasNo'] : null,
+            'freight_amount'  => $freightAmt,
+            'currency_code'   => strtoupper($validated['editCurrencyCode']),
+            'distance_km'     => filled($validated['editDistanceKm']) ? $validated['editDistanceKm'] : null,
+            'tonnage'         => filled($validated['editTonnage']) ? $validated['editTonnage'] : null,
+            'loading_site'    => filled($validated['editLoadingSite']) ? $validated['editLoadingSite'] : null,
+            'unloading_site'  => filled($validated['editUnloadingSite']) ? $validated['editUnloadingSite'] : null,
+            'due_date'        => filled($validated['editDueDate']) ? $validated['editDueDate'] : null,
+            'status'          => $status,
+        ]);
+
+        $this->order->refresh();
+        session()->flash('success', __('Order details updated.'));
     }
 
     public function orderStatusLabel(OrderStatus $status): string
@@ -288,34 +364,91 @@ new #[Lazy, Title('Order detail')] class extends Component
         @endif
     </flux:card>
     @elseif ($activeTab === 'freight')
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Summary') }}</flux:heading>
-            <dl class="grid gap-3 text-sm sm:grid-cols-2">
-                <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Status') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $this->orderStatusLabel($o->status) }}</dd>
-                </div>
-                <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('SAS / PO reference') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->sas_no ?? '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Currency') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->currency_code }}</dd>
-                </div>
-                <div>
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Freight amount') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $o->freight_amount ?? '—' }}</dd>
-                </div>
-                <div class="sm:col-span-2">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Loading site') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd>
-                </div>
-                <div class="sm:col-span-2">
-                    <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Unloading site') }}</dt>
-                    <dd class="font-medium text-zinc-900 dark:text-zinc-100 whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd>
-                </div>
-            </dl>
+        <flux:card class="p-6">
+            @can(\App\Authorization\LogisticsPermission::ADMIN)
+                @if (! $o->isLocked())
+                    <form wire:submit.prevent="saveFreight" class="flex flex-col gap-5 max-w-2xl">
+                        <flux:heading size="lg" class="mb-2">{{ __('Freight and sites') }}</flux:heading>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:field>
+                                <flux:label>{{ __('SAS / PO reference') }}</flux:label>
+                                <flux:input wire:model="editSasNo" />
+                                <flux:error name="editSasNo" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Due date') }}</flux:label>
+                                <flux:input wire:model="editDueDate" type="date" />
+                                <flux:error name="editDueDate" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Freight amount') }}</flux:label>
+                                <flux:input wire:model="editFreightAmount" type="number" step="0.01" min="0" />
+                                <flux:error name="editFreightAmount" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Currency') }}</flux:label>
+                                <flux:select wire:model="editCurrencyCode">
+                                    <option value="TRY">TRY</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                </flux:select>
+                                <flux:error name="editCurrencyCode" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Distance (km)') }}</flux:label>
+                                <flux:input wire:model="editDistanceKm" type="number" step="0.1" min="0" />
+                                <flux:error name="editDistanceKm" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Tonnage') }}</flux:label>
+                                <flux:input wire:model="editTonnage" type="number" step="0.01" min="0" />
+                                <flux:error name="editTonnage" />
+                            </flux:field>
+                            <flux:field class="sm:col-span-2">
+                                <flux:label>{{ __('Loading site') }}</flux:label>
+                                <flux:textarea wire:model="editLoadingSite" rows="2" />
+                                <flux:error name="editLoadingSite" />
+                            </flux:field>
+                            <flux:field class="sm:col-span-2">
+                                <flux:label>{{ __('Unloading site') }}</flux:label>
+                                <flux:textarea wire:model="editUnloadingSite" rows="2" />
+                                <flux:error name="editUnloadingSite" />
+                            </flux:field>
+                        </div>
+
+                        <div>
+                            <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                        </div>
+                    </form>
+                @else
+                    {{-- Locked: read-only view --}}
+                    <flux:heading size="lg" class="mb-4">{{ __('Freight and sites') }}</flux:heading>
+                    <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                        <div><dt class="text-zinc-500">{{ __('SAS / PO reference') }}</dt><dd class="font-medium">{{ $o->sas_no ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Currency') }}</dt><dd class="font-medium">{{ $o->currency_code }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Freight amount') }}</dt><dd class="font-medium">{{ $o->freight_amount ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Distance (km)') }}</dt><dd class="font-medium">{{ $o->distance_km ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Tonnage') }}</dt><dd class="font-medium">{{ $o->tonnage ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Due date') }}</dt><dd class="font-medium">{{ $o->due_date?->format('d M Y') ?? '—' }}</dd></div>
+                        <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Loading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd></div>
+                        <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Unloading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd></div>
+                    </dl>
+                @endif
+            @else
+                {{-- Non-admin: read-only --}}
+                <flux:heading size="lg" class="mb-4">{{ __('Freight and sites') }}</flux:heading>
+                <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                    <div><dt class="text-zinc-500">{{ __('SAS / PO reference') }}</dt><dd class="font-medium">{{ $o->sas_no ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Currency') }}</dt><dd class="font-medium">{{ $o->currency_code }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Freight amount') }}</dt><dd class="font-medium">{{ $o->freight_amount ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Distance (km)') }}</dt><dd class="font-medium">{{ $o->distance_km ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Tonnage') }}</dt><dd class="font-medium">{{ $o->tonnage ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Due date') }}</dt><dd class="font-medium">{{ $o->due_date?->format('d M Y') ?? '—' }}</dd></div>
+                    <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Loading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd></div>
+                    <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Unloading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd></div>
+                </dl>
+            @endcan
         </flux:card>
     @elseif ($activeTab === 'documents')
         <flux:card class="p-4">

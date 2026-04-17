@@ -1,8 +1,10 @@
 <?php
 
+use App\Authorization\LogisticsPermission;
 use App\Models\Document;
 use App\Models\Employee;
 use App\Services\HR\DriverPerformanceService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -16,6 +18,19 @@ new #[Lazy, Title('Employee Details')] class extends Component
     #[Url]
     public string $tab = 'overview';
 
+    // Edit form fields
+    public string $editFirstName              = '';
+    public string $editLastName               = '';
+    public string $editNationalId             = '';
+    public string $editBloodGroup             = '';
+    public string $editPhone                  = '';
+    public string $editEmail                  = '';
+    public bool   $editIsDriver               = false;
+    public string $editLicenseClass           = '';
+    public string $editLicenseValidUntil      = '';
+    public string $editSrcValidUntil          = '';
+    public string $editPsychotechnicalValidUntil = '';
+
     public function mount(int $id): void
     {
         $this->employee = Employee::query()
@@ -23,6 +38,61 @@ new #[Lazy, Title('Employee Details')] class extends Component
             ->findOrFail($id);
 
         Gate::authorize('view', $this->employee);
+
+        $e = $this->employee;
+        $this->editFirstName               = $e->first_name ?? '';
+        $this->editLastName                = $e->last_name ?? '';
+        $this->editNationalId              = $e->national_id ?? '';
+        $this->editBloodGroup              = $e->blood_group ?? '';
+        $this->editPhone                   = $e->phone ?? '';
+        $this->editEmail                   = $e->email ?? '';
+        $this->editIsDriver                = (bool) $e->is_driver;
+        $this->editLicenseClass            = $e->license_class ?? '';
+        $this->editLicenseValidUntil       = $e->license_valid_until?->format('Y-m-d') ?? '';
+        $this->editSrcValidUntil           = $e->src_valid_until?->format('Y-m-d') ?? '';
+        $this->editPsychotechnicalValidUntil = $e->psychotechnical_valid_until?->format('Y-m-d') ?? '';
+    }
+
+    public function saveEmployee(): void
+    {
+        if (! Auth::user()?->can(LogisticsPermission::ADMIN)) {
+            session()->flash('error', __('Only admins can edit employee records.'));
+
+            return;
+        }
+
+        Gate::authorize('update', $this->employee);
+
+        $validated = $this->validate([
+            'editFirstName'    => ['required', 'string', 'max:100'],
+            'editLastName'     => ['required', 'string', 'max:100'],
+            'editNationalId'   => ['nullable', 'string', 'max:20'],
+            'editBloodGroup'   => ['nullable', 'string', 'max:5'],
+            'editPhone'        => ['nullable', 'string', 'max:30'],
+            'editEmail'        => ['nullable', 'email', 'max:200'],
+            'editIsDriver'     => ['boolean'],
+            'editLicenseClass' => ['nullable', 'string', 'max:10'],
+            'editLicenseValidUntil'          => ['nullable', 'date'],
+            'editSrcValidUntil'              => ['nullable', 'date'],
+            'editPsychotechnicalValidUntil'  => ['nullable', 'date'],
+        ]);
+
+        $this->employee->update([
+            'first_name'                  => $validated['editFirstName'],
+            'last_name'                   => $validated['editLastName'],
+            'national_id'                 => filled($validated['editNationalId']) ? $validated['editNationalId'] : null,
+            'blood_group'                 => filled($validated['editBloodGroup']) ? $validated['editBloodGroup'] : null,
+            'phone'                       => filled($validated['editPhone']) ? $validated['editPhone'] : null,
+            'email'                       => filled($validated['editEmail']) ? $validated['editEmail'] : null,
+            'is_driver'                   => $validated['editIsDriver'],
+            'license_class'               => filled($validated['editLicenseClass']) ? $validated['editLicenseClass'] : null,
+            'license_valid_until'         => filled($validated['editLicenseValidUntil']) ? $validated['editLicenseValidUntil'] : null,
+            'src_valid_until'             => filled($validated['editSrcValidUntil']) ? $validated['editSrcValidUntil'] : null,
+            'psychotechnical_valid_until' => filled($validated['editPsychotechnicalValidUntil']) ? $validated['editPsychotechnicalValidUntil'] : null,
+        ]);
+
+        $this->employee->refresh();
+        session()->flash('success', __('Employee record updated.'));
     }
 
     /**
@@ -129,14 +199,31 @@ new #[Lazy, Title('Employee Details')] class extends Component
     </div>
 
     {{-- Tabs --}}
-    <flux:tabs wire:model="tab">
-        <flux:tab name="overview" icon="information-circle">{{ __('Overview') }}</flux:tab>
-        <flux:tab name="leaves" icon="calendar-days">{{ __('Leaves') }}</flux:tab>
-        <flux:tab name="advances" icon="banknotes">{{ __('Advances') }}</flux:tab>
-        <flux:tab name="payrolls" icon="document-text">{{ __('Payrolls') }}</flux:tab>
-        <flux:tab name="documents" icon="folder-open">{{ __('Documents') }}</flux:tab>
-        <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
-    </flux:tabs>
+    <div class="flex flex-wrap gap-2 border-b border-border pb-2">
+        <flux:button type="button" size="sm" :variant="$tab === 'overview' ? 'primary' : 'ghost'" wire:click="$set('tab','overview')">
+            {{ __('Overview') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$tab === 'leaves' ? 'primary' : 'ghost'" wire:click="$set('tab','leaves')">
+            {{ __('Leaves') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$tab === 'advances' ? 'primary' : 'ghost'" wire:click="$set('tab','advances')">
+            {{ __('Advances') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$tab === 'payrolls' ? 'primary' : 'ghost'" wire:click="$set('tab','payrolls')">
+            {{ __('Payrolls') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$tab === 'documents' ? 'primary' : 'ghost'" wire:click="$set('tab','documents')">
+            {{ __('Documents') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$tab === 'activity' ? 'primary' : 'ghost'" wire:click="$set('tab','activity')">
+            {{ __('Activity log') }}
+        </flux:button>
+        @can(\App\Authorization\LogisticsPermission::ADMIN)
+            <flux:button type="button" size="sm" :variant="$tab === 'edit' ? 'primary' : 'ghost'" wire:click="$set('tab','edit')">
+                {{ __('Edit') }}
+            </flux:button>
+        @endcan
+    </div>
 
     {{-- TAB: Overview --}}
     @if ($tab === 'overview')
@@ -403,6 +490,101 @@ new #[Lazy, Title('Employee Details')] class extends Component
                 </table>
             </div>
         </flux:card>
+    @endif
+
+    {{-- TAB: Edit --}}
+    @if ($tab === 'edit')
+        @can(\App\Authorization\LogisticsPermission::ADMIN)
+            <flux:card class="p-6">
+                @if (session()->has('success'))
+                    <flux:callout variant="success" icon="check-circle" class="mb-4">{{ session('success') }}</flux:callout>
+                @endif
+
+                <form wire:submit.prevent="saveEmployee" class="flex flex-col gap-6 max-w-2xl">
+
+                    {{-- Personal Information --}}
+                    <div>
+                        <flux:heading size="sm" class="mb-4">{{ __('Personal Information') }}</flux:heading>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:field>
+                                <flux:label>{{ __('First name') }} <span class="text-red-500">*</span></flux:label>
+                                <flux:input wire:model="editFirstName" />
+                                <flux:error name="editFirstName" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Last name') }} <span class="text-red-500">*</span></flux:label>
+                                <flux:input wire:model="editLastName" />
+                                <flux:error name="editLastName" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('National ID') }}</flux:label>
+                                <flux:input wire:model="editNationalId" />
+                                <flux:error name="editNationalId" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Blood group') }}</flux:label>
+                                <flux:input wire:model="editBloodGroup" placeholder="A+, B-, O+, AB+…" />
+                                <flux:error name="editBloodGroup" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Phone') }}</flux:label>
+                                <flux:input wire:model="editPhone" type="tel" />
+                                <flux:error name="editPhone" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Email') }}</flux:label>
+                                <flux:input wire:model="editEmail" type="email" />
+                                <flux:error name="editEmail" />
+                            </flux:field>
+                        </div>
+                    </div>
+
+                    <flux:separator />
+
+                    {{-- Driver Credentials --}}
+                    <div>
+                        <flux:heading size="sm" class="mb-4">{{ __('Driver Credentials') }}</flux:heading>
+                        <div class="mb-4">
+                            <flux:field>
+                                <div class="flex items-center gap-3">
+                                    <flux:checkbox wire:model.live="editIsDriver" id="edit_is_driver" />
+                                    <flux:label for="edit_is_driver">{{ __('This employee is a driver') }}</flux:label>
+                                </div>
+                            </flux:field>
+                        </div>
+                        @if ($editIsDriver)
+                            <div class="grid gap-4 sm:grid-cols-2">
+                                <flux:field>
+                                    <flux:label>{{ __('License class') }}</flux:label>
+                                    <flux:input wire:model="editLicenseClass" placeholder="C, CE, D…" />
+                                    <flux:error name="editLicenseClass" />
+                                </flux:field>
+                                <div></div>
+                                <flux:field>
+                                    <flux:label>{{ __('License valid until') }}</flux:label>
+                                    <flux:input wire:model="editLicenseValidUntil" type="date" />
+                                    <flux:error name="editLicenseValidUntil" />
+                                </flux:field>
+                                <flux:field>
+                                    <flux:label>{{ __('SRC valid until') }}</flux:label>
+                                    <flux:input wire:model="editSrcValidUntil" type="date" />
+                                    <flux:error name="editSrcValidUntil" />
+                                </flux:field>
+                                <flux:field>
+                                    <flux:label>{{ __('Psychotechnical valid until') }}</flux:label>
+                                    <flux:input wire:model="editPsychotechnicalValidUntil" type="date" />
+                                    <flux:error name="editPsychotechnicalValidUntil" />
+                                </flux:field>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div>
+                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                    </div>
+                </form>
+            </flux:card>
+        @endcan
     @endif
 
     {{-- TAB: Documents --}}

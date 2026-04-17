@@ -173,6 +173,38 @@ ui-sidebar {
     border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
+/* ══════════════════════════════════════════════
+   BRAND NAME — premium logo typography
+   Target: the name <div> rendered by flux:brand
+   and flux:sidebar.brand (last child of the <a>)
+   ══════════════════════════════════════════════ */
+[data-flux-brand] > div:last-child,
+[data-flux-sidebar-brand] > div:last-child {
+    font-size: 1.25rem !important;   /* 20px */
+    font-weight: 400 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.3 !important;     /* ğ üst işareti kesilmesin */
+    overflow: visible !important;    /* truncate override */
+    margin-left: 4px !important;     /* ikondan biraz sağa */
+}
+
+/* Brand container dikey ortalama */
+[data-flux-brand],
+[data-flux-sidebar-brand] {
+    align-items: center !important;
+}
+
+/* Coloured themes: ensure name stays white and fully opaque */
+[data-theme="brand"] [data-flux-brand] > div:last-child,
+[data-theme="brand"] [data-flux-sidebar-brand] > div:last-child,
+[data-theme="ocean"] [data-flux-brand] > div:last-child,
+[data-theme="ocean"] [data-flux-sidebar-brand] > div:last-child,
+[data-theme="warm"]  [data-flux-brand] > div:last-child,
+[data-theme="warm"]  [data-flux-sidebar-brand] > div:last-child {
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+
 [data-flux-field]:not(ui-radio, ui-checkbox) {
     @apply grid gap-2;
 }

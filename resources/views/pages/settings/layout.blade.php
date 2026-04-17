@@ -8,6 +8,9 @@
                 <flux:navlist.item :href="route('integrations.edit')" wire:navigate>{{ __('Integrations') }}</flux:navlist.item>
                 <flux:navlist.item :href="route('company.edit')" wire:navigate>{{ __('Company') }}</flux:navlist.item>
             @endcan
+            @can(\App\Authorization\LogisticsPermission::SUPER_ADMIN)
+                <flux:navlist.item :href="route('tenants.edit')" wire:navigate>{{ __('Companies') }}</flux:navlist.item>
+            @endcan
         </flux:navlist>
     </div>
 
