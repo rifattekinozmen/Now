@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
-> Son güncelleme: 2026-04-16
-> Mevcut: Sprint 1–13 tamamlandı — 468 test geçiyor
+> Son güncelleme: 2026-04-17
+> Mevcut: Sprint 1–22 tamamlandı — 534 test geçiyor
 
 ## Durum Özeti
 
@@ -20,8 +20,8 @@
 | 11 | Shifts + FuelAnomalyService | ✅ TAMAM |
 | 12 | Document Modülü + FuelAnomaly Trigger | ✅ TAMAM |
 | 13 | Cost Center P&L + Billing Preview raporları | ✅ TAMAM |
-| 7 | Analytics Bug Fix + Sidebar + UI Tutarlılığı | ✅ TAMAM |
-| 8 | İş Emirleri + Lastik Yönetimi + Email + Bordro PDF | ✅ TAMAM |
+| 21 | Order Price Approval + Order Locking | ✅ TAMAM |
+| 22 | Customer Self-Service Portal | ✅ TAMAM |
 
 ---
 

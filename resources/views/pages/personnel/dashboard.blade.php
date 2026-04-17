@@ -4,8 +4,10 @@ use App\Enums\AdvanceStatus;
 use App\Enums\LeaveStatus;
 use App\Enums\PayrollStatus;
 use App\Models\Advance;
+use App\Models\Employee;
 use App\Models\Leave;
 use App\Models\Payroll;
+use App\Services\HR\DriverPerformanceService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -82,6 +84,23 @@ new #[Lazy, Title('My Dashboard')] class extends Component
             ->limit(3)
             ->get();
     }
+
+    /**
+     * Giriş yapan kullanıcının şoför performans skoru (is_driver = true ise).
+     *
+     * @return array{score: int, deliveries_90d: int, expired_docs: int, grade: string}|null
+     */
+    #[Computed]
+    public function myDriverPerformance(): ?array
+    {
+        $employee = Employee::query()->find($this->employeeId());
+
+        if (! $employee || ! $employee->is_driver) {
+            return null;
+        }
+
+        return app(DriverPerformanceService::class)->scoreForEmployee($employee);
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
@@ -117,6 +136,25 @@ new #[Lazy, Title('My Dashboard')] class extends Component
                     : '—' }}
             </flux:heading>
         </flux:card>
+        @if ($this->myDriverPerformance !== null)
+            @php
+                $perf = $this->myDriverPerformance;
+                $gradeColor = match ($perf['grade']) { 'A' => 'text-green-600', 'B' => 'text-blue-600', 'C' => 'text-yellow-500', default => 'text-red-500' };
+            @endphp
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Driver score') }}</flux:text>
+                <div class="flex items-baseline gap-2">
+                    <flux:heading size="lg" class="{{ $gradeColor }}">{{ $perf['score'] }}</flux:heading>
+                    <span class="text-sm font-bold {{ $gradeColor }}">{{ $perf['grade'] }}</span>
+                </div>
+                <flux:text class="mt-1 text-xs text-zinc-500">
+                    {{ $perf['deliveries_90d'] }} {{ __('deliveries (90d)') }}
+                    @if ($perf['expired_docs'] > 0)
+                        · <span class="text-red-500">{{ $perf['expired_docs'] }} {{ __('expired docs') }}</span>
+                    @endif
+                </flux:text>
+            </flux:card>
+        @endif
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
@@ -199,6 +237,13 @@ new #[Lazy, Title('My Dashboard')] class extends Component
                 <flux:icon.clock class="size-6 text-orange-500" />
                 <flux:heading size="sm">{{ __('My shifts') }}</flux:heading>
                 <flux:text class="text-sm text-zinc-500">{{ __('View your scheduled shifts') }}</flux:text>
+            </flux:link>
+        </flux:card>
+        <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+            <flux:link :href="route('personnel.profile')" wire:navigate class="flex flex-col gap-1 no-underline">
+                <flux:icon.user-circle class="size-6 text-zinc-400" />
+                <flux:heading size="sm">{{ __('My Profile') }}</flux:heading>
+                <flux:text class="text-sm text-zinc-500">{{ __('View your employee record') }}</flux:text>
             </flux:link>
         </flux:card>
     </div>

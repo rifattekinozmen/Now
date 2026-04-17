@@ -4,6 +4,8 @@ namespace App\Services\Logistics;
 
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\Payment;
+use App\Models\Voucher;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportService
@@ -118,6 +120,112 @@ class ExportService
                     $order->exchange_rate ?? '',
                     $order->ordered_at?->toIso8601String() ?? '',
                     $order->sas_no ?? '',
+                ]);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Kiracı kapsamlı ödeme listesini CSV olarak indirir.
+     *
+     * @param  iterable<int, Payment>  $payments
+     */
+    public function streamPaymentsCsv(iterable $payments, string $filename = 'payments.csv'): StreamedResponse
+    {
+        $headers = [
+            'id',
+            'payment_date',
+            'due_date',
+            'amount',
+            'currency_code',
+            'payment_method',
+            'status',
+            'reference_no',
+            'notes',
+            'approved_at',
+        ];
+
+        return response()->streamDownload(function () use ($payments, $headers): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+
+            fprintf($out, "\xEF\xBB\xBF");
+            fputcsv($out, $headers);
+
+            foreach ($payments as $payment) {
+                if (! $payment instanceof Payment) {
+                    continue;
+                }
+
+                fputcsv($out, [
+                    $payment->id,
+                    $payment->payment_date?->toDateString() ?? '',
+                    $payment->due_date?->toDateString() ?? '',
+                    $payment->amount ?? '',
+                    $payment->currency_code,
+                    $payment->payment_method?->value ?? '',
+                    $payment->status?->value ?? '',
+                    $payment->reference_no ?? '',
+                    $payment->notes ?? '',
+                    $payment->approved_at?->toIso8601String() ?? '',
+                ]);
+            }
+
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Kiracı kapsamlı fiş/makbuz listesini CSV olarak indirir.
+     *
+     * @param  iterable<int, Voucher>  $vouchers
+     */
+    public function streamVouchersCsv(iterable $vouchers, string $filename = 'vouchers.csv'): StreamedResponse
+    {
+        $headers = [
+            'id',
+            'voucher_date',
+            'type',
+            'status',
+            'amount',
+            'currency_code',
+            'reference_no',
+            'description',
+            'approved_at',
+        ];
+
+        return response()->streamDownload(function () use ($vouchers, $headers): void {
+            $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+
+            fprintf($out, "\xEF\xBB\xBF");
+            fputcsv($out, $headers);
+
+            foreach ($vouchers as $voucher) {
+                if (! $voucher instanceof Voucher) {
+                    continue;
+                }
+
+                fputcsv($out, [
+                    $voucher->id,
+                    $voucher->voucher_date?->toDateString() ?? '',
+                    $voucher->type?->value ?? '',
+                    $voucher->status?->value ?? '',
+                    $voucher->amount ?? '',
+                    $voucher->currency_code,
+                    $voucher->reference_no ?? '',
+                    $voucher->description ?? '',
+                    $voucher->approved_at?->toIso8601String() ?? '',
                 ]);
             }
 

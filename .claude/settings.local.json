@@ -60,7 +60,16 @@
       "Bash(ls resources/views/pages/admin/document*)",
       "Bash(php -r \"echo count\\(file\\('C:/laragon/www/Now/resources/views/pages/admin/shifts-index.blade.php'\\)\\);\")",
       "Bash(grep -n \"customer_id\\\\|payable_type\\\\|payable_id\\\\|documentable\" C:/laragon/www/Now/database/migrations/*payments*)",
-      "Bash(grep -rn \"customer_id\\\\|payable\" C:/laragon/www/Now/database/migrations/*payment*)"
+      "Bash(grep -rn \"customer_id\\\\|payable\" C:/laragon/www/Now/database/migrations/*payment*)",
+      "Bash(head -5 C:/laragon/www/Now/database/migrations/*tenants*)",
+      "Bash(grep -n \"Schema\\\\|table\\\\|string\\\\|text\\\\|json\\\\|integer\\\\|boolean\" C:/laragon/www/Now/database/migrations/*create_tenants*)",
+      "Bash(head -10 grep -n \"pending_manager_approval\\\\|price_approval\\\\|approve_price\" C:/laragon/www/Now/database/migrations/*.php)",
+      "Bash(grep -v \"^--$\")",
+      "Bash(xargs basename:*)",
+      "Bash(find C:\\\\\\\\laragon\\\\\\\\www\\\\\\\\Now/resources/views/pages/admin -name \"*calendar*\" -o -name \"*Calendar*\")",
+      "Bash(ls C:/laragon/www/Now/tests/Feature/*.php)",
+      "Bash(grep -n \"personnel.access\\\\|customer.access\\\\|logistics.access\" C:/laragon/www/Now/app/Http/Middleware/*.php)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(t['name']\\) for t in d.get\\('tables',[]\\)]\")"
     ]
   }
 }

@@ -3,8 +3,11 @@
 use App\Authorization\LogisticsPermission;
 use App\Enums\OrderStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
+use App\Models\AppNotification;
 use App\Models\Customer;
 use App\Models\Order;
+use App\Models\TenantSetting;
+use App\Models\User;
 use App\Services\Logistics\ExcelImportService;
 use App\Services\Logistics\FreightCalculationService;
 use Illuminate\Database\Eloquent\Builder;
@@ -131,11 +134,12 @@ new #[Lazy, Title('Orders')] class extends Component
     public function orderStatusLabel(OrderStatus $status): string
     {
         return match ($status) {
-            OrderStatus::Draft => __('Draft'),
-            OrderStatus::Confirmed => __('Confirmed'),
-            OrderStatus::InTransit => __('In transit'),
-            OrderStatus::Delivered => __('Delivered'),
-            OrderStatus::Cancelled => __('Cancelled'),
+            OrderStatus::Draft                => __('Draft'),
+            OrderStatus::PendingPriceApproval => __('Pending price approval'),
+            OrderStatus::Confirmed            => __('Confirmed'),
+            OrderStatus::InTransit            => __('In transit'),
+            OrderStatus::Delivered            => __('Delivered'),
+            OrderStatus::Cancelled            => __('Cancelled'),
         };
     }
 
@@ -308,10 +312,22 @@ new #[Lazy, Title('Orders')] class extends Component
 
         $orderNumber = $this->uniqueOrderNumber();
 
-        Order::query()->create([
+        $freightAmt = isset($validated['freight_amount']) && $validated['freight_amount'] !== ''
+            ? (float) $validated['freight_amount']
+            : null;
+
+        $status = OrderStatus::Draft;
+        if ($freightAmt !== null && $freightAmt > 0) {
+            $minFreight = TenantSetting::get($tenantId, 'minimum_freight_amount');
+            if ($minFreight !== null && $freightAmt < (float) $minFreight) {
+                $status = OrderStatus::PendingPriceApproval;
+            }
+        }
+
+        $order = Order::query()->create([
             'customer_id' => (int) $validated['customer_id'],
             'order_number' => $orderNumber,
-            'status' => OrderStatus::Draft,
+            'status' => $status,
             'ordered_at' => now(),
             'currency_code' => strtoupper($validated['currency_code']),
             'freight_amount' => isset($validated['freight_amount']) && $validated['freight_amount'] !== ''
@@ -331,6 +347,22 @@ new #[Lazy, Title('Orders')] class extends Component
             'unloading_site' => $validated['unloading_site'] ?: null,
             'sas_no' => $validated['sas_no'] ?: null,
         ]);
+
+        // Navlun minimum altındaysa admin kullanıcılara bildirim gönder
+        if ($status === OrderStatus::PendingPriceApproval) {
+            User::query()
+                ->where('tenant_id', $tenantId)
+                ->get()
+                ->each(function (User $user) use ($order): void {
+                    AppNotification::notify(
+                        $user,
+                        __('Price approval required'),
+                        __('Order :no has a freight amount below the minimum threshold and requires price approval.', ['no' => $order->order_number]),
+                        route('admin.orders.show', $order),
+                        'warning',
+                    );
+                });
+        }
 
         $this->reset(
             'customer_id',

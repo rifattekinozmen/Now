@@ -2,14 +2,28 @@
 
 Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederken bağlam olarak kullanılır.
 
-## Current Focus (2026-04-12)
+## Current Focus (2026-04-17)
 
-**Sprint 9 devam ediyor — Sprint 8 tamamlandı (371/371 test geçiyor).**
+**Sprint 22 tamamlandı — 534/534 test geçiyor.**
 
-### Sprint 9 kapsamı:
-- **9.1 Employee show:** KPI kartları eklendi, payroll sekmesi alan hataları düzeltildi (`period_year` → `period_start`, `base_gross_salary` → `gross_salary`), Print linki eklendi.
-- **9.2 Payroll bulk generate:** Toplu bordro oluşturma (ay + brüt ücret seçimi, mevcut kayıtları atlar).
-- **9.3 Fuel intakes filtre:** Vehicle dropdown + tarih aralığı filtresi + Clear filters butonu eklendi.
+### Sprint 22: Customer Self-Service Portal
+- Middleware `EnsureCustomerAccess` + `customer.access` alias önceden mevcuttu.
+- `routes/web.php`'ye customer portal route grubu eklendi (`/customer` prefix).
+- `pages/customer/orders-index.blade.php`: KPI, search/filter, paginated tablo.
+- `pages/customer/shipments-index.blade.php`: KPI, filter, tracking link.
+- `sidebar.blade.php`'ye "My Portal" collapse bölümü eklendi (customer_id kontrolü).
+- `CustomerPortalTest.php`: 7 test — route access control + tenant isolation.
+
+### Sprint 21: Order Price Approval + Order Locking
+- `OrderStatus::PendingPriceApproval` enum case eklendi.
+- `approvePrice()` action (admin-only, Livewire).
+- `locked_at` + `locked_by` migration, `isLocked()` helper, `lockOrder()` action.
+- `OrderPriceApprovalTest.php` + `OrderLockingTest.php`.
+
+### Sprint 9 özeti (tamamlandı 2026-04-12):
+- **9.1 Employee show:** KPI kartları eklendi.
+- **9.2 Payroll bulk generate:** Toplu bordro oluşturma.
+- **9.3 Fuel intakes filtre:** Vehicle dropdown + tarih aralığı filtresi.
 
 ### Sprint 8 özeti (tamamlandı 2026-04-11):
 

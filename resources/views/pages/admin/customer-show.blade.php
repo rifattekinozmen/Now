@@ -6,6 +6,7 @@ use App\Enums\VoucherStatus;
 use App\Enums\VoucherType;
 use App\Models\Customer;
 use App\Models\CustomerAddress;
+use App\Models\CustomerContact;
 use App\Models\Document;
 use App\Models\Order;
 use App\Models\Payment;
@@ -46,6 +47,23 @@ new #[Lazy, Title('Customer profile')] class extends Component
     public bool $addrIsDefault = false;
 
     public bool $showAddressForm = false;
+
+    // Contacts form
+    public ?int $editingContactId = null;
+
+    public string $ctName     = '';
+
+    public string $ctPosition = '';
+
+    public string $ctPhone    = '';
+
+    public string $ctEmail    = '';
+
+    public bool $ctIsPrimary  = false;
+
+    public string $ctNotes    = '';
+
+    public bool $showContactForm = false;
 
     public function mount(Customer $customer): void
     {
@@ -223,6 +241,103 @@ new #[Lazy, Title('Customer profile')] class extends Component
         return $out;
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, CustomerContact>
+     */
+    #[Computed]
+    public function customerContacts(): \Illuminate\Database\Eloquent\Collection
+    {
+        return CustomerContact::query()
+            ->where('customer_id', $this->customer->id)
+            ->orderByDesc('is_primary')
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function openContactForm(?int $id = null): void
+    {
+        $this->resetContactForm();
+        $this->showContactForm = true;
+
+        if ($id !== null) {
+            $contact = CustomerContact::query()
+                ->where('id', $id)
+                ->where('customer_id', $this->customer->id)
+                ->firstOrFail();
+
+            $this->editingContactId = $id;
+            $this->ctName           = $contact->name;
+            $this->ctPosition       = $contact->position ?? '';
+            $this->ctPhone          = $contact->phone    ?? '';
+            $this->ctEmail          = $contact->email    ?? '';
+            $this->ctIsPrimary      = (bool) $contact->is_primary;
+            $this->ctNotes          = $contact->notes    ?? '';
+        }
+    }
+
+    public function saveContact(): void
+    {
+        Gate::authorize('update', $this->customer);
+
+        $data = $this->validate([
+            'ctName'      => ['required', 'string', 'max:150'],
+            'ctPosition'  => ['nullable', 'string', 'max:100'],
+            'ctPhone'     => ['nullable', 'string', 'max:30'],
+            'ctEmail'     => ['nullable', 'email', 'max:150'],
+            'ctIsPrimary' => ['boolean'],
+            'ctNotes'     => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $payload = [
+            'name'       => $data['ctName'],
+            'position'   => filled($data['ctPosition']) ? $data['ctPosition'] : null,
+            'phone'      => filled($data['ctPhone'])    ? $data['ctPhone']    : null,
+            'email'      => filled($data['ctEmail'])    ? $data['ctEmail']    : null,
+            'is_primary' => $data['ctIsPrimary'],
+            'notes'      => filled($data['ctNotes'])    ? $data['ctNotes']    : null,
+        ];
+
+        if ($this->editingContactId !== null) {
+            CustomerContact::query()
+                ->where('id', $this->editingContactId)
+                ->where('customer_id', $this->customer->id)
+                ->update($payload);
+        } else {
+            CustomerContact::create([
+                'tenant_id'   => $this->customer->tenant_id,
+                'customer_id' => $this->customer->id,
+                ...$payload,
+            ]);
+        }
+
+        $this->resetContactForm();
+        unset($this->customerContacts);
+    }
+
+    public function deleteContact(int $id): void
+    {
+        Gate::authorize('update', $this->customer);
+
+        CustomerContact::query()
+            ->where('id', $id)
+            ->where('customer_id', $this->customer->id)
+            ->delete();
+
+        unset($this->customerContacts);
+    }
+
+    private function resetContactForm(): void
+    {
+        $this->editingContactId = null;
+        $this->ctName           = '';
+        $this->ctPosition       = '';
+        $this->ctPhone          = '';
+        $this->ctEmail          = '';
+        $this->ctIsPrimary      = false;
+        $this->ctNotes          = '';
+        $this->showContactForm  = false;
+    }
+
     public function setTab(string $tab): void
     {
         $allowed = ['orders', 'accounts', 'locations', 'contacts', 'pricing', 'documents', 'payments'];
@@ -355,11 +470,12 @@ new #[Lazy, Title('Customer profile')] class extends Component
     public function orderStatusLabel(OrderStatus $status): string
     {
         return match ($status) {
-            OrderStatus::Draft => __('Draft'),
-            OrderStatus::Confirmed => __('Confirmed'),
-            OrderStatus::InTransit => __('In transit'),
-            OrderStatus::Delivered => __('Delivered'),
-            OrderStatus::Cancelled => __('Cancelled'),
+            OrderStatus::Draft                => __('Draft'),
+            OrderStatus::PendingPriceApproval => __('Pending price approval'),
+            OrderStatus::Confirmed            => __('Confirmed'),
+            OrderStatus::InTransit            => __('In transit'),
+            OrderStatus::Delivered            => __('Delivered'),
+            OrderStatus::Cancelled            => __('Cancelled'),
         };
     }
 }; ?>
@@ -658,21 +774,96 @@ new #[Lazy, Title('Customer profile')] class extends Component
         </flux:card>
     @elseif ($activeTab === 'contacts')
         <flux:card>
-            <flux:heading size="lg" class="mb-2">{{ __('Company contacts') }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Optional fields stored on customer meta: operation_contact_*, accounting_*') }}
-            </flux:text>
-            @if (empty($this->contactMetaFields))
-                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No contact fields in customer meta yet.') }}</flux:text>
+            <div class="mb-4 flex items-center justify-between">
+                <flux:heading size="lg">{{ __('Company contacts') }}</flux:heading>
+                @unless ($showContactForm)
+                    <flux:button size="sm" variant="primary" icon="plus" wire:click="openContactForm(null)">
+                        {{ __('Add contact') }}
+                    </flux:button>
+                @endunless
+            </div>
+
+            @if ($showContactForm)
+                <div class="mb-6 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+                    <flux:heading size="sm" class="mb-4">
+                        {{ $editingContactId ? __('Edit contact') : __('New contact') }}
+                    </flux:heading>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:field class="sm:col-span-2">
+                            <flux:label>{{ __('Name') }} <span class="text-red-500">*</span></flux:label>
+                            <flux:input wire:model="ctName" />
+                            <flux:error name="ctName" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('Position') }}</flux:label>
+                            <flux:input wire:model="ctPosition" />
+                        </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('Phone') }}</flux:label>
+                            <flux:input wire:model="ctPhone" type="tel" />
+                        </flux:field>
+                        <flux:field class="sm:col-span-2">
+                            <flux:label>{{ __('Email') }}</flux:label>
+                            <flux:input wire:model="ctEmail" type="email" />
+                        </flux:field>
+                        <flux:field class="sm:col-span-2">
+                            <flux:label>{{ __('Notes') }}</flux:label>
+                            <flux:textarea wire:model="ctNotes" rows="2" />
+                        </flux:field>
+                        <flux:field class="sm:col-span-2">
+                            <flux:checkbox wire:model="ctIsPrimary" :label="__('Primary contact')" />
+                        </flux:field>
+                    </div>
+                    <div class="mt-4 flex gap-2">
+                        <flux:button size="sm" variant="primary" wire:click="saveContact">{{ __('Save') }}</flux:button>
+                        <flux:button size="sm" variant="ghost" wire:click="$set('showContactForm', false)">{{ __('Cancel') }}</flux:button>
+                    </div>
+                </div>
+            @endif
+
+            @if ($this->customerContacts->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No contacts for this customer yet.') }}</flux:text>
             @else
-                <dl class="grid gap-3 text-sm sm:grid-cols-2">
-                    @foreach ($this->contactMetaFields as $label => $value)
-                        <div class="sm:col-span-2">
-                            <dt class="text-zinc-500 dark:text-zinc-400">{{ $label }}</dt>
-                            <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $value }}</dd>
-                        </div>
-                    @endforeach
-                </dl>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Name') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Position') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Phone') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Email') }}</th>
+                                <th class="py-2 pe-4 font-medium"></th>
+                                <th class="py-2 font-medium"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($this->customerContacts as $contact)
+                                <tr class="text-zinc-700 dark:text-zinc-300">
+                                    <td class="py-2 pe-4">
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $contact->name }}</span>
+                                        @if ($contact->is_primary)
+                                            <flux:badge color="blue" size="sm" class="ms-2">{{ __('Primary') }}</flux:badge>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4">{{ $contact->position ?? '—' }}</td>
+                                    <td class="py-2 pe-4">{{ $contact->phone ?? '—' }}</td>
+                                    <td class="py-2 pe-4">{{ $contact->email ?? '—' }}</td>
+                                    <td class="py-2 pe-4">
+                                        <flux:button size="xs" variant="ghost" icon="pencil" wire:click="openContactForm({{ $contact->id }})">
+                                            {{ __('Edit') }}
+                                        </flux:button>
+                                    </td>
+                                    <td class="py-2">
+                                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteContact({{ $contact->id }})"
+                                            wire:confirm="{{ __('Delete this contact?') }}">
+                                            {{ __('Delete') }}
+                                        </flux:button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             @endif
         </flux:card>
     @elseif ($activeTab === 'documents')

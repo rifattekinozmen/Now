@@ -144,11 +144,12 @@ new #[Lazy, Title('Finance summary')] class extends Component
         foreach (OrderStatus::cases() as $case) {
             $rows[] = [
                 'label' => match ($case) {
-                    OrderStatus::Draft => __('Draft'),
-                    OrderStatus::Confirmed => __('Confirmed'),
-                    OrderStatus::InTransit => __('In transit'),
-                    OrderStatus::Delivered => __('Delivered'),
-                    OrderStatus::Cancelled => __('Cancelled'),
+                    OrderStatus::Draft                => __('Draft'),
+                    OrderStatus::PendingPriceApproval => __('Pending price approval'),
+                    OrderStatus::Confirmed            => __('Confirmed'),
+                    OrderStatus::InTransit            => __('In transit'),
+                    OrderStatus::Delivered            => __('Delivered'),
+                    OrderStatus::Cancelled            => __('Cancelled'),
                 },
                 'count' => (int) ($by[$case->value] ?? 0),
             ];

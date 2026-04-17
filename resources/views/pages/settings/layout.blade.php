@@ -6,6 +6,7 @@
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
             @can(\App\Authorization\LogisticsPermission::ADMIN)
                 <flux:navlist.item :href="route('integrations.edit')" wire:navigate>{{ __('Integrations') }}</flux:navlist.item>
+                <flux:navlist.item :href="route('company.edit')" wire:navigate>{{ __('Company') }}</flux:navlist.item>
             @endcan
         </flux:navlist>
     </div>

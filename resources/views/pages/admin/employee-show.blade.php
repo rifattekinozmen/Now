@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Document;
 use App\Models\Employee;
+use App\Services\HR\DriverPerformanceService;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -23,6 +25,19 @@ new #[Lazy, Title('Employee Details')] class extends Component
         Gate::authorize('view', $this->employee);
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Document>
+     */
+    #[Computed]
+    public function employeeDocuments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Document::query()
+            ->where('documentable_type', Employee::class)
+            ->where('documentable_id', $this->employee->id)
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
     /** @return array{totalLeaves:int,pendingLeaves:int,totalAdvances:float,draftPayrolls:int} */
     #[Computed]
     public function kpiStats(): array
@@ -33,6 +48,17 @@ new #[Lazy, Title('Employee Details')] class extends Component
             'totalAdvances' => (float) $this->employee->advances->sum('amount'),
             'draftPayrolls' => $this->employee->payrolls->filter(fn ($p) => $p->status->value === 'draft')->count(),
         ];
+    }
+
+    /**
+     * Şoför performans skoru — sadece is_driver=true olan çalışanlar için anlımlıdır.
+     *
+     * @return array{score: int, deliveries_90d: int, expired_docs: int, grade: string}
+     */
+    #[Computed]
+    public function driverPerformance(): array
+    {
+        return app(DriverPerformanceService::class)->scoreForEmployee($this->employee);
     }
 }; ?>
 
@@ -63,7 +89,7 @@ new #[Lazy, Title('Employee Details')] class extends Component
     </div>
 
     {{-- KPI Cards --}}
-    <div class="grid gap-3 sm:grid-cols-4">
+    <div class="grid gap-3 sm:grid-cols-4 {{ $employee->is_driver ? 'lg:grid-cols-5' : '' }}">
         <flux:card class="p-4">
             <flux:text class="text-sm text-zinc-500">{{ __('Total leaves') }}</flux:text>
             <flux:heading size="lg">{{ $this->kpiStats['totalLeaves'] }}</flux:heading>
@@ -84,6 +110,22 @@ new #[Lazy, Title('Employee Details')] class extends Component
                 {{ $this->kpiStats['draftPayrolls'] }}
             </flux:heading>
         </flux:card>
+        @if ($employee->is_driver)
+            @php
+                $perf = $this->driverPerformance;
+                $gradeColor = match ($perf['grade']) { 'A' => 'text-green-600', 'B' => 'text-blue-600', 'C' => 'text-yellow-500', default => 'text-red-500' };
+            @endphp
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Driver score') }}</flux:text>
+                <div class="flex items-baseline gap-2">
+                    <flux:heading size="lg" class="{{ $gradeColor }}">{{ $perf['score'] }}</flux:heading>
+                    <span class="text-sm font-bold {{ $gradeColor }}">{{ $perf['grade'] }}</span>
+                </div>
+                <flux:text class="mt-1 text-xs text-zinc-500">
+                    {{ $perf['deliveries_90d'] }} {{ __('deliveries (90d)') }}
+                </flux:text>
+            </flux:card>
+        @endif
     </div>
 
     {{-- Tabs --}}
@@ -92,6 +134,7 @@ new #[Lazy, Title('Employee Details')] class extends Component
         <flux:tab name="leaves" icon="calendar-days">{{ __('Leaves') }}</flux:tab>
         <flux:tab name="advances" icon="banknotes">{{ __('Advances') }}</flux:tab>
         <flux:tab name="payrolls" icon="document-text">{{ __('Payrolls') }}</flux:tab>
+        <flux:tab name="documents" icon="folder-open">{{ __('Documents') }}</flux:tab>
         <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
 
@@ -359,6 +402,60 @@ new #[Lazy, Title('Employee Details')] class extends Component
                     </tbody>
                 </table>
             </div>
+        </flux:card>
+    @endif
+
+    {{-- TAB: Documents --}}
+    @if ($tab === 'documents')
+        <flux:card class="p-4">
+            <div class="mb-4 flex items-center justify-between">
+                <flux:heading size="lg">{{ __('Documents') }}</flux:heading>
+                <flux:button :href="route('admin.documents.index')" size="sm" variant="ghost" wire:navigate>
+                    {{ __('Manage all') }}
+                </flux:button>
+            </div>
+            @if ($this->employeeDocuments->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No documents for this employee yet.') }}</flux:text>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Title') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Category') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('File type') }}</th>
+                                <th class="py-2 font-medium">{{ __('Expires at') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($this->employeeDocuments as $doc)
+                                @php $expired = $doc->expires_at && $doc->expires_at->isPast(); @endphp
+                                <tr class="{{ $expired ? 'bg-red-50 dark:bg-red-950/20' : '' }}">
+                                    <td class="py-2 pe-4 font-medium text-zinc-900 dark:text-zinc-100">
+                                        {{ $doc->title }}
+                                        @if ($expired)
+                                            <flux:badge color="red" size="sm" class="ms-1">{{ __('Expired') }}</flux:badge>
+                                        @elseif ($doc->expires_at && $doc->expires_at->diffInDays() <= 30)
+                                            <flux:badge color="yellow" size="sm" class="ms-1">{{ __('Expiring soon') }}</flux:badge>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4">
+                                        @if ($doc->category)
+                                            <flux:badge color="{{ $doc->category->color() }}" size="sm">{{ $doc->category->label() }}</flux:badge>
+                                        @else
+                                            <span class="text-zinc-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4 font-mono text-xs text-zinc-500">{{ $doc->file_type?->value ?? '—' }}</td>
+                                    <td class="py-2 {{ $expired ? 'font-semibold text-red-600' : 'text-zinc-500' }}">
+                                        {{ $doc->expires_at?->format('d M Y') ?? '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </flux:card>
     @endif
 </div>

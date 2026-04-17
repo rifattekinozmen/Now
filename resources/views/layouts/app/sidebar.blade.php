@@ -46,6 +46,17 @@
                     {{ __('Notifications') }}
                 </flux:sidebar.item>
 
+                @can(\App\Authorization\LogisticsPermission::ADMIN)
+                <flux:sidebar.item
+                    icon="user-group"
+                    :href="route('admin.team.index')"
+                    wire:navigate
+                    wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                >
+                    {{ __('Team') }}
+                </flux:sidebar.item>
+                @endcan
+
                 <flux:sidebar.item
                     icon="folder"
                     :href="route('admin.documents.index')"
@@ -221,13 +232,100 @@
                 @endcanany
                 @endcache
 
-                {{-- Personnel Portal link (only for users linked to an employee) --}}
+                {{-- Customer Portal (only for users linked to a customer) --}}
+                @auth
+                    @if(auth()->user()->customer_id)
+                        <div
+                            x-data="{ cportal: localStorage.getItem('sb-cportal') !== '0', toggle(k) { this[k] = !this[k]; localStorage.setItem('sb-' + k, this[k] ? '1' : '0'); } }"
+                            class="mt-4"
+                        >
+                            {{-- Collapsed: single icon --}}
+                            <div class="not-in-data-flux-sidebar-collapsed-desktop:hidden flex justify-center py-1">
+                                <flux:sidebar.item icon="building-storefront" :href="route('customer.dashboard')" wire:navigate size="sm" />
+                            </div>
+
+                            {{-- Expanded: group with sub-items --}}
+                            <div class="in-data-flux-sidebar-collapsed-desktop:hidden">
+                                <button
+                                    @click="toggle('cportal')"
+                                    class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <flux:icon name="building-storefront" class="size-4" />
+                                        {{ __('My Portal') }}
+                                    </span>
+                                    <flux:icon name="chevron-down" class="size-3 transition-transform" ::class="cportal ? '' : '-rotate-90'" />
+                                </button>
+                                <div x-show="cportal" x-collapse class="ms-4 mt-0.5 space-y-0.5 border-l border-zinc-200 ps-2 dark:border-zinc-700">
+                                    <flux:sidebar.item icon="home" :href="route('customer.dashboard')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('Dashboard') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="clipboard-document-list" :href="route('customer.orders.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Orders') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="cube" :href="route('customer.shipments.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Shipments') }}
+                                    </flux:sidebar.item>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                @endauth
+
+                {{-- Personnel Portal (only for users linked to an employee) --}}
                 @auth
                     @if(auth()->user()->employee_id)
-                        <div class="mt-4 in-data-flux-sidebar-collapsed-desktop:hidden">
-                            <flux:sidebar.item icon="identification" :href="route('personnel.dashboard')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
-                                {{ __('My Portal') }}
-                            </flux:sidebar.item>
+                        <div
+                            x-data="{ portal: localStorage.getItem('sb-portal') !== '0', toggle(k) { this[k] = !this[k]; localStorage.setItem('sb-' + k, this[k] ? '1' : '0'); } }"
+                            class="mt-4"
+                        >
+                            {{-- Collapsed: single icon --}}
+                            <div class="not-in-data-flux-sidebar-collapsed-desktop:hidden flex justify-center py-1">
+                                <flux:sidebar.item icon="identification" :href="route('personnel.dashboard')" wire:navigate size="sm" />
+                            </div>
+
+                            {{-- Expanded: group with sub-items --}}
+                            <div class="in-data-flux-sidebar-collapsed-desktop:hidden">
+                                <button
+                                    @click="toggle('portal')"
+                                    class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                                >
+                                    <span class="flex items-center gap-2">
+                                        <flux:icon name="identification" class="size-4" />
+                                        {{ __('My Portal') }}
+                                    </span>
+                                    <flux:icon name="chevron-down" class="size-3 transition-transform" ::class="portal ? '' : '-rotate-90'" />
+                                </button>
+                                <div x-show="portal" x-collapse class="ms-4 mt-0.5 space-y-0.5 border-l border-zinc-200 ps-2 dark:border-zinc-700">
+                                    <flux:sidebar.item icon="home" :href="route('personnel.dashboard')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('Dashboard') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="document-text" :href="route('personnel.payrolls.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Payslips') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="calendar-days" :href="route('personnel.leaves.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Leaves') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="banknotes" :href="route('personnel.advances.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Advances') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="clock" :href="route('personnel.shifts.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Shifts') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="user-circle" :href="route('personnel.profile')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Profile') }}
+                                    </flux:sidebar.item>
+                                </div>
+                            </div>
                         </div>
                     @endif
                 @endauth

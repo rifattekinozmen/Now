@@ -8,11 +8,13 @@ use App\Enums\ShipmentStatus;
 use App\Enums\VoucherStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Advance;
+use App\Models\Document;
 use App\Models\Leave;
 use App\Models\Order;
 use App\Models\Payroll;
 use App\Models\Shipment;
 use App\Models\Voucher;
+use App\Services\HR\DriverPerformanceService;
 use App\Services\Logistics\FleetSummaryService;
 use App\Services\Logistics\TcmbExchangeRateService;
 use App\Support\TenantContext;
@@ -237,6 +239,22 @@ new #[Title('Dashboard')] class extends Component
     }
 
     /**
+     * 30 gün içinde sona erecek veya zaten sona ermiş belgeler.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Document>
+     */
+    #[Computed]
+    public function expiringDocuments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Document::query()
+            ->whereNotNull('expires_at')
+            ->where('expires_at', '<=', now()->addDays(30)->toDateString())
+            ->orderBy('expires_at')
+            ->limit(10)
+            ->get();
+    }
+
+    /**
      * Chart.js için sevkiyat dağılımı (yalnızca sayısı sıfırdan büyük durumlar).
      *
      * @return array{labels: list<string>, data: list<int>, colors: list<string>}|null
@@ -275,6 +293,22 @@ new #[Title('Dashboard')] class extends Component
             'data' => $data,
             'colors' => $colors,
         ];
+    }
+
+    /**
+     * Kiracının en iyi 5 şoförü (puana göre sıralı).
+     *
+     * @return \Illuminate\Support\Collection<int, array{employee: \App\Models\Employee, score: int, deliveries_90d: int, expired_docs: int, grade: string}>
+     */
+    #[Computed]
+    public function topDrivers(): \Illuminate\Support\Collection
+    {
+        $tenantId = TenantContext::id();
+        if ($tenantId === null) {
+            return collect();
+        }
+
+        return app(DriverPerformanceService::class)->leaderboard($tenantId, 5);
     }
 }; ?>
 
@@ -513,5 +547,83 @@ new #[Title('Dashboard')] class extends Component
                     </div>
                 </flux:card>
             @endif
+
+            {{-- Expiring Documents Widget --}}
+            @if ($this->expiringDocuments->isNotEmpty())
+                <flux:card class="p-4">
+                    <div class="mb-3 flex items-center justify-between">
+                        <flux:heading size="sm">{{ __('Expiring documents (30 days)') }}</flux:heading>
+                        <flux:button :href="route('admin.documents.index')" variant="ghost" size="sm" wire:navigate>
+                            {{ __('Manage all') }}
+                        </flux:button>
+                    </div>
+                    <div class="space-y-2">
+                        @foreach ($this->expiringDocuments as $doc)
+                            @php $expired = $doc->expires_at->isPast(); @endphp
+                            <div class="flex items-center justify-between gap-2 rounded-lg border {{ $expired ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20' : 'border-yellow-200 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-900/10' }} px-3 py-2 text-sm">
+                                <div class="min-w-0">
+                                    <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ $doc->title }}</span>
+                                    @if ($doc->category)
+                                        <flux:badge color="{{ $doc->category->color() }}" size="sm" class="ms-2">{{ $doc->category->label() }}</flux:badge>
+                                    @endif
+                                </div>
+                                <div class="shrink-0 {{ $expired ? 'font-semibold text-red-600' : 'text-yellow-700 dark:text-yellow-400' }}">
+                                    @if ($expired)
+                                        {{ __('Expired') }} {{ $doc->expires_at->diffForHumans() }}
+                                    @else
+                                        {{ $doc->expires_at->diffForHumans() }}
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </flux:card>
+            @endif
+        {{-- Driver Leaderboard --}}
+        @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
+            @if ($this->topDrivers->isNotEmpty())
+                <flux:card class="p-4">
+                    <div class="mb-3 flex items-center justify-between">
+                        <flux:heading size="sm">{{ __('Top drivers (90 days)') }}</flux:heading>
+                        <flux:button :href="route('admin.employees.index')" variant="ghost" size="sm" wire:navigate>
+                            {{ __('All employees') }}
+                        </flux:button>
+                    </div>
+                    <ol class="space-y-2">
+                        @foreach ($this->topDrivers as $i => $row)
+                            @php
+                                $gradeColor = match ($row['grade']) {
+                                    'A' => 'green',
+                                    'B' => 'blue',
+                                    'C' => 'yellow',
+                                    default => 'red',
+                                };
+                            @endphp
+                            <li class="flex items-center gap-3 rounded-lg border border-zinc-100 px-3 py-2 dark:border-zinc-800">
+                                <span class="w-5 text-center text-sm font-bold text-zinc-400">{{ $i + 1 }}</span>
+                                <x-avatar :name="$row['employee']->fullName()" size="sm" />
+                                <div class="min-w-0 flex-1">
+                                    <a href="{{ route('admin.employees.show', $row['employee']) }}" wire:navigate
+                                       class="truncate font-medium text-zinc-900 hover:underline dark:text-zinc-100">
+                                        {{ $row['employee']->fullName() }}
+                                    </a>
+                                    <flux:text class="text-xs text-zinc-500">
+                                        {{ $row['deliveries_90d'] }} {{ __('deliveries') }}
+                                        @if ($row['expired_docs'] > 0)
+                                            · <span class="text-red-500">{{ $row['expired_docs'] }} {{ __('expired docs') }}</span>
+                                        @endif
+                                    </flux:text>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">{{ $row['score'] }}</span>
+                                    <flux:badge color="{{ $gradeColor }}" size="sm">{{ $row['grade'] }}</flux:badge>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ol>
+                </flux:card>
+            @endif
+        @endcanany
+
         @endcanany
     </div>

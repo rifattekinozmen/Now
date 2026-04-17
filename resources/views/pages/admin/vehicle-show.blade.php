@@ -3,6 +3,7 @@
 use App\Enums\ExpenseType;
 use App\Enums\MaintenanceStatus;
 use App\Enums\TyreStatus;
+use App\Models\Document;
 use App\Models\TripExpense;
 use App\Models\Vehicle;
 use App\Models\VehicleTyre;
@@ -76,6 +77,19 @@ new #[Lazy, Title('Vehicle')] class extends Component
         ];
     }
 
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Document>
+     */
+    #[Computed]
+    public function vehicleDocuments(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Document::query()
+            ->where('documentable_type', Vehicle::class)
+            ->where('documentable_id', $this->vehicle->id)
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
     /** @return array{total:int,upcoming:int,overdue:int,done:int} */
     #[Computed]
     public function maintenanceStats(): array
@@ -145,6 +159,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
         <flux:tab name="maintenance" icon="wrench-screwdriver">{{ __('Maintenance') }}</flux:tab>
         <flux:tab name="tyres" icon="circle-stack">{{ __('Tyres') }}</flux:tab>
         <flux:tab name="expenses" icon="banknotes">{{ __('Expenses') }}</flux:tab>
+        <flux:tab name="documents" icon="folder-open">{{ __('Documents') }}</flux:tab>
         <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
 
@@ -511,6 +526,60 @@ new #[Lazy, Title('Vehicle')] class extends Component
                     </tbody>
                 </table>
             </div>
+        </flux:card>
+    @endif
+
+    {{-- TAB: Documents --}}
+    @if ($tab === 'documents')
+        <flux:card class="p-4">
+            <div class="mb-4 flex items-center justify-between">
+                <flux:heading size="lg">{{ __('Documents') }}</flux:heading>
+                <flux:button :href="route('admin.documents.index')" size="sm" variant="ghost" wire:navigate>
+                    {{ __('Manage all') }}
+                </flux:button>
+            </div>
+            @if ($this->vehicleDocuments->isEmpty())
+                <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">{{ __('No documents for this vehicle yet.') }}</flux:text>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Title') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Category') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('File type') }}</th>
+                                <th class="py-2 font-medium">{{ __('Expires at') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($this->vehicleDocuments as $doc)
+                                @php $expired = $doc->expires_at && $doc->expires_at->isPast(); @endphp
+                                <tr class="{{ $expired ? 'bg-red-50 dark:bg-red-950/20' : '' }}">
+                                    <td class="py-2 pe-4 font-medium text-zinc-900 dark:text-zinc-100">
+                                        {{ $doc->title }}
+                                        @if ($expired)
+                                            <flux:badge color="red" size="sm" class="ms-1">{{ __('Expired') }}</flux:badge>
+                                        @elseif ($doc->expires_at && $doc->expires_at->diffInDays() <= 30)
+                                            <flux:badge color="yellow" size="sm" class="ms-1">{{ __('Expiring soon') }}</flux:badge>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4">
+                                        @if ($doc->category)
+                                            <flux:badge color="{{ $doc->category->color() }}" size="sm">{{ $doc->category->label() }}</flux:badge>
+                                        @else
+                                            <span class="text-zinc-400">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-2 pe-4 font-mono text-xs text-zinc-500">{{ $doc->file_type?->value ?? '—' }}</td>
+                                    <td class="py-2 {{ $expired ? 'font-semibold text-red-600' : 'text-zinc-500' }}">
+                                        {{ $doc->expires_at?->format('d M Y') ?? '—' }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </flux:card>
     @endif
 </div>

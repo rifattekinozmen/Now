@@ -333,6 +333,9 @@ new #[Lazy, Title('Vouchers')] class extends Component
             <flux:button :href="route('admin.finance.cash-registers.index')" variant="ghost" wire:navigate>
                 {{ __('Cash registers') }}
             </flux:button>
+            <flux:tooltip :content="__('Export CSV')" position="bottom">
+                <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.finance.vouchers.export.csv')" />
+            </flux:tooltip>
             @if ($canWrite)
                 <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
                     {{ __('New voucher') }}

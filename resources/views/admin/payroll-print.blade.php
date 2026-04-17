@@ -82,8 +82,14 @@
 
     <div class="header">
         <div>
-            <div class="company-name">{{ config('app.name') }}</div>
+            <div class="company-name">{{ $companyName }}</div>
             <div class="doc-title">{{ __('Payroll Slip') }}</div>
+            @if ($companyTaxId)
+                <div style="font-size:11px;color:#6b7280;margin-top:2px;">{{ __('Tax ID') }}: {{ $companyTaxId }}</div>
+            @endif
+            @if ($companyAddress || $companyCity)
+                <div style="font-size:11px;color:#6b7280;">{{ implode(', ', array_filter([$companyAddress, $companyCity])) }}</div>
+            @endif
         </div>
         <div class="meta">
             <div>{{ __('Generated') }}: {{ now()->format('d M Y H:i') }}</div>
@@ -168,7 +174,7 @@
         </div>
         <div style="text-align:right;">
             <div>{{ __('Authorized signature') }}</div>
-            <div class="signature-box">{{ config('app.name') }}</div>
+            <div class="signature-box">{{ $companyName }}</div>
         </div>
     </div>
 

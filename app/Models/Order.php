@@ -33,6 +33,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'loading_site',
     'unloading_site',
     'meta',
+    'price_approved_by',
+    'price_approved_at',
+    'locked_at',
+    'locked_by',
 ])]
 class Order extends Model
 {
@@ -83,7 +87,14 @@ class Order extends Model
             'net_weight_kg' => 'decimal:3',
             'moisture_percent' => 'decimal:4',
             'meta' => 'array',
+            'price_approved_at' => 'datetime',
+            'locked_at' => 'datetime',
         ];
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->locked_at !== null;
     }
 
     /**

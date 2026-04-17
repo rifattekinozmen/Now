@@ -9,6 +9,8 @@ use App\Http\Controllers\Admin\DownloadVehicleImportTemplateController;
 use App\Http\Controllers\Admin\ExportCustomerCsvController;
 use App\Http\Controllers\Admin\ExportFinanceOrdersCsvController;
 use App\Http\Controllers\Admin\ExportLogoOrdersXmlController;
+use App\Http\Controllers\Admin\ExportPaymentsCsvController;
+use App\Http\Controllers\Admin\ExportVouchersCsvController;
 use App\Http\Controllers\Admin\PayrollPrintController;
 use App\Http\Controllers\Admin\ShipmentPodDeliveryPhotoController;
 use App\Http\Controllers\Admin\ShipmentPodPrintController;
@@ -93,10 +95,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('finance/fiscal-opening-balances', 'pages::admin.fiscal-opening-balances-index')->name('finance.fiscal-opening-balances.index');
             Route::livewire('finance/cash-registers', 'pages::admin.cash-registers-index')->name('finance.cash-registers.index');
             Route::livewire('finance/vouchers', 'pages::admin.vouchers-index')->name('finance.vouchers.index');
+            Route::get('finance/vouchers/export.csv', ExportVouchersCsvController::class)->name('finance.vouchers.export.csv');
             Route::livewire('finance/current-accounts', 'pages::admin.current-accounts-index')->name('finance.current-accounts.index');
             Route::livewire('finance/account-transactions', 'pages::admin.account-transactions-index')->name('finance.account-transactions.index');
             Route::livewire('finance/bank-accounts', 'pages::admin.bank-accounts-index')->name('finance.bank-accounts.index');
             Route::livewire('finance/payments', 'pages::admin.payments-index')->name('finance.payments.index');
+            Route::get('finance/payments/export.csv', ExportPaymentsCsvController::class)->name('finance.payments.export.csv');
             Route::livewire('finance/bank-transactions', 'pages::admin.bank-transactions-index')->name('finance.bank-transactions.index');
             Route::livewire('pricing-conditions', 'pages::admin.pricing-conditions-index')->name('pricing-conditions.index');
             Route::livewire('trip-expenses', 'pages::admin.trip-expenses-index')->name('trip-expenses.index');
@@ -131,6 +135,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // Finance reports
             Route::livewire('finance/billing-preview', 'pages::admin.billing-preview')->name('finance.billing-preview');
+
+            // Team management (admin-only)
+            Route::livewire('team', 'pages::admin.team-users-index')->name('team.index');
         });
     });
 });
@@ -146,6 +153,17 @@ Route::middleware(['auth', 'verified', 'personnel.access'])
         Route::livewire('my-leaves', 'pages::personnel.my-leaves')->name('leaves.index');
         Route::livewire('my-advances', 'pages::personnel.my-advances')->name('advances.index');
         Route::livewire('my-shifts', 'pages::personnel.my-shifts')->name('shifts.index');
+        Route::livewire('my-profile', 'pages::personnel.my-profile')->name('profile');
+    });
+
+// Customer Portal — customer self-service
+Route::middleware(['auth', 'verified', 'customer.access'])
+    ->prefix('customer')
+    ->name('customer.')
+    ->group(function (): void {
+        Route::livewire('dashboard', 'pages::customer.dashboard')->name('dashboard');
+        Route::livewire('my-orders', 'pages::customer.orders-index')->name('orders.index');
+        Route::livewire('my-shipments', 'pages::customer.shipments-index')->name('shipments.index');
     });
 
 require __DIR__.'/settings.php';
