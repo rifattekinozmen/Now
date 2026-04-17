@@ -1378,12 +1378,21 @@
     "Created": "Oluşturuldu",
     "Archive \":name\"? Users will be redirected to their primary company.": "\":name\" arşivlensin mi? Kullanıcılar birincil şirketlerine yönlendirilir.",
     "Permanently delete \":name\"? This cannot be undone.": "\":name\" kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
+    "Archive :name? Users will be redirected to their primary company.": ":name arşivlensin mi? Kullanıcılar birincil şirketlerine yönlendirilir.",
+    "Permanently delete :name? This cannot be undone.": ":name kalıcı olarak silinsin mi? Bu işlem geri alınamaz.",
     ":name has been permanently deleted.": ":name kalıcı olarak silindi.",
     "Archive the company first before deleting.": "Silmeden önce şirketi arşivleyin.",
     "Remove all users before deleting the company.": "Şirketi silmeden önce tüm kullanıcıları çıkarın.",
     "Cannot remove a user from their primary company. Change their primary company first.": "Kullanıcı birincil şirketinden çıkarılamaz. Önce birincil şirketini değiştirin.",
     "No user found with this email address.": "Bu email adresine sahip kullanıcı bulunamadı.",
+    "No account found. Enter a name to create a new user and send an invitation email.": "Bu e-posta ile kayıtlı hesap bulunamadı. Yeni kullanıcı oluşturmak ve davet e-postası göndermek için ad girin.",
+    "Create & Invite": "Oluştur ve Davet Et",
+    "User added successfully.": "Kullanıcı başarıyla eklendi.",
     "Remove :name from :company?": ":name, :company şirketinden çıkarılsın mı?",
     "user@example.com": "kullanici@example.com",
-    "Add": "Ekle"
+    "Add": "Ekle",
+    "Team & Roles": "Ekip ve Roller",
+    "Order Clerk": "Sipariş Memuru",
+    "Role updated.": "Rol güncellendi.",
+    "Active company": "Aktif şirket"
 }

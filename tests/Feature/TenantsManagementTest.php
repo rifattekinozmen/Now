@@ -112,16 +112,18 @@ it('super-admin can add a user to a company by email', function (): void {
     expect($otherUser->tenants()->where('tenant_id', $tenant->id)->exists())->toBeTrue();
 })->group('behaviour');
 
-it('adding unknown email shows validation error', function (): void {
+it('adding unknown email opens the name field for new user creation', function (): void {
     $tenant = Tenant::factory()->create();
     $superAdmin = User::factory()->superAdmin()->create(['tenant_id' => $tenant->id]);
 
-    Livewire::actingAs($superAdmin)
+    $component = Livewire::actingAs($superAdmin)
         ->test('pages::settings.tenants')
         ->call('startAddUser', $tenant->id)
         ->set('addUserEmail', 'nobody@nowhere.test')
         ->call('addUser')
-        ->assertHasErrors(['addUserEmail']);
+        ->assertHasNoErrors();
+
+    expect($component->get('addUserIsNew'))->toBeTrue();
 })->group('behaviour');
 
 it('super-admin cannot switch to an archived tenant', function (): void {

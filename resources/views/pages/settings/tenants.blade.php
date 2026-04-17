@@ -5,6 +5,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -21,7 +23,9 @@ new #[Title('Companies')] class extends Component
 
     // ── Add user to tenant ──
     public ?int $addUserTenantId = null;
-    public string $addUserEmail = '';
+    public string $addUserEmail  = '';
+    public string $addUserName   = '';
+    public bool   $addUserIsNew  = false;
 
     public function mount(): void
     {
@@ -133,13 +137,17 @@ new #[Title('Companies')] class extends Component
     public function startAddUser(int $tenantId): void
     {
         $this->addUserTenantId = $tenantId;
-        $this->addUserEmail = '';
+        $this->addUserEmail    = '';
+        $this->addUserName     = '';
+        $this->addUserIsNew    = false;
     }
 
     public function cancelAddUser(): void
     {
         $this->addUserTenantId = null;
-        $this->addUserEmail = '';
+        $this->addUserEmail    = '';
+        $this->addUserName     = '';
+        $this->addUserIsNew    = false;
     }
 
     public function addUser(): void
@@ -150,10 +158,25 @@ new #[Title('Companies')] class extends Component
 
         $user = User::query()->where('email', $this->addUserEmail)->first();
 
-        if (! $user) {
-            $this->addError('addUserEmail', __('No user found with this email address.'));
+        if (! $user && ! $this->addUserIsNew) {
+            $this->addUserIsNew = true;
 
             return;
+        }
+
+        if (! $user) {
+            $this->validate(['addUserName' => ['required', 'string', 'max:200']]);
+
+            $user = User::create([
+                'name'      => $this->addUserName,
+                'email'     => $this->addUserEmail,
+                'password'  => Hash::make(Str::random(32)),
+                'tenant_id' => $this->addUserTenantId,
+            ]);
+
+            RolesAndPermissionsSeeder::ensureDefaults();
+            $user->assignRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER);
+            Password::sendResetLink(['email' => $user->email]);
         }
 
         $user->tenants()->syncWithoutDetaching([$this->addUserTenantId]);
@@ -163,8 +186,12 @@ new #[Title('Companies')] class extends Component
         }
 
         $this->addUserTenantId = null;
-        $this->addUserEmail = '';
+        $this->addUserEmail    = '';
+        $this->addUserName     = '';
+        $this->addUserIsNew    = false;
         unset($this->tenants);
+
+        session()->flash('status', __('User added successfully.'));
     }
 
     public function removeUser(int $userId, int $tenantId): void
@@ -279,26 +306,22 @@ new #[Title('Companies')] class extends Component
                         </div>
                     </div>
 
-                    {{-- Row action dropdown — avoid @if inside flux:menu slots (Livewire BLOCK injection bug) --}}
+                    {{-- Row action dropdown — flat @unless/@if (no nesting) avoids Livewire component-stack bug --}}
                     <flux:dropdown position="bottom" align="end">
                         <flux:button size="sm" variant="ghost" icon="ellipsis-horizontal" />
                         <flux:menu>
-                            {{-- Active-only actions --}}
-                            <span @class(['hidden' => $tenant->isArchived()])>
+                            @unless($tenant->isArchived())
                                 <flux:menu.item wire:click="startEdit({{ $tenant->id }})" icon="pencil">{{ __('Rename') }}</flux:menu.item>
-                            </span>
-                            <span @class(['hidden' => $tenant->isArchived()])>
                                 <flux:menu.separator />
-                                <flux:menu.item wire:click="archive({{ $tenant->id }})" wire:confirm="{{ __('Archive \":name\"? Users will be redirected to their primary company.', ['name' => $tenant->name]) }}" icon="archive-box" variant="danger">{{ __('Archive') }}</flux:menu.item>
-                            </span>
-                            {{-- Archived-only actions --}}
-                            <span @class(['hidden' => ! $tenant->isArchived()])>
+                                <flux:menu.item wire:click="archive({{ $tenant->id }})" wire:confirm="{{ __('Archive :name? Users will be redirected to their primary company.', ['name' => $tenant->name]) }}" icon="archive-box" variant="danger">{{ __('Archive') }}</flux:menu.item>
+                            @endunless
+                            @if($tenant->isArchived())
                                 <flux:menu.item wire:click="restore({{ $tenant->id }})" icon="arrow-uturn-left">{{ __('Restore') }}</flux:menu.item>
-                            </span>
-                            <span @class(['hidden' => ! $tenant->isArchived() || $tenant->users_count > 0])>
+                            @endif
+                            @if($tenant->isArchived() && $tenant->users_count === 0)
                                 <flux:menu.separator />
-                                <flux:menu.item wire:click="delete({{ $tenant->id }})" wire:confirm="{{ __('Permanently delete \":name\"? This cannot be undone.', ['name' => $tenant->name]) }}" icon="trash" variant="danger">{{ __('Delete') }}</flux:menu.item>
-                            </span>
+                                <flux:menu.item wire:click="delete({{ $tenant->id }})" wire:confirm="{{ __('Permanently delete :name? This cannot be undone.', ['name' => $tenant->name]) }}" icon="trash" variant="danger">{{ __('Delete') }}</flux:menu.item>
+                            @endif
                         </flux:menu>
                     </flux:dropdown>
                 </div>
@@ -331,14 +354,28 @@ new #[Title('Companies')] class extends Component
                             <p class="text-sm text-zinc-400">{{ __('No users yet.') }}</p>
                         @endif
 
-                        {{-- Add user form — shown/hidden via wire:model binding --}}
-                        <div @class(['hidden' => $addUserTenantId !== $tenant->id]) class="mt-3 flex items-start gap-2">
-                            <div class="flex-1">
-                                <flux:input wire:model="addUserEmail" wire:keydown.enter="addUser" type="email" placeholder="{{ __('user@example.com') }}" size="sm" />
-                                @error('addUserEmail') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                        {{-- Add user form — shown/hidden via Alpine @class binding --}}
+                        <div @class(['hidden' => $addUserTenantId !== $tenant->id]) class="mt-3 space-y-2">
+                            <div class="flex items-start gap-2">
+                                <div class="flex-1">
+                                    <flux:input wire:model="addUserEmail" wire:keydown.enter="addUser" type="email" placeholder="{{ __('user@example.com') }}" size="sm" />
+                                    @error('addUserEmail') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                                </div>
+                                @if (! ($addUserIsNew && $addUserTenantId === $tenant->id))
+                                    <flux:button wire:click="addUser" size="sm" variant="primary">{{ __('Add') }}</flux:button>
+                                @endif
+                                <flux:button wire:click="cancelAddUser" size="sm" variant="ghost">{{ __('Cancel') }}</flux:button>
                             </div>
-                            <flux:button wire:click="addUser" size="sm" variant="primary">{{ __('Add') }}</flux:button>
-                            <flux:button wire:click="cancelAddUser" size="sm" variant="ghost">{{ __('Cancel') }}</flux:button>
+                            @if ($addUserIsNew && $addUserTenantId === $tenant->id)
+                                <flux:callout variant="warning" icon="user-plus">{{ __('No account found. Enter a name to create a new user and send an invitation email.') }}</flux:callout>
+                                <div class="flex items-start gap-2">
+                                    <div class="flex-1">
+                                        <flux:input wire:model="addUserName" wire:keydown.enter="addUser" placeholder="{{ __('Full name') }}" size="sm" />
+                                        @error('addUserName') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                                    </div>
+                                    <flux:button wire:click="addUser" size="sm" variant="primary" icon="paper-airplane">{{ __('Create & Invite') }}</flux:button>
+                                </div>
+                            @endif
                         </div>
                         <div @class(['hidden' => $addUserTenantId === $tenant->id])>
                             <flux:button wire:click="startAddUser({{ $tenant->id }})" size="sm" variant="ghost" icon="user-plus" class="mt-2">

@@ -23,30 +23,27 @@
             </div>
         </div>
 
+        {{-- Company section: single tenant → name label; multi-tenant → switch list --}}
+        <flux:menu.separator />
         @if($userTenants->count() > 1)
-            <flux:menu.separator />
             <flux:menu.heading>{{ __('Switch company') }}</flux:menu.heading>
             <flux:menu.radio.group>
                 @foreach($userTenants as $t)
                     @if($t->id === $activeTenantId)
-                        <flux:menu.item icon="check" disabled>
-                            {{ $t->name }}
-                        </flux:menu.item>
+                        <flux:menu.item icon="check" disabled>{{ $t->name }}</flux:menu.item>
                     @else
                         <form method="POST" action="{{ route('tenant.switch', $t) }}" class="w-full">
                             @csrf
-                            <flux:menu.item
-                                as="button"
-                                type="submit"
-                                icon="building-office"
-                                class="w-full cursor-pointer"
-                            >
-                                {{ $t->name }}
-                            </flux:menu.item>
+                            <flux:menu.item as="button" type="submit" icon="building-office" class="w-full cursor-pointer">{{ $t->name }}</flux:menu.item>
                         </form>
                     @endif
                 @endforeach
             </flux:menu.radio.group>
+        @else
+            <div class="px-2 py-1.5">
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ __('Company') }}</p>
+                <p class="truncate text-sm font-semibold text-zinc-800 dark:text-zinc-200">{{ $userTenants->first()?->name ?? '' }}</p>
+            </div>
         @endif
 
         <flux:menu.separator />
