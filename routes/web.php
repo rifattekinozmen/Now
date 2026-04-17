@@ -123,6 +123,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('maintenance', 'pages::admin.maintenance-index')->name('maintenance.index');
             Route::livewire('work-orders', 'pages::admin.work-orders-index')->name('work-orders.index');
             Route::livewire('vehicle-tyres', 'pages::admin.vehicle-tyres-index')->name('vehicle-tyres.index');
+            Route::livewire('delivery-imports', 'pages::admin.delivery-imports-index')->name('delivery-imports.index');
+            Route::livewire('calendar', 'pages::admin.calendar-index')->name('calendar.index');
 
             // Notifications
             Route::livewire('notifications', 'pages::admin.notifications-index')->name('notifications.index');

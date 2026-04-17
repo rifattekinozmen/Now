@@ -46,7 +46,7 @@
 - [x] Livewire SFC sayfası: 4 KPI kart, filtreler, inline modal, bulk delete
 - [x] Route: `admin/vehicle-tyres` → `pages::admin.vehicle-tyres-index`
 - [x] Sidebar: Operasyon grubu altına "Lastik Yönetimi"
-- [ ] vehicle-show.blade.php Lastikler sekmesini gerçek veriyle doldur _(ertelenmiş)_
+- [x] vehicle-show.blade.php Lastikler sekmesini gerçek veriyle doldur _(tamamlandı: 2026-04-17)_
 - [x] tr.json + en.json çeviriler
 - [x] Pest: tenant izolasyon + CRUD testi
 
@@ -288,9 +288,39 @@
 - [x] tr.json: billing preview çevirileri eklendi
 - [x] Pest: 6 test (routes × 3, data × 2, tenant isolation × 1)
 
+
+---
+
+## SPRINT 23 — Teslimat İmportları (Delivery Imports) ✅
+
+### TODO-23.1: Delivery Imports Modülü ✅
+- [x] Migration: delivery_imports (tenant_id, reference_no, import_date, source, file_path, status, row_count, matched_count, unmatched_count, imported_by, notes, meta)
+- [x] Enums: DeliveryImportStatus (pending/processed/error)
+- [x] Model: BelongsToTenant, fillable, casts
+- [x] DeliveryImportFactory (processed/withErrors states)
+- [x] DeliveryImportPolicy (viewAny/view/create/delete + logistics.admin)
+- [x] Livewire SFC: delivery-imports-index.blade.php — 4 KPI kart, filtreler, upload modal, bulk delete, analiz raporu modal
+- [x] Route: `admin/delivery-imports` → `admin.delivery-imports.index`
+- [x] Sidebar: Operasyon grubu altına “Teslimat İmportları” (arrow-up-tray icon)
+- [x] tr.json: teslimat import çevirileri eklendi
+- [x] Pest: 8 test (route erişim, tenant izolasyon, CRUD, policy)
+
+---
+
+## SPRINT 24 — Operasyonel Takvim (Calendar) ✅
+
+### TODO-24.1: Calendar Modülü ✅
+- [x] Livewire SFC: calendar-index.blade.php — aylık grid, renk kodlu event tipleri (bakım/izin/ödeme/sipariş)
+- [x] Filtreler: event tipi toggle + ay navigasyonu
+- [x] Route: `admin/calendar` → `admin.calendar.index`
+- [x] Sidebar: Belgeler altına “Takvim” (calendar-days icon)
+- [x] tr.json: takvim çevirileri eklendi
+- [x] Pest: 4 test (route erişim, tenant scope)
+- [x] 586/587 test geçiyor (1 pre-existing RegistrationTest order-dependency)
+
 ---
 
 ## Kalan Görevler
 
-> Tüm P1–P3 görevler tamamlandı. Proje %100 dokümantasyon kapsamına ulaştı.
+> Sprint 1-24 tamamlandı. Proje çalışar durumda.
 

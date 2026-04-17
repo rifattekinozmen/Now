@@ -66,6 +66,15 @@
                     {{ __('Documents') }}
                 </flux:sidebar.item>
 
+                <flux:sidebar.item
+                    icon="calendar-days"
+                    :href="route('admin.calendar.index')"
+                    wire:navigate
+                    wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                >
+                    {{ __('Calendar') }}
+                </flux:sidebar.item>
+
                 @cache('sidebar-menu-v4-' . auth()->id() . '-' . app()->getLocale(), 3600)
                 @canany([\App\Authorization\LogisticsPermission::ADMIN, \App\Authorization\LogisticsPermission::VIEW])
 
@@ -101,6 +110,7 @@
                     <flux:sidebar.item icon="document-text" :href="route('admin.pricing-conditions.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Pricing') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="receipt-percent" :href="route('admin.trip-expenses.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Trip Expenses') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('admin.vehicle-finances.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Vehicle Finances') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="arrow-up-tray" :href="route('admin.delivery-imports.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Delivery Imports') }}</flux:sidebar.item>
                 </div>
 
                 {{-- Collapsed: Operations fly-out dropdown --}}
@@ -127,6 +137,7 @@
                             <flux:menu.item :href="route('admin.pricing-conditions.index')" icon="document-text" wire:navigate>{{ __('Pricing') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.trip-expenses.index')" icon="receipt-percent" wire:navigate>{{ __('Trip Expenses') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.vehicle-finances.index')" icon="banknotes" wire:navigate>{{ __('Vehicle Finances') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.delivery-imports.index')" icon="arrow-up-tray" wire:navigate>{{ __('Delivery Imports') }}</flux:menu.item>
                         </flux:menu>
                     </flux:dropdown>
                 </div>

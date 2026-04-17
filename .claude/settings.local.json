@@ -73,7 +73,8 @@
       "Bash(node -e ':*)",
       "Bash(grep -l \"flux:dropdown\\\\|flux:menu\" resources/views/pages/admin/*.blade.php)",
       "Bash(php -r \"echo \\(new \\\\Flux\\\\FluxManager\\)->version\\(\\);\")",
-      "Bash(find /c/laragon/www/Now/app/Models -name \"*.php\" -exec grep -l \"->delete\\(\\)\\\\|->destroy\\(\\)\" {} \\\\;)"
+      "Bash(find /c/laragon/www/Now/app/Models -name \"*.php\" -exec grep -l \"->delete\\(\\)\\\\|->destroy\\(\\)\" {} \\\\;)",
+      "Bash(python -c ':*)"
     ]
   }
 }
