@@ -71,7 +71,7 @@ it('creates a new user and adds them to the company', function (): void {
         ->and($user->tenants->pluck('id'))->toContain($tenant->id);
 })->group('behaviour');
 
-it('assigns ROLE_TENANT_USER to newly created user', function (): void {
+it('assigns ROLE_LOGISTICS_VIEWER to newly created user', function (): void {
     Notification::fake();
 
     $superAdmin = User::factory()->superAdmin()->create();
@@ -87,7 +87,7 @@ it('assigns ROLE_TENANT_USER to newly created user', function (): void {
 
     $user = User::where('email', 'invited@example.com')->first();
 
-    expect($user->hasRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER))->toBeTrue();
+    expect($user->hasRole(RolesAndPermissionsSeeder::ROLE_LOGISTICS_VIEWER))->toBeTrue();
 })->group('behaviour');
 
 it('requires a name when creating a new user', function (): void {
@@ -116,4 +116,43 @@ it('non-super-admin cannot access companies settings page', function (): void {
     $this->actingAs($admin)
         ->get(route('tenants.edit'))
         ->assertForbidden();
+})->group('isolation');
+
+// ─────────────────────────────────────────────
+// DELETE USER
+// ─────────────────────────────────────────────
+
+it('super-admin can delete a user', function (): void {
+    $superAdmin = User::factory()->superAdmin()->create();
+    $tenant = Tenant::factory()->create();
+    $target = User::factory()->create(['tenant_id' => $tenant->id]);
+
+    Livewire::actingAs($superAdmin)
+        ->test('pages::settings.tenants')
+        ->call('deleteUser', $target->id)
+        ->assertHasNoErrors();
+
+    expect(User::find($target->id))->toBeNull();
+})->group('behaviour');
+
+it('super-admin cannot delete themselves', function (): void {
+    $superAdmin = User::factory()->superAdmin()->create();
+
+    Livewire::actingAs($superAdmin)
+        ->test('pages::settings.tenants')
+        ->call('deleteUser', $superAdmin->id)
+        ->assertForbidden();
+})->group('behaviour');
+
+it('non-super-admin cannot delete a user', function (): void {
+    $tenant = Tenant::factory()->create();
+    $admin = User::factory()->create(['tenant_id' => $tenant->id]);
+    $admin->givePermissionTo(LogisticsPermission::ADMIN);
+    $target = User::factory()->create(['tenant_id' => $tenant->id]);
+
+    $this->actingAs($admin)
+        ->get(route('tenants.edit'))
+        ->assertForbidden();
+
+    expect(User::find($target->id))->not->toBeNull();
 })->group('isolation');

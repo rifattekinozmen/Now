@@ -35,13 +35,18 @@ new #[Title('Company profile')] class extends Component
     /** Yeni yüklenen geçici dosya. */
     public ?TemporaryUploadedFile $logoFile = null;
 
+    private function activeTenantId(): int
+    {
+        return (int) (Auth::user()->active_tenant_id ?? Auth::user()->tenant_id);
+    }
+
     public function mount(): void
     {
         if (! Auth::user()?->can(LogisticsPermission::ADMIN)) {
             abort(403);
         }
 
-        $tid = (int) Auth::user()->tenant_id;
+        $tid = $this->activeTenantId();
         $tenant = Tenant::find($tid);
 
         $this->companyName    = $tenant?->name ?? '';
@@ -73,7 +78,7 @@ new #[Title('Company profile')] class extends Component
             'logoFile'             => ['nullable', 'image', 'max:2048'],
         ]);
 
-        $tid = (int) Auth::user()->tenant_id;
+        $tid = $this->activeTenantId();
 
         // Logo yüklendiyse kaydet
         if ($this->logoFile) {
@@ -110,7 +115,7 @@ new #[Title('Company profile')] class extends Component
             abort(403);
         }
 
-        $tid = (int) Auth::user()->tenant_id;
+        $tid = $this->activeTenantId();
 
         if ($this->currentLogoPath) {
             Storage::disk('public')->delete($this->currentLogoPath);
@@ -127,10 +132,16 @@ new #[Title('Company profile')] class extends Component
     #[Computed]
     public function teamUsers(): \Illuminate\Database\Eloquent\Collection
     {
+        $tid = $this->activeTenantId();
+
         return User::query()
-            ->where('tenant_id', (int) Auth::user()->tenant_id)
+            ->where(function ($q) use ($tid): void {
+                $q->where('tenant_id', $tid)
+                    ->orWhereHas('tenants', fn ($inner) => $inner->where('tenants.id', $tid));
+            })
             ->with('roles')
             ->orderBy('name')
+            ->distinct()
             ->get();
     }
 
@@ -144,9 +155,14 @@ new #[Title('Company profile')] class extends Component
             return;
         }
 
+        $tid = $this->activeTenantId();
+
         $user = User::query()
             ->where('id', $userId)
-            ->where('tenant_id', (int) Auth::user()->tenant_id)
+            ->where(function ($q) use ($tid): void {
+                $q->where('tenant_id', $tid)
+                    ->orWhereHas('tenants', fn ($inner) => $inner->where('tenants.id', $tid));
+            })
             ->first();
 
         abort_unless($user !== null, 403);
@@ -299,11 +315,14 @@ new #[Title('Company profile')] class extends Component
     @endif
 
     @if ($tab === 'team')
+        <flux:callout icon="information-circle" class="mb-4">{{ __('Roles apply platform-wide. If a user belongs to multiple companies, changing their role here affects all companies.') }}</flux:callout>
         <div class="space-y-2">
             @forelse ($this->teamUsers as $u)
                 @php
                     $roleName = $u->roles->first()?->name ?? '';
+                    $isSuperAdmin = $roleName === RolesAndPermissionsSeeder::ROLE_SUPER_ADMIN;
                     $roleLabel = match($roleName) {
+                        RolesAndPermissionsSeeder::ROLE_SUPER_ADMIN               => __('Super Admin'),
                         RolesAndPermissionsSeeder::ROLE_TENANT_USER               => __('Admin'),
                         RolesAndPermissionsSeeder::ROLE_LOGISTICS_ORDER_CLERK     => __('Order Clerk'),
                         RolesAndPermissionsSeeder::ROLE_LOGISTICS_HR              => __('HR'),
@@ -311,6 +330,7 @@ new #[Title('Company profile')] class extends Component
                         default                                                   => __('No access'),
                     };
                     $roleColor = match($roleName) {
+                        RolesAndPermissionsSeeder::ROLE_SUPER_ADMIN           => 'yellow',
                         RolesAndPermissionsSeeder::ROLE_TENANT_USER           => 'lime',
                         RolesAndPermissionsSeeder::ROLE_LOGISTICS_ORDER_CLERK => 'cyan',
                         RolesAndPermissionsSeeder::ROLE_LOGISTICS_HR          => 'purple',
@@ -326,7 +346,7 @@ new #[Title('Company profile')] class extends Component
                             <p class="truncate text-xs text-zinc-500 dark:text-zinc-400">{{ $u->email }}</p>
                         </div>
                     </div>
-                    @if ($u->id === Auth::id())
+                    @if ($u->id === Auth::id() || $isSuperAdmin)
                         <flux:badge :color="$roleColor" size="sm">{{ $roleLabel }}</flux:badge>
                     @else
                         <flux:dropdown position="bottom" align="end">

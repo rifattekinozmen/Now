@@ -175,7 +175,7 @@ new #[Title('Companies')] class extends Component
             ]);
 
             RolesAndPermissionsSeeder::ensureDefaults();
-            $user->assignRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER);
+            $user->assignRole(RolesAndPermissionsSeeder::ROLE_LOGISTICS_VIEWER);
             Password::sendResetLink(['email' => $user->email]);
         }
 
@@ -214,6 +214,23 @@ new #[Title('Companies')] class extends Component
         }
 
         unset($this->tenants);
+    }
+
+    public function deleteUser(int $userId): void
+    {
+        abort_unless(Auth::user()?->can(LogisticsPermission::SUPER_ADMIN), 403);
+
+        $user = User::findOrFail($userId);
+
+        abort_if($user->id === Auth::id(), 403);
+
+        $user->syncRoles([]);
+        $user->syncPermissions([]);
+        $user->delete();
+
+        unset($this->tenants);
+
+        session()->flash('status', __('User deleted.'));
     }
 }; ?>
 
@@ -339,14 +356,14 @@ new #[Title('Companies')] class extends Component
                                     <span class="text-sm text-zinc-800 dark:text-zinc-200">{{ $u->name }}</span>
                                     <span @class(['hidden' => $u->tenant_id !== $tenant->id]) class="text-xs text-zinc-400">({{ __('primary') }})</span>
                                 </div>
-                                <span @class(['hidden' => $u->tenant_id === $tenant->id])>
-                                    <flux:button
-                                        wire:click="removeUser({{ $u->id }}, {{ $tenant->id }})"
-                                        wire:confirm="{{ __('Remove :name from :company?', ['name' => $u->name, 'company' => $tenant->name]) }}"
-                                        size="xs" variant="ghost" icon="x-mark"
-                                        class="text-zinc-400 hover:text-red-500"
-                                    />
-                                </span>
+                                <div class="flex items-center gap-1">
+                                    <span @class(['hidden' => $u->tenant_id === $tenant->id])>
+                                        <flux:button wire:click="removeUser({{ $u->id }}, {{ $tenant->id }})" wire:confirm="{{ __('Remove :name from :company?', ['name' => $u->name, 'company' => $tenant->name]) }}" size="xs" variant="ghost" icon="x-mark" class="text-zinc-400 hover:text-red-500" />
+                                    </span>
+                                    @if ($u->id !== Auth::id())
+                                        <flux:button wire:click="deleteUser({{ $u->id }})" wire:confirm="{{ __('Permanently delete :name? This will remove their account and all associated data.', ['name' => $u->name]) }}" size="xs" variant="ghost" icon="trash" class="text-zinc-400 hover:text-red-600" />
+                                    @endif
+                                </div>
                             </div>
                         @endforeach
 

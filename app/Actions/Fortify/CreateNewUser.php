@@ -27,6 +27,8 @@ class CreateNewUser implements CreatesNewUsers
             'password' => $this->passwordRules(),
         ])->validate();
 
+        $isFirst = ! User::exists();
+
         $slugBase = Str::slug(Str::before($input['email'], '@')) ?: 'tenant';
         $slug = $slugBase;
         $suffix = 0;
@@ -47,7 +49,13 @@ class CreateNewUser implements CreatesNewUsers
         ]);
 
         RolesAndPermissionsSeeder::ensureDefaults();
-        $user->assignRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER);
+
+        // İlk kaydolan kullanıcı platformun süper admini olur.
+        if ($isFirst) {
+            $user->assignRole(RolesAndPermissionsSeeder::ROLE_SUPER_ADMIN);
+        } else {
+            $user->assignRole(RolesAndPermissionsSeeder::ROLE_TENANT_USER);
+        }
 
         return $user;
     }
