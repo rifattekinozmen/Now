@@ -1,8 +1,12 @@
 <?php
 
+use App\Authorization\LogisticsPermission;
+use App\Models\ChartAccount;
 use App\Models\JournalEntry;
+use App\Models\JournalLine;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -14,9 +18,21 @@ new #[Lazy, Title('Journal entries')] class extends Component
     use WithPagination;
 
     // Filters
-    public string $filterSearch  = '';
+    public string $filterSearch   = '';
     public string $filterDateFrom = '';
     public string $filterDateTo   = '';
+
+    // Form state — null=hidden, 0=new entry, >0=edit
+    public ?int $editingId = null;
+
+    public string $entryDate  = '';
+    public string $reference  = '';
+    public string $memo       = '';
+
+    /**
+     * @var list<array{chart_account_id: string, debit: string, credit: string}>
+     */
+    public array $lines = [];
 
     public function mount(): void
     {
@@ -33,6 +49,115 @@ new #[Lazy, Title('Journal entries')] class extends Component
         $this->filterDateFrom = '';
         $this->filterDateTo   = '';
         $this->resetPage();
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, ChartAccount>
+     */
+    #[Computed]
+    public function chartAccounts(): \Illuminate\Database\Eloquent\Collection
+    {
+        return ChartAccount::query()->orderBy('code')->get();
+    }
+
+    public function initCreate(): void
+    {
+        Gate::authorize('create', JournalEntry::class);
+
+        $this->editingId = 0;
+        $this->entryDate = now()->format('Y-m-d');
+        $this->reference = '';
+        $this->memo      = '';
+        $this->lines     = [
+            ['chart_account_id' => '', 'debit' => '', 'credit' => ''],
+            ['chart_account_id' => '', 'debit' => '', 'credit' => ''],
+        ];
+    }
+
+    public function addLine(): void
+    {
+        $this->lines[] = ['chart_account_id' => '', 'debit' => '', 'credit' => ''];
+    }
+
+    public function removeLine(int $index): void
+    {
+        if (count($this->lines) <= 2) {
+            return;
+        }
+
+        array_splice($this->lines, $index, 1);
+        $this->lines = array_values($this->lines);
+    }
+
+    public function cancelEntry(): void
+    {
+        $this->editingId = null;
+        $this->lines     = [];
+    }
+
+    public function saveEntry(): void
+    {
+        Gate::authorize('create', JournalEntry::class);
+
+        $this->validate([
+            'entryDate'             => ['required', 'date'],
+            'reference'             => ['nullable', 'string', 'max:64'],
+            'memo'                  => ['nullable', 'string', 'max:500'],
+            'lines'                 => ['required', 'array', 'min:2'],
+            'lines.*.chart_account_id' => ['required', 'integer', 'exists:chart_accounts,id'],
+            'lines.*.debit'         => ['nullable', 'numeric', 'min:0'],
+            'lines.*.credit'        => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $totalDebit  = collect($this->lines)->sum(fn ($l) => (float) ($l['debit'] ?: 0));
+        $totalCredit = collect($this->lines)->sum(fn ($l) => (float) ($l['credit'] ?: 0));
+
+        if (abs($totalDebit - $totalCredit) > 0.005) {
+            $this->addError('lines', __('Journal entry must be balanced: total debit must equal total credit.'));
+
+            return;
+        }
+
+        if ($totalDebit <= 0) {
+            $this->addError('lines', __('At least one line must have a non-zero amount.'));
+
+            return;
+        }
+
+        DB::transaction(function (): void {
+            $entry = JournalEntry::query()->create([
+                'entry_date' => $this->entryDate,
+                'reference'  => $this->reference ?: null,
+                'memo'       => $this->memo ?: null,
+                'user_id'    => auth()->id(),
+            ]);
+
+            foreach ($this->lines as $line) {
+                JournalLine::query()->create([
+                    'journal_entry_id' => $entry->id,
+                    'chart_account_id' => (int) $line['chart_account_id'],
+                    'debit'            => filled($line['debit']) ? (float) $line['debit'] : 0,
+                    'credit'           => filled($line['credit']) ? (float) $line['credit'] : 0,
+                ]);
+            }
+        });
+
+        $this->cancelEntry();
+        $this->resetPage();
+        session()->flash('success', __('Journal entry created.'));
+    }
+
+    public function deleteEntry(int $entryId): void
+    {
+        $entry = JournalEntry::query()->findOrFail($entryId);
+        Gate::authorize('delete', $entry);
+
+        DB::transaction(function () use ($entry): void {
+            $entry->lines()->delete();
+            $entry->delete();
+        });
+
+        session()->flash('success', __('Journal entry deleted.'));
     }
 
     /**
@@ -87,16 +212,140 @@ new #[Lazy, Title('Journal entries')] class extends Component
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
+    @php
+        $canWrite = auth()->user()?->can(\App\Authorization\LogisticsPermission::FINANCE_WRITE);
+    @endphp
+
     <x-admin.page-header
         :heading="__('Journal entries')"
         :description="__('General ledger double-entry journal.')"
     >
         <x-slot name="actions">
+            @if ($canWrite && $editingId === null)
+                <flux:button variant="primary" icon="plus" wire:click="initCreate">
+                    {{ __('New entry') }}
+                </flux:button>
+            @endif
             <flux:button :href="route('admin.finance.index')" variant="outline" wire:navigate>
                 {{ __('Back to finance') }}
             </flux:button>
         </x-slot>
     </x-admin.page-header>
+
+    @if (session()->has('success'))
+        <flux:callout variant="success" icon="check-circle">{{ session('success') }}</flux:callout>
+    @endif
+
+    @error('lines')
+        <flux:callout variant="danger" icon="exclamation-triangle">{{ $message }}</flux:callout>
+    @enderror
+
+    {{-- New entry form --}}
+    @if ($canWrite && $editingId !== null)
+        <flux:card class="p-5">
+            <flux:heading size="lg" class="mb-4">{{ __('New journal entry') }}</flux:heading>
+            <form wire:submit="saveEntry" class="flex flex-col gap-4">
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <flux:field>
+                        <flux:label>{{ __('Entry date') }} *</flux:label>
+                        <flux:input wire:model="entryDate" type="date" required />
+                        <flux:error name="entryDate" />
+                    </flux:field>
+                    <flux:field>
+                        <flux:label>{{ __('Reference') }}</flux:label>
+                        <flux:input wire:model="reference" placeholder="JE-2026-001" />
+                        <flux:error name="reference" />
+                    </flux:field>
+                    <flux:field>
+                        <flux:label>{{ __('Memo') }}</flux:label>
+                        <flux:input wire:model="memo" />
+                        <flux:error name="memo" />
+                    </flux:field>
+                </div>
+
+                {{-- Lines --}}
+                <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-zinc-50 dark:bg-zinc-800">
+                            <tr class="text-xs text-zinc-500 dark:text-zinc-400">
+                                <th class="w-1/2 px-3 py-2 text-start font-medium">{{ __('Account') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Debit') }}</th>
+                                <th class="px-3 py-2 text-end font-medium">{{ __('Credit') }}</th>
+                                <th class="w-10 px-3 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($lines as $i => $line)
+                                <tr wire:key="line-{{ $i }}">
+                                    <td class="px-3 py-2">
+                                        <flux:select wire:model="lines.{{ $i }}.chart_account_id" class="w-full">
+                                            <option value="">— {{ __('Select account') }} —</option>
+                                            @foreach ($this->chartAccounts as $account)
+                                                <option value="{{ $account->id }}">{{ $account->code }} — {{ $account->name }}</option>
+                                            @endforeach
+                                        </flux:select>
+                                        <flux:error name="lines.{{ $i }}.chart_account_id" />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <flux:input
+                                            wire:model="lines.{{ $i }}.debit"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            class="w-32 text-end"
+                                        />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        <flux:input
+                                            wire:model="lines.{{ $i }}.credit"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="0.00"
+                                            class="w-32 text-end"
+                                        />
+                                    </td>
+                                    <td class="px-3 py-2">
+                                        @if (count($lines) > 2)
+                                            <flux:button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                icon="x-mark"
+                                                wire:click="removeLine({{ $i }})"
+                                            />
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="border-t border-zinc-200 dark:border-zinc-700">
+                            <tr class="bg-zinc-50 dark:bg-zinc-800/50 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+                                <td class="px-3 py-2">{{ __('Totals') }}</td>
+                                <td class="px-3 py-2 text-end font-mono">
+                                    {{ number_format(collect($lines)->sum(fn ($l) => (float) ($l['debit'] ?: 0)), 2) }}
+                                </td>
+                                <td class="px-3 py-2 text-end font-mono">
+                                    {{ number_format(collect($lines)->sum(fn ($l) => (float) ($l['credit'] ?: 0)), 2) }}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <flux:button type="button" variant="ghost" size="sm" icon="plus" wire:click="addLine">
+                        {{ __('Add line') }}
+                    </flux:button>
+                    <div class="flex-1"></div>
+                    <flux:button type="button" variant="ghost" wire:click="cancelEntry">{{ __('Cancel') }}</flux:button>
+                    <flux:button type="submit" variant="primary">{{ __('Save entry') }}</flux:button>
+                </div>
+            </form>
+        </flux:card>
+    @endif
 
     {{-- KPI --}}
     <div class="grid gap-3 sm:grid-cols-3">
@@ -154,6 +403,19 @@ new #[Lazy, Title('Journal entries')] class extends Component
                             @endif
                             @if ($entry->user)
                                 <span class="text-zinc-400 dark:text-zinc-500">{{ $entry->user->name }}</span>
+                            @endif
+                            @if ($canWrite && ! $entry->source_type)
+                                <div class="ml-auto">
+                                    <flux:button
+                                        type="button"
+                                        size="sm"
+                                        variant="danger"
+                                        wire:click="deleteEntry({{ $entry->id }})"
+                                        wire:confirm="{{ __('Delete this journal entry and all its lines?') }}"
+                                    >
+                                        {{ __('Delete') }}
+                                    </flux:button>
+                                </div>
                             @endif
                         </div>
                         @if ($entry->memo)

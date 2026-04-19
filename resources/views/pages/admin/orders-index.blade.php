@@ -74,6 +74,12 @@ new #[Lazy, Title('Orders')] class extends Component
 
     public string $filterStatus = '';
 
+    public string $filterCustomer = '';
+
+    public string $filterDateFrom = '';
+
+    public string $filterDateTo = '';
+
     public string $sortColumn = 'id';
 
     public string $sortDirection = 'desc';
@@ -99,6 +105,16 @@ new #[Lazy, Title('Orders')] class extends Component
         $this->resetPage();
         $this->selectedIds = [];
     }
+
+    public function updatedFilterCustomer(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedFilterDateFrom(): void { $this->resetPage(); }
+
+    public function updatedFilterDateTo(): void { $this->resetPage(); }
 
     public function updatedPage(): void
     {
@@ -152,6 +168,18 @@ new #[Lazy, Title('Orders')] class extends Component
 
         if ($this->filterStatus !== '') {
             $q->where('status', $this->filterStatus);
+        }
+
+        if ($this->filterCustomer !== '') {
+            $q->where('customer_id', (int) $this->filterCustomer);
+        }
+
+        if ($this->filterDateFrom !== '') {
+            $q->where('ordered_at', '>=', $this->filterDateFrom);
+        }
+
+        if ($this->filterDateTo !== '') {
+            $q->where('ordered_at', '<=', $this->filterDateTo.' 23:59:59');
         }
 
         if ($this->filterSearch !== '') {
@@ -562,6 +590,16 @@ new #[Lazy, Title('Orders')] class extends Component
                         <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
                     @endforeach
                 </flux:select>
+                <flux:select wire:model.live="filterCustomer" :label="__('Filter by customer')" class="max-w-md">
+                    <option value="">{{ __('All customers') }}</option>
+                    @foreach ($this->customerOptions as $c)
+                        <option value="{{ $c['id'] }}">{{ $c['legal_name'] }}</option>
+                    @endforeach
+                </flux:select>
+                <div class="flex flex-wrap gap-3">
+                    <flux:input wire:model.live.debounce.400ms="filterDateFrom" type="date" :label="__('Order date from')" />
+                    <flux:input wire:model.live.debounce.400ms="filterDateTo" type="date" :label="__('Order date to')" />
+                </div>
             </div>
         @endif
     </x-admin.filter-bar>

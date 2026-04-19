@@ -4,10 +4,14 @@ use App\Authorization\LogisticsPermission;
 use App\Enums\ShipmentStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Document;
+use App\Models\Employee;
 use App\Models\Shipment;
+use App\Models\Vehicle;
 use App\Services\Logistics\PodDeliveryPhotoStorage;
 use App\Services\Logistics\ShipmentStatusTransitionService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\WithFileUploads;
@@ -41,12 +45,89 @@ new #[Lazy, Title('Shipment detail')] class extends Component
     /** @var mixed */
     public $returnPhoto = null;
 
+    // Reassignment fields
+    public string $editVehicleId = '';
+    public string $editDriverId = '';
+
     public function mount(Shipment $shipment): void
     {
         Gate::authorize('view', $shipment);
-        $this->shipment      = $shipment->load(['order.customer', 'vehicle']);
+        $this->shipment = $shipment->load(['order.customer', 'vehicle', 'driver']);
         $this->returnIsReturn = (bool) $shipment->is_return;
         $this->returnReason  = $shipment->return_reason ?? '';
+        $this->editVehicleId = (string) ($shipment->vehicle_id ?? '');
+        $this->editDriverId  = (string) ($shipment->driver_employee_id ?? '');
+    }
+
+    /**
+     * @return array<int, array{id: int, plate: string}>
+     */
+    public function vehicleOptions(): array
+    {
+        $tenantId = auth()->user()?->tenant_id ?? 0;
+
+        return Cache::remember("vehicle-options.{$tenantId}", 300, function () {
+            return Vehicle::query()
+                ->orderBy('plate')
+                ->limit(500)
+                ->get()
+                ->map(fn (Vehicle $v) => ['id' => $v->id, 'plate' => $v->plate])
+                ->all();
+        });
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function driverOptions(): array
+    {
+        $tenantId = auth()->user()?->tenant_id ?? 0;
+
+        return Cache::remember("driver-options.{$tenantId}", 300, function () {
+            return Employee::query()
+                ->where('is_driver', true)
+                ->orderBy('last_name')
+                ->limit(500)
+                ->get()
+                ->map(fn (Employee $e) => ['id' => $e->id, 'name' => $e->fullName()])
+                ->all();
+        });
+    }
+
+    public function reassignVehicleDriver(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::SHIPMENTS_WRITE);
+
+        $s = Shipment::query()->findOrFail($this->shipment->id);
+        Gate::authorize('update', $s);
+
+        $tenantId = auth()->user()?->tenant_id;
+
+        $validated = $this->validate([
+            'editVehicleId' => [
+                'nullable',
+                'integer',
+                $tenantId !== null
+                    ? Rule::exists('vehicles', 'id')->where('tenant_id', $tenantId)
+                    : Rule::exists('vehicles', 'id'),
+            ],
+            'editDriverId' => [
+                'nullable',
+                'integer',
+                $tenantId !== null
+                    ? Rule::exists('employees', 'id')->where('tenant_id', $tenantId)
+                    : Rule::exists('employees', 'id'),
+            ],
+        ]);
+
+        $s->update([
+            'vehicle_id'         => filled($validated['editVehicleId']) ? (int) $validated['editVehicleId'] : null,
+            'driver_employee_id' => filled($validated['editDriverId']) ? (int) $validated['editDriverId'] : null,
+        ]);
+
+        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle', 'driver']);
+
+        session()->flash('success', __('Assignment updated.'));
     }
 
     public function saveReturn(): void
@@ -102,7 +183,7 @@ new #[Lazy, Title('Shipment detail')] class extends Component
             return;
         }
 
-        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
+        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle', 'driver']);
     }
 
     public function markDelivered(ShipmentStatusTransitionService $transitions, PodDeliveryPhotoStorage $podPhotos): void
@@ -160,7 +241,7 @@ new #[Lazy, Title('Shipment detail')] class extends Component
         }
 
         $this->reset('pod_note', 'pod_received_by', 'pod_signature_data', 'pod_latitude', 'pod_longitude', 'pod_photo');
-        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
+        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle', 'driver']);
     }
 
     public function cancelShipment(ShipmentStatusTransitionService $transitions): void
@@ -178,7 +259,7 @@ new #[Lazy, Title('Shipment detail')] class extends Component
             return;
         }
 
-        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle']);
+        $this->shipment = $s->fresh()->load(['order.customer', 'vehicle', 'driver']);
     }
 
     public function setShipmentTab(string $tab): void
@@ -290,6 +371,9 @@ new #[Lazy, Title('Shipment detail')] class extends Component
         </div>
     </flux:card>
     @elseif ($activeTab === 'overview')
+    @if (session()->has('success'))
+        <flux:callout variant="success" icon="check-circle">{{ session('success') }}</flux:callout>
+    @endif
     <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Summary') }}</flux:heading>
         <dl class="grid gap-3 text-sm sm:grid-cols-2">
@@ -301,12 +385,37 @@ new #[Lazy, Title('Shipment detail')] class extends Component
                 <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Vehicle') }}</dt>
                 <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->vehicle?->plate ?? '—' }}</dd>
             </div>
+            <div>
+                <dt class="text-zinc-500 dark:text-zinc-400">{{ __('Driver') }}</dt>
+                <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->driver?->fullName() ?? '—' }}</dd>
+            </div>
             <div class="sm:col-span-2">
                 <dt class="text-zinc-500 dark:text-zinc-400">{{ __('SAS / reference') }}</dt>
                 <dd class="font-medium text-zinc-900 dark:text-zinc-100">{{ $s->order?->sas_no ?? '—' }}</dd>
             </div>
         </dl>
     </flux:card>
+
+    @if ($canWriteShipments && $s->status !== \App\Enums\ShipmentStatus::Cancelled)
+    <flux:card>
+        <flux:heading size="lg" class="mb-4">{{ __('Reassign vehicle / driver') }}</flux:heading>
+        <form wire:submit="reassignVehicleDriver" class="flex max-w-md flex-col gap-4">
+            <flux:select wire:model="editVehicleId" :label="__('Vehicle')">
+                <flux:select.option value="">{{ __('— None —') }}</flux:select.option>
+                @foreach ($this->vehicleOptions() as $v)
+                    <flux:select.option :value="$v['id']">{{ $v['plate'] }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model="editDriverId" :label="__('Driver')">
+                <flux:select.option value="">{{ __('— None —') }}</flux:select.option>
+                @foreach ($this->driverOptions() as $d)
+                    <flux:select.option :value="$d['id']">{{ $d['name'] }}</flux:select.option>
+                @endforeach
+            </flux:select>
+            <flux:button type="submit" variant="primary">{{ __('Save assignment') }}</flux:button>
+        </form>
+    </flux:card>
+    @endif
     @elseif ($activeTab === 'timeline')
     <flux:card>
         <flux:heading size="lg" class="mb-6">{{ __('Lifecycle timeline') }}</flux:heading>

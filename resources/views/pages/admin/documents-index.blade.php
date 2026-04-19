@@ -460,6 +460,9 @@ new #[Lazy, Title('Documents')] class extends Component
                             </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex justify-end gap-1">
+                                    <flux:button size="xs" variant="ghost" :href="route('admin.documents.show', $doc->id)" wire:navigate title="{{ __('View') }}">
+                                        <flux:icon name="eye" variant="micro" />
+                                    </flux:button>
                                     @if ($canWrite)
                                         <flux:button size="xs" variant="ghost" wire:click="startEdit({{ $doc->id }})" title="{{ __('Edit') }}">
                                             <flux:icon name="pencil-square" variant="micro" />

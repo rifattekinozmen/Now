@@ -1,10 +1,11 @@
 <?php
 
 use App\Authorization\LogisticsPermission;
-use App\Enums\BankTransactionType;
 use App\Models\BankAccount;
 use App\Models\BankTransaction;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -20,23 +21,36 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
 
     // Form fields
     public string $bank_account_id = '';
+
     public string $transaction_date = '';
+
     public string $amount = '';
+
     public string $currency_code = 'TRY';
+
     public string $transaction_type = 'credit';
+
     public string $reference_no = '';
+
     public string $description = '';
 
     // Filters
     public bool $filtersOpen = false;
+
     public string $filterSearch = '';
+
     public string $filterType = '';
+
     public string $filterAccount = '';
+
     public string $filterReconciled = '';
+
     public string $filterDateFrom = '';
+
     public string $filterDateTo = '';
 
     public string $sortColumn = 'transaction_date';
+
     public string $sortDirection = 'desc';
 
     /** @var int[] */
@@ -48,12 +62,35 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
         $this->transaction_date = now()->timezone(config('app.timezone'))->format('Y-m-d');
     }
 
-    public function updatedFilterSearch(): void { $this->resetPage(); }
-    public function updatedFilterType(): void { $this->resetPage(); }
-    public function updatedFilterAccount(): void { $this->resetPage(); }
-    public function updatedFilterReconciled(): void { $this->resetPage(); }
-    public function updatedFilterDateFrom(): void { $this->resetPage(); }
-    public function updatedFilterDateTo(): void { $this->resetPage(); }
+    public function updatedFilterSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterAccount(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterReconciled(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateTo(): void
+    {
+        $this->resetPage();
+    }
 
     public function sortBy(string $column): void
     {
@@ -105,11 +142,15 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
     #[Computed]
     public function kpiStats(): array
     {
+        $totalCredits = (float) BankTransaction::query()->credits()->sum('amount');
+        $totalDebits = (float) BankTransaction::query()->debits()->sum('amount');
+
         return [
-            'total_credits'  => BankTransaction::query()->credits()->sum('amount'),
-            'total_debits'   => BankTransaction::query()->debits()->sum('amount'),
-            'unreconciled'   => BankTransaction::query()->unreconciled()->count(),
-            'this_month'     => BankTransaction::query()
+            'total_credits' => $totalCredits,
+            'total_debits' => $totalDebits,
+            'net_balance' => $totalCredits - $totalDebits,
+            'unreconciled' => BankTransaction::query()->unreconciled()->count(),
+            'this_month' => BankTransaction::query()
                 ->whereMonth('transaction_date', now()->month)
                 ->whereYear('transaction_date', now()->year)
                 ->count(),
@@ -117,10 +158,10 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, BankAccount>
+     * @return Collection<int, BankAccount>
      */
     #[Computed]
-    public function bankAccounts(): \Illuminate\Database\Eloquent\Collection
+    public function bankAccounts(): Collection
     {
         return BankAccount::query()->orderBy('bank_name')->get();
     }
@@ -178,14 +219,14 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
         $tx = BankTransaction::query()->findOrFail($id);
         Gate::authorize('update', $tx);
 
-        $this->editingId        = $id;
-        $this->bank_account_id  = (string) $tx->bank_account_id;
+        $this->editingId = $id;
+        $this->bank_account_id = (string) $tx->bank_account_id;
         $this->transaction_date = $tx->transaction_date->format('Y-m-d');
-        $this->amount           = (string) $tx->amount;
-        $this->currency_code    = $tx->currency_code;
+        $this->amount = (string) $tx->amount;
+        $this->currency_code = $tx->currency_code;
         $this->transaction_type = $tx->transaction_type->value;
-        $this->reference_no     = $tx->reference_no ?? '';
-        $this->description      = $tx->description ?? '';
+        $this->reference_no = $tx->reference_no ?? '';
+        $this->description = $tx->description ?? '';
     }
 
     public function cancelForm(): void
@@ -197,28 +238,28 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
     public function save(): void
     {
         $authUser = auth()->user();
-        if (! ($authUser instanceof \App\Models\User) || ! LogisticsPermission::canWrite($authUser, LogisticsPermission::FINANCE_WRITE)) {
+        if (! ($authUser instanceof User) || ! LogisticsPermission::canWrite($authUser, LogisticsPermission::FINANCE_WRITE)) {
             abort(403);
         }
 
         $validated = $this->validate([
-            'bank_account_id'  => ['required', 'integer', 'exists:bank_accounts,id'],
+            'bank_account_id' => ['required', 'integer', 'exists:bank_accounts,id'],
             'transaction_date' => ['required', 'date'],
-            'amount'           => ['required', 'numeric', 'min:0.01', 'max:999999999'],
-            'currency_code'    => ['required', 'in:TRY,USD,EUR,GBP'],
+            'amount' => ['required', 'numeric', 'min:0.01', 'max:999999999'],
+            'currency_code' => ['required', 'in:TRY,USD,EUR,GBP'],
             'transaction_type' => ['required', 'in:credit,debit'],
-            'reference_no'     => ['nullable', 'string', 'max:100'],
-            'description'      => ['nullable', 'string', 'max:1000'],
+            'reference_no' => ['nullable', 'string', 'max:100'],
+            'description' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $data = [
-            'bank_account_id'  => (int) $validated['bank_account_id'],
+            'bank_account_id' => (int) $validated['bank_account_id'],
             'transaction_date' => $validated['transaction_date'],
-            'amount'           => $validated['amount'],
-            'currency_code'    => $validated['currency_code'],
+            'amount' => $validated['amount'],
+            'currency_code' => $validated['currency_code'],
             'transaction_type' => $validated['transaction_type'],
-            'reference_no'     => filled($validated['reference_no']) ? $validated['reference_no'] : null,
-            'description'      => filled($validated['description']) ? $validated['description'] : null,
+            'reference_no' => filled($validated['reference_no']) ? $validated['reference_no'] : null,
+            'description' => filled($validated['description']) ? $validated['description'] : null,
         ];
 
         if ($this->editingId === 0) {
@@ -256,13 +297,13 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
 
     private function resetForm(): void
     {
-        $this->bank_account_id  = '';
+        $this->bank_account_id = '';
         $this->transaction_date = now()->timezone(config('app.timezone'))->format('Y-m-d');
-        $this->amount           = '';
-        $this->currency_code    = 'TRY';
+        $this->amount = '';
+        $this->currency_code = 'TRY';
         $this->transaction_type = 'credit';
-        $this->reference_no     = '';
-        $this->description      = '';
+        $this->reference_no = '';
+        $this->description = '';
     }
 }; ?>
 
@@ -297,7 +338,7 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
     @endif
 
     {{-- KPI Cards --}}
-    <div class="grid gap-3 sm:grid-cols-4">
+    <div class="grid gap-3 sm:grid-cols-5">
         <flux:card class="p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total credits') }}</flux:text>
             <flux:heading size="lg" class="text-green-600">
@@ -308,6 +349,12 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total debits') }}</flux:text>
             <flux:heading size="lg" class="text-red-500">
                 {{ number_format((float) $this->kpiStats['total_debits'], 2) }}
+            </flux:heading>
+        </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Net balance') }}</flux:text>
+            <flux:heading size="lg" class="{{ $this->kpiStats['net_balance'] >= 0 ? 'text-blue-600' : 'text-red-500' }}">
+                {{ number_format((float) $this->kpiStats['net_balance'], 2) }}
             </flux:heading>
         </flux:card>
         <flux:card class="p-4">

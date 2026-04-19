@@ -52,31 +52,31 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `pages::admin.customers-index` + CSV/Excel import servisi | KISMI (`import` CSV; tam CRUD şema yok) _(2026-03-28)_ |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.customers-index` + CSV/Excel import servisi | VAR _(tam inline CRUD: legal_name, tax_no, partner_number, contact, address; CSV import; show tab'ı; 2026-04-17)_ |
 
 ### admin/business-partners
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | şema form + `show` | KISMI (`import` yok) |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.business-partners-index` — inline CRUD, 4 KPI, filtre (type/status), Excel import, bulk delete | VAR _(Sprint 35 — 2026-04-19)_ |
 
 ### admin/current_accounts
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | şema form + `show` + bakiye sütunu | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.current-accounts-index` — inline CRUD, bakiye, KPI | VAR _(Sprint 15)_ |
 
 ### admin/pricing-conditions
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit` | şema form + `show` | KISMI |
+| `index`, `create`, `edit` | `pages::admin.pricing-conditions-index` — inline CRUD, KPI, filtre | VAR _(Sprint 14)_ |
 
 ### admin/documents
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | şema form + `show` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.documents-index` + `pages::admin.document-show` + download | VAR _(Sprint 32 — 2026-04-19)_ |
 
 ### admin/document-flows (referansta var, planda ayrı faz yok)
 
@@ -92,13 +92,13 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `pages::admin.orders-index` + `pages::admin.order-show` (`admin.orders.show`) | KISMI _(lifecycle stepper, sipariş düzenleme, CSV/XLSX import; imza/PDF yok)_ _(2026-03-29)_ |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.orders-index` + `pages::admin.order-show` | VAR _(tam edit formu: customer, ordered_at, exchange_rate, weights, incoterms, sites; lifecycle stepper; CSV dışa aktarma; 2026-04-17)_ |
 
 ### admin/shipments
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `pages::admin.shipments-index` + `pages::admin.shipment-show` | KISMI _(durum geçişleri; POD + canvas imza PNG, `admin.shipments.pod.signature` / `admin.shipments.pod.print`; QR SVG; `track.shipment`)_ _(2026-03-29)_ |
+| `index`, `create`, `edit`, `show` | `pages::admin.shipments-index` + `pages::admin.shipment-show` | VAR _(durum geçişleri; POD + imza; QR SVG; araç/sürücü yeniden atama formu; track.shipment; Sprint 37 — 2026-04-19)_ |
 
 ### Kamu — sevkiyat izleme (QR hedef URL)
 
@@ -116,7 +116,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `show`, `veri-analiz-raporu` | `delivery-imports` | KISMI / YOK (rapor) |
+| `index`, `create`, `show`, `veri-analiz-raporu` | `pages::admin.delivery-imports-index` — KPI, filtre, upload modal, analiz raporu modal | VAR _(Sprint 23 — 2026-04-17)_ |
 
 ### admin/work-orders
 
@@ -134,7 +134,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `inventory` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.inventory-index` — inline CRUD, KPI, filtre, stok hareketleri | VAR _(Sprint 16)_ |
 
 ### admin/vehicles
 
@@ -152,13 +152,15 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `maintenance-schedules` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.maintenance-index` — inline CRUD, KPI, filtre, durum geçişi | VAR _(Sprint 12)_ |
 
 ### admin/analytics (referansta var)
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `fleet`, `operations`, `fleet-map`, `finance`, `_tabs` | — | YOK |
+| `fleet`, `operations` | `pages::admin.fleet-analytics`, `pages::admin.operations-analytics` | VAR _(Sprint 17)_ |
+| `fleet-map` | — | YOK _(harita kütüphanesi gerektirir)_ |
+| `finance`, `_tabs` | `pages::admin.cost-center-pl` — tab nav: Fleet / Operations / Finance P&L | VAR _(Sprint 36 — 2026-04-19)_ |
 
 ---
 
@@ -168,7 +170,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import` | `pages::admin.employees-index` | KISMI _(liste + form; CSV/XLSX import + XLSX şablon; 2026-03-29)_ |
+| `index`, `create`, `edit`, `show`, `import` | `pages::admin.employees-index` + `pages::admin.employee-show` | VAR _(tam CRUD: ehliyet sınıfı/tarihi, SRC tarihi, psikoteknik tarihi, kan grubu; show sekmeli; CSV/XLSX import; 2026-04-16)_ |
 
 ### admin/personnel
 
@@ -180,59 +182,63 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `planning`, `templates` | `shifts` | KISMI / YOK |
+| `index`, `planning`, `templates` | `pages::admin.shifts-index` — liste + haftalık görünüm, CRUD | VAR _(Sprint 13; planning/templates: KISMI)_ |
 
 ### admin/personnel-attendance
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index` | `personnel-attendance` **index_only** | KISMI |
+| `index` | `pages::admin.attendance-index` — inline CRUD, KPI, filtre | VAR _(Sprint 13)_ |
 
 ### admin/leaves
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create` | `leaves` **index_only** | KISMI |
+| `index`, `create` | `pages::admin.leaves-index` — inline CRUD, durum onay akışı, KPI | VAR _(Sprint 14)_ |
 
 ### admin/advances
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create` | `advances` **index_only** | KISMI |
+| `index`, `create` | `pages::admin.advances-index` — inline CRUD, durum onay akışı, KPI | VAR _(Sprint 14)_ |
 
 ### admin/payrolls
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `show`, `bulk-create`, `pdf` | `payrolls` **index_only** + `PayrollPrintController` (`admin.hr.payroll.print`) | KISMI _(pdf: tarayıcı print — Sprint 8.4; bulk: YOK)_ _(2026-04-11)_ |
+| `index`, `create`, `show`, `bulk-create`, `pdf` | `pages::admin.payroll-index` + `PayrollPrintController` | VAR _(tam CRUD + toplu bordro oluştur + tarayıcı print PDF; Sprint 25 — 2026-04-17)_ |
 
 ---
 
 ## Faz 4 — Finans
 
-### admin/accounting
+### admin/accounting (chart-of-accounts + journal-entries)
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `accounting` **index_only** | KISMI |
+| `index`, `create`, `edit` | `pages::admin.chart-accounts-index` — inline CRUD, hesap tipi/sınıfı | VAR _(Sprint 15)_ |
+| journal-entries | `pages::admin.journal-entries-index` — yevmiye kayıtları, satır bazlı double-entry, silme | VAR _(Sprint 26 — 2026-04-17)_ |
+| trial-balance | `pages::admin.finance-trial-balance` | VAR _(Sprint 15)_ |
+| balance-sheet | `pages::admin.finance-balance-sheet` | VAR _(Sprint 15)_ |
+| fiscal-opening-balances | `pages::admin.fiscal-opening-balances-index` | VAR _(Sprint 15)_ |
 
 ### admin/payments
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `payments` (özel payment form) | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.payments-index` — inline CRUD, tarih/tutar filtresi, CSV dışa aktarma | VAR _(Sprint 16)_ |
 
 ### admin/cash_registers
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `cash-registers` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.cash-registers-index` — inline CRUD | VAR _(Sprint 16)_ |
 
 ### admin/vouchers
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `vouchers` | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.vouchers-index` — inline CRUD, CSV dışa aktarma | VAR _(Sprint 16)_ |
 
 ### admin/vehicle_finances
 
@@ -250,7 +256,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `aging`, `customer-summary`, `top-customers` | `pages::admin.finance-reports` (`admin.finance.reports`) | KISMI _(alacak yaşlandırma + müşteri gecikme özeti; 2026-03-29)_ |
+| `aging`, `customer-summary`, `top-customers` | `pages::admin.finance-reports` (`admin.finance.reports`) | VAR _(alacak yaşlandırma + müşteri gecikme özeti + top customers by revenue; Sprint 36 — 2026-04-19)_ |
 
 ### Now — finans özeti (`admin/finance`)
 
@@ -279,7 +285,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `fuel-intakes` **index_only** | KISMI |
+| `index`, `create`, `edit`, `show` | `pages::admin.fuel-intakes-index` — inline CRUD, KPI, CSV/XLSX import | VAR _(Sprint 11)_ |
 
 ---
 
@@ -289,19 +295,19 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `dashboard.blade.php` | `⚡bank-dashboard` | KISMI |
+| `dashboard.blade.php` | `⚡bank-dashboard` | VAR _(Sprint 30 — 2026-04-19)_ |
 
 ### admin/bank/accounts
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit` | `bank-accounts` (slug; URL `admin/bank-accounts`) | KISMI |
+| `index`, `create`, `edit` | `bank-accounts` (slug; URL `admin/bank-accounts`) | VAR _(4 KPI kart: Sprint 30 — 2026-04-19)_ |
 
 ### admin/bank/transactions
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index` | `bank-transactions` **index_only** | KISMI |
+| `index` | `pages::admin.bank-transactions-index` — liste, KPI, filtre | VAR _(Sprint 16)_ |
 
 ### admin/bank/documents
 
@@ -317,19 +323,19 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index` | `calendar` **index_only** | KISMI |
+| `index` | `pages::admin.calendar-index` — aylık grid, renk kodlu event tipleri (bakım/izin/ödeme/sipariş), filtre | VAR _(Sprint 24 — 2026-04-17)_ |
 
 ### customer/*
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `dashboard`, `profile` | `⚡dashboard`, `⚡profile` | KISMI |
-| `orders/index`, `orders/show`, `orders/create` | `⚡orders` iskelet | KISMI / YOK |
-| `invoices/index` | `⚡invoices` | KISMI |
-| `payments/index`, `payments/show` | `⚡payments` | KISMI |
-| `documents/index` | `⚡documents` | KISMI |
-| `notifications/index`, `notifications/show` | — (admin bildirim ayrı) | Müşteri: KISMI |
-| `order-templates/index`, `favorite-addresses/index` | rotalar VAR, içerik | KISMI |
+| `dashboard` | `pages::customer.dashboard` — KPI, son siparişler, aktif sevkiyatlar, hızlı linkler | VAR _(Sprint 21 — 2026-04-16)_ |
+| `orders/index` | `pages::customer.orders-index` — KPI, arama/filtre, sayfalama | VAR _(Sprint 21)_ |
+| `orders/show` | `pages::customer.order-show` — durum badge, sipariş detay, sevkiyat listesi | VAR _(Sprint 27 — 2026-04-17)_ |
+| `orders/create` | `pages::customer.order-create` — form, CR-YYYYMMDD-XXXX numarası, Draft status | VAR _(Sprint 27 — 2026-04-17)_ |
+| `invoices/index`, `payments/index`, `documents/index` | — | YOK _(Invoice modeli yok; aspirasyonel)_ |
+| `notifications/index`, `notifications/show` | — (admin bildirim ayrı) | YOK |
+| `order-templates/index`, `favorite-addresses/index` | — | YOK |
 
 ---
 
@@ -339,8 +345,12 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `dashboard`, `profile` | `⚡dashboard`, `⚡profile` | KISMI |
-| `payroll`, `leaves`, `advances` | `⚡payroll`, `⚡leaves`, `⚡advances` | KISMI |
+| `dashboard` | `pages::personnel.dashboard` — KPI, yaklaşan vardiyalar, izin bakiyesi | VAR _(Sprint 22)_ |
+| `profile` | `pages::personnel.my-profile` — kimlik, iletişim düzenle (phone/email), ehliyet bilgileri | VAR _(Sprint 28 — 2026-04-18)_ |
+| `payroll` | `pages::personnel.my-payrolls` — bordro listesi, print | VAR _(Sprint 22)_ |
+| `leaves` | `pages::personnel.my-leaves` — izin talep + liste | VAR _(Sprint 22)_ |
+| `advances` | `pages::personnel.my-advances` — avans talep + liste | VAR _(Sprint 22)_ |
+| `shifts` | `pages::personnel.my-shifts` — vardiya listesi + haftalık görünüm | VAR _(Sprint 22)_ |
 
 ---
 
@@ -378,6 +388,6 @@ Her faz bitince: ilgili modül için **Pest** (`assertSuccessful`, mümkünse ç
 
 ---
 
-*Son güncelleme: 2026-04-12 — Sprint 8: Work Orders VAR, Vehicle Tyres VAR, Email şablonları VAR, Payroll PDF KISMI (tarayıcı print). Sprint 10: Trip Expenses VAR, Vehicle Finances VAR.*
+*Son güncelleme: 2026-04-19 — Sprint 30: Bank Dashboard VAR, Bank Accounts 4 KPI VAR. Sprint 31: Finance Index aylık navlun trend VAR. Sprint 32: Document show+download VAR. Sprint 33: Company settings zaten VAR. Sprint 34: Notification show + Shifts weekly zaten VAR. Toplam test: 603.*
 
 *Dosya yolu: `Docs/views-port-checklist.md`.*

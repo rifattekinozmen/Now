@@ -20,6 +20,8 @@ new #[Lazy, Title('Customers')] class extends Component
     use WithFileUploads;
     use WithPagination;
 
+    public string $partner_number = '';
+
     public string $legal_name = '';
 
     public string $tax_id = '';
@@ -194,6 +196,7 @@ new #[Lazy, Title('Customers')] class extends Component
         Gate::authorize('create', Customer::class);
 
         $validated = $this->validate([
+            'partner_number' => ['nullable', 'string', 'max:32'],
             'legal_name' => ['required', 'string', 'max:255'],
             'tax_id' => ['nullable', 'string', 'max:32'],
             'trade_name' => ['nullable', 'string', 'max:255'],
@@ -201,13 +204,14 @@ new #[Lazy, Title('Customers')] class extends Component
         ]);
 
         Customer::query()->create([
+            'partner_number' => $validated['partner_number'] ?: null,
             'legal_name' => $validated['legal_name'],
             'tax_id' => $validated['tax_id'] ?: null,
             'trade_name' => $validated['trade_name'] ?: null,
             'payment_term_days' => $validated['payment_term_days'],
         ]);
 
-        $this->reset('legal_name', 'tax_id', 'trade_name', 'payment_term_days');
+        $this->reset('partner_number', 'legal_name', 'tax_id', 'trade_name', 'payment_term_days');
         $this->payment_term_days = 30;
     }
 
@@ -219,6 +223,7 @@ new #[Lazy, Title('Customers')] class extends Component
         Gate::authorize('update', $customer);
 
         $this->editingCustomerId = $customer->id;
+        $this->partner_number = $customer->partner_number ?? '';
         $this->legal_name = $customer->legal_name;
         $this->tax_id = $customer->tax_id ?? '';
         $this->trade_name = $customer->trade_name ?? '';
@@ -228,7 +233,7 @@ new #[Lazy, Title('Customers')] class extends Component
     public function cancelCustomerEdit(): void
     {
         $this->editingCustomerId = null;
-        $this->reset('legal_name', 'tax_id', 'trade_name', 'payment_term_days');
+        $this->reset('partner_number', 'legal_name', 'tax_id', 'trade_name', 'payment_term_days');
         $this->payment_term_days = 30;
     }
 
@@ -244,6 +249,7 @@ new #[Lazy, Title('Customers')] class extends Component
         Gate::authorize('update', $customer);
 
         $validated = $this->validate([
+            'partner_number' => ['nullable', 'string', 'max:32'],
             'legal_name' => ['required', 'string', 'max:255'],
             'tax_id' => ['nullable', 'string', 'max:32'],
             'trade_name' => ['nullable', 'string', 'max:255'],
@@ -251,6 +257,7 @@ new #[Lazy, Title('Customers')] class extends Component
         ]);
 
         $customer->update([
+            'partner_number' => $validated['partner_number'] ?: null,
             'legal_name' => $validated['legal_name'],
             'tax_id' => $validated['tax_id'] ?: null,
             'trade_name' => $validated['trade_name'] ?: null,
@@ -411,6 +418,7 @@ new #[Lazy, Title('Customers')] class extends Component
                 <flux:card>
                     <flux:heading size="lg" class="mb-4">{{ __('Edit customer') }}</flux:heading>
                     <form wire:submit="updateCustomer" class="flex flex-col gap-4">
+                        <flux:input wire:model="partner_number" :label="__('Partner No')" />
                         <flux:input wire:model="legal_name" :label="__('Legal name')" required />
                         <flux:input wire:model="tax_id" :label="__('Tax ID')" />
                         <flux:input wire:model="trade_name" :label="__('Trade name')" />
@@ -425,6 +433,7 @@ new #[Lazy, Title('Customers')] class extends Component
                 <flux:card>
                     <flux:heading size="lg" class="mb-4">{{ __('New customer') }}</flux:heading>
                     <form wire:submit="saveCustomer" class="flex flex-col gap-4">
+                        <flux:input wire:model="partner_number" :label="__('Partner No')" />
                         <flux:input wire:model="legal_name" :label="__('Legal name')" required />
                         <flux:input wire:model="tax_id" :label="__('Tax ID')" />
                         <flux:input wire:model="trade_name" :label="__('Trade name')" />
@@ -487,6 +496,7 @@ new #[Lazy, Title('Customers')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
+                <flux:table.column>{{ __('Partner No') }}</flux:table.column>
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('legal_name')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                         {{ __('Legal name') }}
@@ -542,6 +552,7 @@ new #[Lazy, Title('Customers')] class extends Component
                             </flux:table.cell>
                         @endif
                         <flux:table.cell>{{ $customer->id }}</flux:table.cell>
+                        <flux:table.cell>{{ $customer->partner_number ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $customer->legal_name }}</flux:table.cell>
                         <flux:table.cell>{{ $customer->tax_id ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $customer->trade_name ?? '—' }}</flux:table.cell>
@@ -571,7 +582,7 @@ new #[Lazy, Title('Customers')] class extends Component
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteCustomers ? 8 : 7 }}">{{ __('No customers yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteCustomers ? 9 : 8 }}">{{ __('No customers yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

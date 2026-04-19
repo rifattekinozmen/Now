@@ -2,6 +2,7 @@
 
 use App\Models\Order;
 use App\Models\Vehicle;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -20,7 +21,7 @@ new #[Lazy, Title('Cost Center P&L')] class extends Component
     }
 
     /**
-     * @return array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon}
+     * @return array{0: Carbon, 1: Carbon}
      */
     private function periodRange(): array
     {
@@ -28,8 +29,9 @@ new #[Lazy, Title('Cost Center P&L')] class extends Component
         $start = match ($this->period) {
             'month_1' => now()->subMonth()->startOfDay(),
             'month_6' => now()->subMonths(6)->startOfDay(),
-            'year_1'  => now()->subYear()->startOfDay(),
-            default   => now()->subMonths(3)->startOfDay(),
+            'ytd' => now()->startOfYear()->startOfDay(),
+            'year_1' => now()->subYear()->startOfDay(),
+            default => now()->subMonths(3)->startOfDay(),
         };
 
         return [$start, $end];
@@ -139,12 +141,14 @@ new #[Lazy, Title('Cost Center P&L')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
-    <x-admin.page-header :heading="__('Cost Center P&L')">
-        <x-slot name="actions">
-            <flux:button :href="route('admin.analytics.operations')" variant="outline" wire:navigate>{{ __('Ops Analytics') }}</flux:button>
-            <flux:button :href="route('dashboard')" variant="ghost" wire:navigate>{{ __('Back to dashboard') }}</flux:button>
-        </x-slot>
-    </x-admin.page-header>
+    <x-admin.page-header :heading="__('Cost Center P&L')" :description="__('Vehicle revenue vs fuel and work order costs for the selected period.')" />
+
+    {{-- Analytics tab navigation --}}
+    <div class="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+        <a href="{{ route('admin.analytics.fleet') }}" wire:navigate class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">{{ __('Fleet') }}</a>
+        <a href="{{ route('admin.analytics.operations') }}" wire:navigate class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">{{ __('Operations') }}</a>
+        <a href="{{ route('admin.analytics.cost-centers') }}" wire:navigate class="border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">{{ __('Finance P&L') }}</a>
+    </div>
 
     {{-- Period selector --}}
     <div class="flex flex-wrap gap-2">
@@ -152,6 +156,7 @@ new #[Lazy, Title('Cost Center P&L')] class extends Component
             'month_1' => __('Last month'),
             'month_3' => __('Last 3 months'),
             'month_6' => __('Last 6 months'),
+            'ytd'     => __('Year to date'),
             'year_1'  => __('Last year'),
         ] as $value => $label)
             <flux:button

@@ -7,6 +7,10 @@ use Livewire\Component;
 
 new #[Lazy, Title('My Profile')] class extends Component
 {
+    public string $editPhone = '';
+    public string $editEmail = '';
+    public bool $editSuccess = false;
+
     public function mount(): void
     {
         if (! auth()->user()->employee_id) {
@@ -24,6 +28,34 @@ new #[Lazy, Title('My Profile')] class extends Component
     {
         return Employee::query()->findOrFail($this->employeeId());
     }
+
+    public function openEditContact(): void
+    {
+        $this->editPhone = $this->employee->phone ?? '';
+        $this->editEmail = $this->employee->email ?? '';
+        $this->editSuccess = false;
+        $this->dispatch('open-modal', name: 'edit-contact');
+    }
+
+    public function saveContact(): void
+    {
+        $validated = $this->validate([
+            'editPhone' => ['nullable', 'string', 'max:32'],
+            'editEmail' => ['nullable', 'email', 'max:255'],
+        ]);
+
+        Employee::query()
+            ->where('id', $this->employeeId())
+            ->update([
+                'phone' => $validated['editPhone'] ?: null,
+                'email' => $validated['editEmail'] ?: null,
+            ]);
+
+        unset($this->employee);
+
+        $this->editSuccess = true;
+        $this->dispatch('close-modal', name: 'edit-contact');
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 lg:p-8">
@@ -38,9 +70,15 @@ new #[Lazy, Title('My Profile')] class extends Component
         </flux:link>
     </div>
 
+    @if ($editSuccess)
+        <flux:callout variant="success" icon="check-circle">
+            {{ __('Contact info updated successfully.') }}
+        </flux:callout>
+    @endif
+
     {{-- Identity card --}}
     <flux:card class="p-6">
-        <div class="flex items-center gap-4 mb-6">
+        <div class="mb-6 flex items-center gap-4">
             <x-avatar :name="$this->employee->fullName()" class="size-14 text-xl" />
             <div>
                 <flux:heading size="lg">{{ $this->employee->fullName() }}</flux:heading>
@@ -53,13 +91,18 @@ new #[Lazy, Title('My Profile')] class extends Component
         <div class="grid gap-4 sm:grid-cols-2">
             {{-- Contact --}}
             <div>
-                <flux:text class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
-                    {{ __('Contact') }}
-                </flux:text>
+                <div class="mb-2 flex items-center justify-between">
+                    <flux:text class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                        {{ __('Contact') }}
+                    </flux:text>
+                    <flux:button wire:click="openEditContact" variant="ghost" size="xs" icon="pencil">
+                        {{ __('Edit') }}
+                    </flux:button>
+                </div>
                 <dl class="space-y-1.5 text-sm">
                     <div class="flex gap-2">
                         <dt class="w-32 shrink-0 text-zinc-500">{{ __('Email') }}</dt>
-                        <dd class="font-medium text-zinc-800 dark:text-zinc-200 break-all">{{ $this->employee->email ?? '—' }}</dd>
+                        <dd class="break-all font-medium text-zinc-800 dark:text-zinc-200">{{ $this->employee->email ?? '—' }}</dd>
                     </div>
                     <div class="flex gap-2">
                         <dt class="w-32 shrink-0 text-zinc-500">{{ __('Phone') }}</dt>
@@ -75,7 +118,7 @@ new #[Lazy, Title('My Profile')] class extends Component
             {{-- Driver credentials --}}
             @if ($this->employee->is_driver)
                 <div>
-                    <flux:text class="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-2">
+                    <flux:text class="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                         {{ __('Driver credentials') }}
                     </flux:text>
                     <dl class="space-y-1.5 text-sm">
@@ -152,4 +195,39 @@ new #[Lazy, Title('My Profile')] class extends Component
             </flux:card>
         </flux:link>
     </div>
+
+    {{-- Edit contact modal --}}
+    <flux:modal name="edit-contact" class="w-full max-w-md">
+        <flux:heading size="lg" class="mb-4">{{ __('Edit contact info') }}</flux:heading>
+
+        <div class="space-y-4">
+            <flux:input
+                wire:model="editPhone"
+                :label="__('Phone')"
+                :placeholder="__('e.g. +90 555 000 0000')"
+            />
+            @error('editPhone')
+                <flux:text class="text-sm text-red-500">{{ $message }}</flux:text>
+            @enderror
+
+            <flux:input
+                wire:model="editEmail"
+                type="email"
+                :label="__('Email')"
+                :placeholder="__('you@example.com')"
+            />
+            @error('editEmail')
+                <flux:text class="text-sm text-red-500">{{ $message }}</flux:text>
+            @enderror
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+            <flux:button x-on:click="$flux.modal('edit-contact').close()" variant="ghost">
+                {{ __('Cancel') }}
+            </flux:button>
+            <flux:button wire:click="saveContact" variant="primary">
+                {{ __('Save') }}
+            </flux:button>
+        </div>
+    </flux:modal>
 </div>

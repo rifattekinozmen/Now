@@ -102,9 +102,14 @@ new #[Lazy, Title('My Orders')] class extends Component
             <flux:heading size="xl">{{ __('My Orders') }}</flux:heading>
             <flux:text class="mt-1 text-zinc-500 dark:text-zinc-400">{{ __('All your orders and their current status.') }}</flux:text>
         </div>
-        <flux:button :href="route('customer.dashboard')" variant="ghost" size="sm" wire:navigate>
-            ← {{ __('Dashboard') }}
-        </flux:button>
+        <div class="flex flex-wrap gap-2">
+            <flux:button :href="route('customer.orders.create')" variant="primary" size="sm" icon="plus" wire:navigate>
+                {{ __('New order') }}
+            </flux:button>
+            <flux:button :href="route('customer.dashboard')" variant="ghost" size="sm" wire:navigate>
+                ← {{ __('Dashboard') }}
+            </flux:button>
+        </div>
     </div>
 
     {{-- KPI --}}
@@ -162,6 +167,7 @@ new #[Lazy, Title('My Orders')] class extends Component
                             <th class="px-4 py-3 font-medium">{{ __('Date') }}</th>
                             <th class="px-4 py-3 font-medium">{{ __('Status') }}</th>
                             <th class="px-4 py-3 font-medium">{{ __('Freight') }}</th>
+                            <th class="px-4 py-3 font-medium"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -185,6 +191,11 @@ new #[Lazy, Title('My Orders')] class extends Component
                                     @else
                                         —
                                     @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    <flux:link :href="route('customer.orders.show', $order)" wire:navigate class="text-sm">
+                                        {{ __('View') }}
+                                    </flux:link>
                                 </td>
                             </tr>
                         @endforeach

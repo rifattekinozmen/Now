@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DownloadCustomerImportTemplateController;
+use App\Http\Controllers\Admin\DownloadDocumentController;
 use App\Http\Controllers\Admin\DownloadEmployeeImportTemplateController;
 use App\Http\Controllers\Admin\DownloadFuelIntakeImportTemplateController;
 use App\Http\Controllers\Admin\DownloadFuelPriceImportTemplateController;
@@ -58,6 +59,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware(['logistics.access'])->group(function () {
         Route::prefix('admin')->name('admin.')->group(function () {
+            Route::livewire('business-partners', 'pages::admin.business-partners-index')->name('business-partners.index');
             Route::livewire('customers', 'pages::admin.customers-index')->name('customers.index');
             Route::get('customers/export.csv', ExportCustomerCsvController::class)->name('customers.export.csv');
             Route::get('customers/template.xlsx', DownloadCustomerImportTemplateController::class)->name('customers.template.xlsx');
@@ -101,6 +103,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('finance/vouchers/export.csv', ExportVouchersCsvController::class)->name('finance.vouchers.export.csv');
             Route::livewire('finance/current-accounts', 'pages::admin.current-accounts-index')->name('finance.current-accounts.index');
             Route::livewire('finance/account-transactions', 'pages::admin.account-transactions-index')->name('finance.account-transactions.index');
+            Route::livewire('finance/bank-dashboard', 'pages::admin.bank-dashboard')->name('finance.bank-dashboard');
             Route::livewire('finance/bank-accounts', 'pages::admin.bank-accounts-index')->name('finance.bank-accounts.index');
             Route::livewire('finance/payments', 'pages::admin.payments-index')->name('finance.payments.index');
             Route::get('finance/payments/export.csv', ExportPaymentsCsvController::class)->name('finance.payments.export.csv');
@@ -132,6 +135,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // Documents
             Route::livewire('documents', 'pages::admin.documents-index')->name('documents.index');
+            Route::livewire('documents/{document}', 'pages::admin.document-show')->name('documents.show');
+            Route::get('documents/{document}/download', DownloadDocumentController::class)->name('documents.download');
 
             // Analytics
             Route::livewire('analytics/fleet', 'pages::admin.fleet-analytics')->name('analytics.fleet');
@@ -168,6 +173,8 @@ Route::middleware(['auth', 'verified', 'customer.access'])
     ->group(function (): void {
         Route::livewire('dashboard', 'pages::customer.dashboard')->name('dashboard');
         Route::livewire('my-orders', 'pages::customer.orders-index')->name('orders.index');
+        Route::livewire('my-orders/create', 'pages::customer.order-create')->name('orders.create');
+        Route::livewire('my-orders/{order}', 'pages::customer.order-show')->name('orders.show');
         Route::livewire('my-shipments', 'pages::customer.shipments-index')->name('shipments.index');
     });
 

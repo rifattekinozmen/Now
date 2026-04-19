@@ -15,9 +15,21 @@ use Livewire\Component;
 
 new #[Lazy, Title('Fleet analytics')] class extends Component
 {
+    public string $period = '30d';
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Vehicle::class);
+    }
+
+    private function periodCutoff(): \Carbon\CarbonInterface
+    {
+        return match ($this->period) {
+            '7d'  => now()->subDays(7),
+            '90d' => now()->subDays(90),
+            '12m' => now()->subMonths(12),
+            default => now()->subDays(30),
+        };
     }
 
     /**
@@ -26,7 +38,7 @@ new #[Lazy, Title('Fleet analytics')] class extends Component
     #[Computed]
     public function vehiclesWithStats(): \Illuminate\Database\Eloquent\Collection
     {
-        $cutoff = now()->subDays(30);
+        $cutoff = $this->periodCutoff();
 
         return Vehicle::query()
             ->withCount([
@@ -95,8 +107,26 @@ new #[Lazy, Title('Fleet analytics')] class extends Component
 
     <x-admin.page-header
         :heading="__('Fleet analytics')"
-        :description="__('Vehicle trips, tonnage, maintenance, and fuel anomaly overview (last 30 days).')"
+        :description="__('Vehicle trips, tonnage, maintenance, and fuel anomaly overview.')"
     />
+
+    {{-- Analytics tab navigation --}}
+    <div class="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+        <a href="{{ route('admin.analytics.fleet') }}" wire:navigate class="border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">{{ __('Fleet') }}</a>
+        <a href="{{ route('admin.analytics.operations') }}" wire:navigate class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">{{ __('Operations') }}</a>
+        <a href="{{ route('admin.analytics.cost-centers') }}" wire:navigate class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">{{ __('Finance P&L') }}</a>
+    </div>
+
+    {{-- Period selector --}}
+    <div class="flex flex-wrap gap-2">
+        @foreach (['7d' => __('Last 7 days'), '30d' => __('Last 30 days'), '90d' => __('Last 90 days'), '12m' => __('Last 12 months')] as $value => $label)
+            <flux:button
+                wire:click="$set('period', '{{ $value }}')"
+                variant="{{ $this->period === $value ? 'filled' : 'outline' }}"
+                size="sm"
+            >{{ $label }}</flux:button>
+        @endforeach
+    </div>
 
     {{-- KPI --}}
     <div class="grid gap-3 sm:grid-cols-3">
@@ -120,14 +150,14 @@ new #[Lazy, Title('Fleet analytics')] class extends Component
 
     {{-- Vehicles: trips + tonnage (30d) --}}
     <flux:card class="p-4">
-        <flux:heading size="sm" class="mb-3">{{ __('Trips (30d)') }} / {{ __('Total tonnage') }}</flux:heading>
+        <flux:heading size="sm" class="mb-3">{{ __('Trips') }} / {{ __('Total tonnage') }} — {{ ['7d' => __('Last 7 days'), '30d' => __('Last 30 days'), '90d' => __('Last 90 days'), '12m' => __('Last 12 months')][$this->period] }}</flux:heading>
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
                     <tr class="text-start text-zinc-500 dark:text-zinc-400">
                         <th class="py-2 pe-3 font-medium">{{ __('Plate') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Brand') }}</th>
-                        <th class="py-2 pe-3 font-medium text-end">{{ __('Trips (30d)') }}</th>
+                        <th class="py-2 pe-3 font-medium text-end">{{ __('Trips') }}</th>
                         <th class="py-2 pe-3 font-medium text-end">{{ __('Net tonnage (kg)') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Inspection') }}</th>
                     </tr>

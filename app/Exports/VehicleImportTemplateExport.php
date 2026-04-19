@@ -16,7 +16,7 @@ final class VehicleImportTemplateExport implements FromArray, WithHeadings
     public function array(): array
     {
         return [
-            ['34 ABC 123', 'WDB96312345678901', 'Mercedes-Benz', 'Actros', '2027-06-30'],
+            ['34 ABC 123', 'WDB96312345678901', 'Mercedes-Benz', 'Actros', 2021, '2027-06-30'],
         ];
     }
 
@@ -25,6 +25,6 @@ final class VehicleImportTemplateExport implements FromArray, WithHeadings
      */
     public function headings(): array
     {
-        return ['Plaka', 'Şasi', 'Marka', 'Model', 'Muayene'];
+        return ['Plaka', 'Şasi', 'Marka', 'Model', 'Yıl', 'Muayene'];
     }
 }

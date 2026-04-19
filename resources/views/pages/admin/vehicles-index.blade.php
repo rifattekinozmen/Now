@@ -26,9 +26,13 @@ new #[Lazy, Title('Vehicles')] class extends Component
 
     public string $plate = '';
 
+    public string $vin = '';
+
     public string $brand = '';
 
     public string $model = '';
+
+    public string $manufacture_year = '';
 
     public ?string $inspection_valid_until = null;
 
@@ -192,20 +196,24 @@ new #[Lazy, Title('Vehicles')] class extends Component
         Gate::authorize('create', Vehicle::class);
 
         $validated = $this->validate([
-            'plate' => ['required', 'string', 'max:32'],
-            'brand' => ['nullable', 'string', 'max:100'],
-            'model' => ['nullable', 'string', 'max:100'],
+            'plate'                  => ['required', 'string', 'max:32'],
+            'vin'                    => ['nullable', 'string', 'max:64'],
+            'brand'                  => ['nullable', 'string', 'max:100'],
+            'model'                  => ['nullable', 'string', 'max:100'],
+            'manufacture_year'       => ['nullable', 'integer', 'min:1900', 'max:'.date('Y')],
             'inspection_valid_until' => ['nullable', 'date'],
         ]);
 
         Vehicle::query()->create([
-            'plate' => strtoupper($validated['plate']),
-            'brand' => $validated['brand'] ?: null,
-            'model' => $validated['model'] ?: null,
+            'plate'                  => strtoupper($validated['plate']),
+            'vin'                    => $validated['vin'] ?: null,
+            'brand'                  => $validated['brand'] ?: null,
+            'model'                  => $validated['model'] ?: null,
+            'manufacture_year'       => $validated['manufacture_year'] ?: null,
             'inspection_valid_until' => $validated['inspection_valid_until'],
         ]);
 
-        $this->reset('plate', 'brand', 'model', 'inspection_valid_until');
+        $this->reset('plate', 'vin', 'brand', 'model', 'manufacture_year', 'inspection_valid_until');
     }
 
     public function startEdit(int $vehicleId): void
@@ -215,17 +223,19 @@ new #[Lazy, Title('Vehicles')] class extends Component
         $vehicle = Vehicle::query()->findOrFail($vehicleId);
         Gate::authorize('update', $vehicle);
 
-        $this->editingVehicleId = $vehicle->id;
-        $this->plate = $vehicle->plate;
-        $this->brand = $vehicle->brand ?? '';
-        $this->model = $vehicle->model ?? '';
+        $this->editingVehicleId      = $vehicle->id;
+        $this->plate                 = $vehicle->plate;
+        $this->vin                   = $vehicle->vin ?? '';
+        $this->brand                 = $vehicle->brand ?? '';
+        $this->model                 = $vehicle->model ?? '';
+        $this->manufacture_year      = $vehicle->manufacture_year ? (string) $vehicle->manufacture_year : '';
         $this->inspection_valid_until = $vehicle->inspection_valid_until?->format('Y-m-d');
     }
 
     public function cancelVehicleEdit(): void
     {
         $this->editingVehicleId = null;
-        $this->reset('plate', 'brand', 'model', 'inspection_valid_until');
+        $this->reset('plate', 'vin', 'brand', 'model', 'manufacture_year', 'inspection_valid_until');
     }
 
     public function updateVehicle(): void
@@ -240,16 +250,20 @@ new #[Lazy, Title('Vehicles')] class extends Component
         Gate::authorize('update', $vehicle);
 
         $validated = $this->validate([
-            'plate' => ['required', 'string', 'max:32'],
-            'brand' => ['nullable', 'string', 'max:100'],
-            'model' => ['nullable', 'string', 'max:100'],
+            'plate'                  => ['required', 'string', 'max:32'],
+            'vin'                    => ['nullable', 'string', 'max:64'],
+            'brand'                  => ['nullable', 'string', 'max:100'],
+            'model'                  => ['nullable', 'string', 'max:100'],
+            'manufacture_year'       => ['nullable', 'integer', 'min:1900', 'max:'.date('Y')],
             'inspection_valid_until' => ['nullable', 'date'],
         ]);
 
         $vehicle->update([
-            'plate' => strtoupper($validated['plate']),
-            'brand' => $validated['brand'] ?: null,
-            'model' => $validated['model'] ?: null,
+            'plate'                  => strtoupper($validated['plate']),
+            'vin'                    => $validated['vin'] ?: null,
+            'brand'                  => $validated['brand'] ?: null,
+            'model'                  => $validated['model'] ?: null,
+            'manufacture_year'       => $validated['manufacture_year'] ?: null,
             'inspection_valid_until' => $validated['inspection_valid_until'],
         ]);
 
@@ -360,10 +374,18 @@ new #[Lazy, Title('Vehicles')] class extends Component
             <flux:card>
                 <flux:heading size="lg" class="mb-4">{{ __('Edit vehicle') }}</flux:heading>
                 <form wire:submit="updateVehicle" class="flex max-w-xl flex-col gap-4">
-                    <flux:input wire:model="plate" :label="__('Plate')" required />
-                    <flux:input wire:model="brand" :label="__('Brand')" />
-                    <flux:input wire:model="model" :label="__('Model')" />
-                    <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="plate" :label="__('Plate')" required />
+                        <flux:input wire:model="vin" :label="__('VIN / Chassis')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="brand" :label="__('Brand')" />
+                        <flux:input wire:model="model" :label="__('Model')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="manufacture_year" type="number" :label="__('Year')" min="1900" :max="date('Y')" />
+                        <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                    </div>
                     <div class="flex flex-wrap gap-2">
                         <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
                         <flux:button type="button" variant="ghost" wire:click="cancelVehicleEdit">{{ __('Cancel') }}</flux:button>
@@ -374,10 +396,18 @@ new #[Lazy, Title('Vehicles')] class extends Component
             <flux:card>
                 <flux:heading size="lg" class="mb-4">{{ __('New vehicle') }}</flux:heading>
                 <form wire:submit="saveVehicle" class="flex max-w-xl flex-col gap-4">
-                    <flux:input wire:model="plate" :label="__('Plate')" required />
-                    <flux:input wire:model="brand" :label="__('Brand')" />
-                    <flux:input wire:model="model" :label="__('Model')" />
-                    <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="plate" :label="__('Plate')" required />
+                        <flux:input wire:model="vin" :label="__('VIN / Chassis')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="brand" :label="__('Brand')" />
+                        <flux:input wire:model="model" :label="__('Model')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="manufacture_year" type="number" :label="__('Year')" min="1900" :max="date('Y')" />
+                        <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                    </div>
                     <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                 </form>
             </flux:card>
@@ -444,6 +474,7 @@ new #[Lazy, Title('Vehicles')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
+                <flux:table.column>{{ __('VIN') }}</flux:table.column>
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('brand')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                         {{ __('Brand') }}
@@ -460,6 +491,7 @@ new #[Lazy, Title('Vehicles')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
+                <flux:table.column>{{ __('Year') }}</flux:table.column>
                 <flux:table.column>
                     <button type="button" wire:click="sortBy('inspection_valid_until')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
                         {{ __('Inspection') }}
@@ -489,15 +521,17 @@ new #[Lazy, Title('Vehicles')] class extends Component
                         </flux:table.cell>
                         <flux:table.cell>{{ $vehicle->id }}</flux:table.cell>
                         <flux:table.cell>{{ $vehicle->plate }}</flux:table.cell>
+                        <flux:table.cell class="font-mono text-xs">{{ $vehicle->vin ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $vehicle->brand ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $vehicle->model ?? '—' }}</flux:table.cell>
+                        <flux:table.cell>{{ $vehicle->manufacture_year ?? '—' }}</flux:table.cell>
                         <flux:table.cell>
                             {{ $vehicle->inspection_valid_until?->format('Y-m-d') ?? '—' }}
                         </flux:table.cell>
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteVehicles ? 8 : 5 }}">{{ __('No vehicles yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteVehicles ? 10 : 7 }}">{{ __('No vehicles yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

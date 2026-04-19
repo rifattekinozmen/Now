@@ -238,6 +238,40 @@ new #[Lazy, Title('Finance summary')] class extends Component
     }
 
     /**
+     * Monthly freight trend — last 6 months (TRY).
+     *
+     * @return list<array{month: string, total: float}>
+     */
+    #[Computed]
+    public function monthlyFreightTrend(): array
+    {
+        $user = auth()->user();
+        if ($user === null || $user->tenant_id === null) {
+            return [];
+        }
+
+        $driver = DB::getDriverName();
+        $monthExpr = $driver === 'sqlite'
+            ? "strftime('%Y-%m', ordered_at)"
+            : "DATE_FORMAT(ordered_at, '%Y-%m')";
+
+        $rows = Order::query()
+            ->selectRaw("{$monthExpr} as month, COALESCE(SUM(freight_amount), 0) as total")
+            ->where('tenant_id', $user->tenant_id)
+            ->where('currency_code', 'TRY')
+            ->whereNotNull('freight_amount')
+            ->where('ordered_at', '>=', now()->subMonths(6)->startOfMonth())
+            ->groupByRaw($monthExpr)
+            ->orderByRaw($monthExpr)
+            ->get();
+
+        return $rows->map(fn ($r): array => [
+            'month' => $r->month,
+            'total' => (float) $r->total,
+        ])->all();
+    }
+
+    /**
      * @return array{evaluated_pairs: int, flagged: list<array{fuel_intake_id: int, vehicle_id: int, liters: float, expected_liters: float, reasons: list<string>}>}
      */
     #[Computed]
@@ -464,4 +498,38 @@ new #[Lazy, Title('Finance summary')] class extends Component
                 </flux:table>
             </flux:card>
         </div>
+
+        {{-- Monthly freight trend (TRY, last 6 months) --}}
+        <flux:card class="!p-4">
+            <div class="mb-4 flex items-center justify-between">
+                <div>
+                    <flux:heading size="lg">{{ __('Monthly freight trend (TRY)') }}</flux:heading>
+                    <flux:text class="text-sm text-zinc-600 dark:text-zinc-400">
+                        {{ __('Last 6 months — TRY freight totals from confirmed orders.') }}
+                    </flux:text>
+                </div>
+                <flux:button size="sm" variant="ghost" :href="route('admin.analytics.cost-centers')" wire:navigate icon="presentation-chart-line">
+                    {{ __('Cost Center P&L') }}
+                </flux:button>
+            </div>
+            @if (count($this->monthlyFreightTrend) === 0)
+                <flux:text class="text-sm text-zinc-500">{{ __('No TRY freight data in the last 6 months.') }}</flux:text>
+            @else
+                @php $maxTotal = max(array_column($this->monthlyFreightTrend, 'total')) ?: 1; @endphp
+                <div class="space-y-2">
+                    @foreach ($this->monthlyFreightTrend as $row)
+                        @php $pct = round(($row['total'] / $maxTotal) * 100); @endphp
+                        <div class="flex items-center gap-3">
+                            <span class="w-16 shrink-0 text-right text-xs text-zinc-500">{{ $row['month'] }}</span>
+                            <div class="h-5 min-w-[2px] rounded bg-blue-500 dark:bg-blue-400"
+                                 style="width: {{ $pct }}%"></div>
+                            <span class="text-sm font-mono font-semibold text-zinc-700 dark:text-zinc-300">
+                                {{ number_format($row['total'], 0, '.', ',') }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </flux:card>
+
     </div>

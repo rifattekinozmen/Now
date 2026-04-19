@@ -2,6 +2,7 @@
 
 use App\Enums\ShipmentStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
+use App\Models\Employee;
 use App\Models\Order;
 use App\Models\Shipment;
 use App\Models\Vehicle;
@@ -26,9 +27,15 @@ new #[Lazy, Title('Shipments')] class extends Component
 
     public string $vehicle_id = '';
 
+    public string $driver_employee_id = '';
+
     public string $filterSearch = '';
 
     public string $filterStatus = '';
+
+    public string $filterVehicle = '';
+
+    public string $filterDriver = '';
 
     public string $sortColumn = 'id';
 
@@ -51,6 +58,18 @@ new #[Lazy, Title('Shipments')] class extends Component
     }
 
     public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedFilterVehicle(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedFilterDriver(): void
     {
         $this->resetPage();
         $this->selectedIds = [];
@@ -105,10 +124,18 @@ new #[Lazy, Title('Shipments')] class extends Component
      */
     private function shipmentsQuery(): Builder
     {
-        $q = Shipment::query()->with(['order', 'vehicle']);
+        $q = Shipment::query()->with(['order', 'vehicle', 'driver']);
 
         if ($this->filterStatus !== '') {
             $q->where('status', $this->filterStatus);
+        }
+
+        if ($this->filterVehicle !== '') {
+            $q->where('vehicle_id', (int) $this->filterVehicle);
+        }
+
+        if ($this->filterDriver !== '') {
+            $q->where('driver_employee_id', (int) $this->filterDriver);
         }
 
         if ($this->filterSearch !== '') {
@@ -260,6 +287,21 @@ new #[Lazy, Title('Shipments')] class extends Component
         });
     }
 
+    public function driverOptions(): array
+    {
+        $tenantId = auth()->user()?->tenant_id ?? 0;
+
+        return Cache::remember("driver-options.{$tenantId}", 300, function () {
+            return Employee::query()
+                ->where('is_driver', true)
+                ->orderBy('last_name')
+                ->limit(500)
+                ->get()
+                ->map(fn (Employee $e) => ['id' => $e->id, 'name' => $e->fullName()])
+                ->all();
+        });
+    }
+
     public function saveShipment(): void
     {
         $this->ensureLogisticsAdmin();
@@ -282,17 +324,21 @@ new #[Lazy, Title('Shipments')] class extends Component
                 'integer',
                 Rule::exists('vehicles', 'id')->where('tenant_id', $tenantId),
             ],
+            'driver_employee_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('employees', 'id')->where('tenant_id', $tenantId),
+            ],
         ]);
 
         Shipment::query()->create([
-            'order_id' => (int) $validated['order_id'],
-            'vehicle_id' => isset($validated['vehicle_id']) && $validated['vehicle_id'] !== ''
-                ? (int) $validated['vehicle_id']
-                : null,
-            'status' => ShipmentStatus::Planned,
+            'order_id'           => (int) $validated['order_id'],
+            'vehicle_id'         => ($validated['vehicle_id'] ?? '') !== '' ? (int) $validated['vehicle_id'] : null,
+            'driver_employee_id' => ($validated['driver_employee_id'] ?? '') !== '' ? (int) $validated['driver_employee_id'] : null,
+            'status'             => ShipmentStatus::Planned,
         ]);
 
-        $this->reset('order_id', 'vehicle_id');
+        $this->reset('order_id', 'vehicle_id', 'driver_employee_id');
     }
 
     public function markDispatched(int $id, ShipmentStatusTransitionService $transitions): void
@@ -401,6 +447,18 @@ new #[Lazy, Title('Shipments')] class extends Component
                         <option value="{{ $case->value }}">{{ $this->shipmentStatusLabel($case) }}</option>
                     @endforeach
                 </flux:select>
+                <flux:select wire:model.live="filterVehicle" :label="__('Filter by vehicle')" class="max-w-md">
+                    <option value="">{{ __('All vehicles') }}</option>
+                    @foreach ($this->vehicleOptions() as $v)
+                        <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterDriver" :label="__('Filter by driver')" class="max-w-md">
+                    <option value="">{{ __('All drivers') }}</option>
+                    @foreach ($this->driverOptions() as $d)
+                        <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
+                    @endforeach
+                </flux:select>
             </div>
         @endif
     </x-admin.filter-bar>
@@ -420,6 +478,13 @@ new #[Lazy, Title('Shipments')] class extends Component
                     <option value="">{{ __('—') }}</option>
                     @foreach ($this->vehicleOptions() as $v)
                         <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
+                    @endforeach
+                </flux:select>
+
+                <flux:select wire:model="driver_employee_id" :label="__('Driver (optional)')">
+                    <option value="">{{ __('—') }}</option>
+                    @foreach ($this->driverOptions() as $d)
+                        <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
                     @endforeach
                 </flux:select>
 
@@ -492,6 +557,7 @@ new #[Lazy, Title('Shipments')] class extends Component
                         @endif
                     </button>
                 </flux:table.column>
+                <flux:table.column>{{ __('Driver') }}</flux:table.column>
                 <flux:table.column>{{ __('Timeline') }}</flux:table.column>
                 <flux:table.column>{{ __('Lifecycle') }}</flux:table.column>
             </flux:table.columns>
@@ -519,6 +585,7 @@ new #[Lazy, Title('Shipments')] class extends Component
                         <flux:table.cell>{{ $shipment->order?->order_number ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $shipment->vehicle?->plate ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $this->shipmentStatusLabel($shipment->status) }}</flux:table.cell>
+                        <flux:table.cell class="text-zinc-500">{{ $shipment->driver?->fullName() ?? '—' }}</flux:table.cell>
                         <flux:table.cell class="min-w-[12rem]">
                             @if ($shipment->status === \App\Enums\ShipmentStatus::Cancelled)
                                 <flux:badge color="red">{{ __('Cancelled') }}</flux:badge>
@@ -590,7 +657,7 @@ new #[Lazy, Title('Shipments')] class extends Component
                     </flux:table.row>
                 @empty
                     <flux:table.row>
-                        <flux:table.cell colspan="{{ $canWriteShipments ? 7 : 6 }}">{{ __('No shipments yet.') }}</flux:table.cell>
+                        <flux:table.cell colspan="{{ $canWriteShipments ? 8 : 7 }}">{{ __('No shipments yet.') }}</flux:table.cell>
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>

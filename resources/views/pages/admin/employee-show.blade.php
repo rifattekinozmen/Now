@@ -34,7 +34,7 @@ new #[Lazy, Title('Employee Details')] class extends Component
     public function mount(int $id): void
     {
         $this->employee = Employee::query()
-            ->with(['tenant', 'user', 'leaves', 'advances', 'payrolls'])
+            ->with(['tenant', 'user', 'leaves', 'advances', 'payrolls', 'drivenShipments.order'])
             ->findOrFail($id);
 
         Gate::authorize('view', $this->employee);
@@ -212,6 +212,11 @@ new #[Lazy, Title('Employee Details')] class extends Component
         <flux:button type="button" size="sm" :variant="$tab === 'payrolls' ? 'primary' : 'ghost'" wire:click="$set('tab','payrolls')">
             {{ __('Payrolls') }}
         </flux:button>
+        @if ($employee->is_driver)
+            <flux:button type="button" size="sm" :variant="$tab === 'trips' ? 'primary' : 'ghost'" wire:click="$set('tab','trips')">
+                {{ __('Trips') }}
+            </flux:button>
+        @endif
         <flux:button type="button" size="sm" :variant="$tab === 'documents' ? 'primary' : 'ghost'" wire:click="$set('tab','documents')">
             {{ __('Documents') }}
         </flux:button>
@@ -632,6 +637,63 @@ new #[Lazy, Title('Employee Details')] class extends Component
                                     <td class="py-2 {{ $expired ? 'font-semibold text-red-600' : 'text-zinc-500' }}">
                                         {{ $doc->expires_at?->format('d M Y') ?? '—' }}
                                     </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </flux:card>
+    @endif
+
+    {{-- TAB: Trips (drivers only) --}}
+    @if ($tab === 'trips' && $employee->is_driver)
+        <flux:card class="p-4">
+            <flux:heading size="lg" class="mb-4">{{ __('Driven trips') }}</flux:heading>
+            @if ($employee->drivenShipments->isEmpty())
+                <flux:text class="text-sm text-zinc-500">{{ __('No shipments driven yet.') }}</flux:text>
+            @else
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
+                        <thead>
+                            <tr class="text-start text-zinc-500 dark:text-zinc-400">
+                                <th class="py-2 pe-4 font-medium">{{ __('Shipment') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Order') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Status') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Dispatched') }}</th>
+                                <th class="py-2 pe-4 font-medium">{{ __('Delivered') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                            @foreach ($employee->drivenShipments->sortByDesc('created_at') as $shipment)
+                                <tr>
+                                    <td class="py-2 pe-4">
+                                        <flux:link :href="route('admin.shipments.show', $shipment)" wire:navigate class="font-medium">
+                                            #{{ $shipment->id }}
+                                        </flux:link>
+                                    </td>
+                                    <td class="py-2 pe-4 text-zinc-500">{{ $shipment->order?->order_number ?? '—' }}</td>
+                                    <td class="py-2 pe-4">
+                                        @php
+                                            $statusColor = match ($shipment->status) {
+                                                \App\Enums\ShipmentStatus::Planned    => 'blue',
+                                                \App\Enums\ShipmentStatus::Dispatched => 'amber',
+                                                \App\Enums\ShipmentStatus::Delivered  => 'green',
+                                                \App\Enums\ShipmentStatus::Cancelled  => 'red',
+                                                default => 'zinc',
+                                            };
+                                            $statusLabel = match ($shipment->status) {
+                                                \App\Enums\ShipmentStatus::Planned    => __('Planned'),
+                                                \App\Enums\ShipmentStatus::Dispatched => __('Dispatched'),
+                                                \App\Enums\ShipmentStatus::Delivered  => __('Delivered'),
+                                                \App\Enums\ShipmentStatus::Cancelled  => __('Cancelled'),
+                                                default => (string) $shipment->status,
+                                            };
+                                        @endphp
+                                        <flux:badge color="{{ $statusColor }}" size="sm">{{ $statusLabel }}</flux:badge>
+                                    </td>
+                                    <td class="py-2 pe-4 text-zinc-500">{{ $shipment->dispatched_at?->format('d M Y') ?? '—' }}</td>
+                                    <td class="py-2 pe-4 text-zinc-500">{{ $shipment->delivered_at?->format('d M Y') ?? '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'tenant_id',
@@ -68,26 +69,36 @@ class Employee extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Leave, $this>
+     * @return HasMany<Leave, $this>
      */
-    public function leaves(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function leaves(): HasMany
     {
         return $this->hasMany(Leave::class);
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Advance, $this>
+     * @return HasMany<Advance, $this>
      */
-    public function advances(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function advances(): HasMany
     {
         return $this->hasMany(Advance::class);
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany<Payroll, $this>
+     * @return HasMany<Payroll, $this>
      */
-    public function payrolls(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function payrolls(): HasMany
     {
         return $this->hasMany(Payroll::class);
+    }
+
+    /**
+     * Shipments driven by this employee (driver).
+     *
+     * @return HasMany<Shipment, $this>
+     */
+    public function drivenShipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class, 'driver_employee_id');
     }
 }

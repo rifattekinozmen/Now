@@ -56,10 +56,23 @@ new #[Lazy, Title('Vehicle')] class extends Component
     {
         $intakes = $this->vehicle->fuelIntakes;
 
+        // Calculate average efficiency from consecutive odometer readings
+        $sorted = $intakes->whereNotNull('odometer_km')->sortBy('odometer_km')->values();
+        $efficiencyValues = [];
+        for ($i = 1; $i < $sorted->count(); $i++) {
+            $km = (float) $sorted[$i]->odometer_km - (float) $sorted[$i - 1]->odometer_km;
+            $liters = (float) $sorted[$i]->liters;
+            if ($km > 0 && $liters > 0) {
+                $efficiencyValues[] = $km / $liters;
+            }
+        }
+        $avgEfficiency = count($efficiencyValues) > 0 ? array_sum($efficiencyValues) / count($efficiencyValues) : null;
+
         return [
-            'total'       => $intakes->count(),
-            'thisMonth'   => (float) $intakes->filter(fn ($f) => $f->intake_date?->isCurrentMonth())->sum('liters'),
-            'last3Months' => (float) $intakes->filter(fn ($f) => $f->intake_date?->greaterThanOrEqualTo(now()->subMonths(3)))->sum('liters'),
+            'total'        => $intakes->count(),
+            'thisMonth'    => (float) $intakes->filter(fn ($f) => $f->intake_date?->isCurrentMonth())->sum('liters'),
+            'last3Months'  => (float) $intakes->filter(fn ($f) => $f->intake_date?->greaterThanOrEqualTo(now()->subMonths(3)))->sum('liters'),
+            'avgEfficiency' => $avgEfficiency,
         ];
     }
 
@@ -257,7 +270,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
 
     {{-- TAB: Fuel --}}
     @if ($tab === 'fuel')
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <flux:card class="p-4">
                 <flux:text class="text-sm text-zinc-500">{{ __('Total intakes') }}</flux:text>
                 <flux:heading size="lg">{{ $this->fuelStats['total'] }}</flux:heading>
@@ -270,29 +283,58 @@ new #[Lazy, Title('Vehicle')] class extends Component
                 <flux:text class="text-sm text-zinc-500">{{ __('Last 3 months (L)') }}</flux:text>
                 <flux:heading size="lg">{{ number_format($this->fuelStats['last3Months'], 0) }}</flux:heading>
             </flux:card>
+            <flux:card class="p-4">
+                <flux:text class="text-sm text-zinc-500">{{ __('Avg efficiency') }}</flux:text>
+                @if ($this->fuelStats['avgEfficiency'] !== null)
+                    <flux:heading size="lg">{{ number_format($this->fuelStats['avgEfficiency'], 2) }} <span class="text-sm font-normal text-zinc-500">km/L</span></flux:heading>
+                @else
+                    <flux:heading size="lg" class="text-zinc-400">—</flux:heading>
+                @endif
+            </flux:card>
         </div>
         <flux:card class="p-4">
             <div class="overflow-x-auto">
+                @php
+                    $sortedIntakes = $vehicle->fuelIntakes->whereNotNull('odometer_km')->sortBy('odometer_km')->values();
+                    $odometerPrev = [];
+                    foreach ($sortedIntakes as $idx => $fi) {
+                        $odometerPrev[$fi->id] = $idx > 0 ? (float) $sortedIntakes[$idx - 1]->odometer_km : null;
+                    }
+                @endphp
                 <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                     <thead>
                         <tr class="text-start text-zinc-500 dark:text-zinc-400">
                             <th class="py-2 pe-3 font-medium">{{ __('Date') }}</th>
+                            <th class="py-2 pe-3 font-medium text-end">{{ __('Odometer') }}</th>
                             <th class="py-2 pe-3 font-medium text-end">{{ __('Liters') }}</th>
+                            <th class="py-2 pe-3 font-medium text-end">{{ __('km/L') }}</th>
                             <th class="py-2 pe-3 font-medium text-end">{{ __('Unit price') }}</th>
                             <th class="py-2 pe-3 font-medium text-end">{{ __('Total') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                         @forelse ($vehicle->fuelIntakes->sortByDesc('intake_date') as $fi)
+                            @php
+                                $prev = $odometerPrev[$fi->id] ?? null;
+                                $kml = null;
+                                if ($fi->odometer_km && $prev !== null && (float)$fi->liters > 0) {
+                                    $km = (float)$fi->odometer_km - $prev;
+                                    if ($km > 0) {
+                                        $kml = $km / (float)$fi->liters;
+                                    }
+                                }
+                            @endphp
                             <tr>
                                 <td class="py-2 pe-3">{{ $fi->intake_date?->format('d M Y') }}</td>
+                                <td class="py-2 pe-3 text-end font-mono text-xs">{{ $fi->odometer_km ? number_format((float)$fi->odometer_km, 0) : '—' }}</td>
                                 <td class="py-2 pe-3 text-end font-mono">{{ number_format((float)$fi->liters, 2) }}</td>
+                                <td class="py-2 pe-3 text-end font-mono text-xs">{{ $kml !== null ? number_format($kml, 2) : '—' }}</td>
                                 <td class="py-2 pe-3 text-end font-mono text-xs">{{ number_format((float)$fi->unit_price, 3) }} ₺</td>
                                 <td class="py-2 pe-3 text-end font-mono font-semibold">{{ number_format((float)$fi->liters * (float)$fi->unit_price, 2) }} ₺</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="py-6 text-center text-zinc-500">{{ __('No fuel intakes yet.') }}</td>
+                                <td colspan="6" class="py-6 text-center text-zinc-500">{{ __('No fuel intakes yet.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

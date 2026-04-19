@@ -3,6 +3,7 @@
 use App\Authorization\LogisticsPermission;
 use App\Enums\OrderStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
+use App\Models\Customer;
 use App\Models\Document;
 use App\Models\Order;
 use App\Models\TenantSetting;
@@ -22,15 +23,23 @@ new #[Lazy, Title('Order detail')] class extends Component
 
     public string $activeTab = 'overview';
 
-    // Freight edit fields
-    public string $editSasNo         = '';
-    public string $editFreightAmount = '';
-    public string $editCurrencyCode  = 'TRY';
-    public string $editDistanceKm    = '';
-    public string $editTonnage       = '';
-    public string $editLoadingSite   = '';
-    public string $editUnloadingSite = '';
-    public string $editDueDate       = '';
+    // Freight / order edit fields
+    public string $editSasNo          = '';
+    public string $editFreightAmount  = '';
+    public string $editCurrencyCode   = 'TRY';
+    public string $editExchangeRate   = '';
+    public string $editDistanceKm     = '';
+    public string $editTonnage        = '';
+    public string $editGrossWeightKg  = '';
+    public string $editTaraWeightKg   = '';
+    public string $editNetWeightKg    = '';
+    public string $editMoisturePercent = '';
+    public string $editIncoterms      = '';
+    public string $editLoadingSite    = '';
+    public string $editUnloadingSite  = '';
+    public string $editDueDate        = '';
+    public string $editOrderedAt      = '';
+    public ?int   $editCustomerId     = null;
 
     public function mount(Order $order): void
     {
@@ -38,14 +47,22 @@ new #[Lazy, Title('Order detail')] class extends Component
         $this->order = $order->load(['customer', 'shipments.vehicle']);
 
         $o = $this->order;
-        $this->editSasNo         = $o->sas_no ?? '';
-        $this->editFreightAmount = $o->freight_amount !== null ? (string) $o->freight_amount : '';
-        $this->editCurrencyCode  = $o->currency_code ?? 'TRY';
-        $this->editDistanceKm    = $o->distance_km !== null ? (string) $o->distance_km : '';
-        $this->editTonnage       = $o->tonnage !== null ? (string) $o->tonnage : '';
-        $this->editLoadingSite   = $o->loading_site ?? '';
-        $this->editUnloadingSite = $o->unloading_site ?? '';
-        $this->editDueDate       = $o->due_date?->format('Y-m-d') ?? '';
+        $this->editSasNo           = $o->sas_no ?? '';
+        $this->editFreightAmount   = $o->freight_amount !== null ? (string) $o->freight_amount : '';
+        $this->editCurrencyCode    = $o->currency_code ?? 'TRY';
+        $this->editExchangeRate    = $o->exchange_rate !== null ? (string) $o->exchange_rate : '';
+        $this->editDistanceKm      = $o->distance_km !== null ? (string) $o->distance_km : '';
+        $this->editTonnage         = $o->tonnage !== null ? (string) $o->tonnage : '';
+        $this->editGrossWeightKg   = $o->gross_weight_kg !== null ? (string) $o->gross_weight_kg : '';
+        $this->editTaraWeightKg    = $o->tara_weight_kg !== null ? (string) $o->tara_weight_kg : '';
+        $this->editNetWeightKg     = $o->net_weight_kg !== null ? (string) $o->net_weight_kg : '';
+        $this->editMoisturePercent = $o->moisture_percent !== null ? (string) $o->moisture_percent : '';
+        $this->editIncoterms       = $o->incoterms ?? '';
+        $this->editLoadingSite     = $o->loading_site ?? '';
+        $this->editUnloadingSite   = $o->unloading_site ?? '';
+        $this->editDueDate         = $o->due_date?->format('Y-m-d') ?? '';
+        $this->editOrderedAt       = $o->ordered_at?->format('Y-m-d') ?? '';
+        $this->editCustomerId      = $o->customer_id;
     }
 
     public function saveFreight(): void
@@ -65,14 +82,22 @@ new #[Lazy, Title('Order detail')] class extends Component
         }
 
         $validated = $this->validate([
-            'editSasNo'         => ['nullable', 'string', 'max:64'],
-            'editFreightAmount' => ['nullable', 'numeric', 'min:0'],
-            'editCurrencyCode'  => ['required', 'string', 'size:3', Rule::in(['TRY', 'EUR', 'USD'])],
-            'editDistanceKm'    => ['nullable', 'numeric', 'min:0', 'max:99999'],
-            'editTonnage'       => ['nullable', 'numeric', 'min:0.1', 'max:999'],
-            'editLoadingSite'   => ['nullable', 'string', 'max:5000'],
-            'editUnloadingSite' => ['nullable', 'string', 'max:5000'],
-            'editDueDate'       => ['nullable', 'date'],
+            'editCustomerId'     => ['nullable', 'integer', 'exists:customers,id'],
+            'editOrderedAt'      => ['nullable', 'date'],
+            'editSasNo'          => ['nullable', 'string', 'max:64'],
+            'editFreightAmount'  => ['nullable', 'numeric', 'min:0'],
+            'editCurrencyCode'   => ['required', 'string', 'size:3', Rule::in(['TRY', 'EUR', 'USD'])],
+            'editExchangeRate'   => ['nullable', 'numeric', 'min:0'],
+            'editDistanceKm'     => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'editTonnage'        => ['nullable', 'numeric', 'min:0.1', 'max:999'],
+            'editGrossWeightKg'  => ['nullable', 'numeric', 'min:0'],
+            'editTaraWeightKg'   => ['nullable', 'numeric', 'min:0'],
+            'editNetWeightKg'    => ['nullable', 'numeric', 'min:0'],
+            'editMoisturePercent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'editIncoterms'      => ['nullable', 'string', 'max:32'],
+            'editLoadingSite'    => ['nullable', 'string', 'max:5000'],
+            'editUnloadingSite'  => ['nullable', 'string', 'max:5000'],
+            'editDueDate'        => ['nullable', 'date'],
         ]);
 
         $freightAmt = filled($validated['editFreightAmount']) ? (float) $validated['editFreightAmount'] : null;
@@ -87,15 +112,23 @@ new #[Lazy, Title('Order detail')] class extends Component
         }
 
         $this->order->update([
-            'sas_no'          => filled($validated['editSasNo']) ? $validated['editSasNo'] : null,
-            'freight_amount'  => $freightAmt,
-            'currency_code'   => strtoupper($validated['editCurrencyCode']),
-            'distance_km'     => filled($validated['editDistanceKm']) ? $validated['editDistanceKm'] : null,
-            'tonnage'         => filled($validated['editTonnage']) ? $validated['editTonnage'] : null,
-            'loading_site'    => filled($validated['editLoadingSite']) ? $validated['editLoadingSite'] : null,
-            'unloading_site'  => filled($validated['editUnloadingSite']) ? $validated['editUnloadingSite'] : null,
-            'due_date'        => filled($validated['editDueDate']) ? $validated['editDueDate'] : null,
-            'status'          => $status,
+            'customer_id'      => $validated['editCustomerId'],
+            'ordered_at'       => filled($validated['editOrderedAt']) ? $validated['editOrderedAt'] : null,
+            'sas_no'           => filled($validated['editSasNo']) ? $validated['editSasNo'] : null,
+            'freight_amount'   => $freightAmt,
+            'currency_code'    => strtoupper($validated['editCurrencyCode']),
+            'exchange_rate'    => filled($validated['editExchangeRate']) ? $validated['editExchangeRate'] : null,
+            'distance_km'      => filled($validated['editDistanceKm']) ? $validated['editDistanceKm'] : null,
+            'tonnage'          => filled($validated['editTonnage']) ? $validated['editTonnage'] : null,
+            'gross_weight_kg'  => filled($validated['editGrossWeightKg']) ? $validated['editGrossWeightKg'] : null,
+            'tara_weight_kg'   => filled($validated['editTaraWeightKg']) ? $validated['editTaraWeightKg'] : null,
+            'net_weight_kg'    => filled($validated['editNetWeightKg']) ? $validated['editNetWeightKg'] : null,
+            'moisture_percent' => filled($validated['editMoisturePercent']) ? $validated['editMoisturePercent'] : null,
+            'incoterms'        => filled($validated['editIncoterms']) ? $validated['editIncoterms'] : null,
+            'loading_site'     => filled($validated['editLoadingSite']) ? $validated['editLoadingSite'] : null,
+            'unloading_site'   => filled($validated['editUnloadingSite']) ? $validated['editUnloadingSite'] : null,
+            'due_date'         => filled($validated['editDueDate']) ? $validated['editDueDate'] : null,
+            'status'           => $status,
         ]);
 
         $this->order->refresh();
@@ -197,6 +230,15 @@ new #[Lazy, Title('Order detail')] class extends Component
         if (in_array($tab, $allowed, true)) {
             $this->activeTab = $tab;
         }
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Customer>
+     */
+    #[Computed]
+    public function tenantCustomers(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Customer::query()->orderBy('legal_name')->get();
     }
 
     /**
@@ -368,18 +410,38 @@ new #[Lazy, Title('Order detail')] class extends Component
             @can(\App\Authorization\LogisticsPermission::ADMIN)
                 @if (! $o->isLocked())
                     <form wire:submit.prevent="saveFreight" class="flex flex-col gap-5 max-w-2xl">
-                        <flux:heading size="lg" class="mb-2">{{ __('Freight and sites') }}</flux:heading>
+                        <flux:heading size="lg" class="mb-2">{{ __('Order details') }}</flux:heading>
 
                         <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:field class="sm:col-span-2">
+                                <flux:label>{{ __('Customer') }}</flux:label>
+                                <flux:select wire:model="editCustomerId">
+                                    <option value="">— {{ __('None') }} —</option>
+                                    @foreach ($this->tenantCustomers as $cust)
+                                        <option value="{{ $cust->id }}">{{ $cust->legal_name }}</option>
+                                    @endforeach
+                                </flux:select>
+                                <flux:error name="editCustomerId" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Ordered at') }}</flux:label>
+                                <flux:input wire:model="editOrderedAt" type="date" />
+                                <flux:error name="editOrderedAt" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Due date') }}</flux:label>
+                                <flux:input wire:model="editDueDate" type="date" />
+                                <flux:error name="editDueDate" />
+                            </flux:field>
                             <flux:field>
                                 <flux:label>{{ __('SAS / PO reference') }}</flux:label>
                                 <flux:input wire:model="editSasNo" />
                                 <flux:error name="editSasNo" />
                             </flux:field>
                             <flux:field>
-                                <flux:label>{{ __('Due date') }}</flux:label>
-                                <flux:input wire:model="editDueDate" type="date" />
-                                <flux:error name="editDueDate" />
+                                <flux:label>{{ __('Incoterms') }}</flux:label>
+                                <flux:input wire:model="editIncoterms" placeholder="EXW, FCA, CIF…" />
+                                <flux:error name="editIncoterms" />
                             </flux:field>
                             <flux:field>
                                 <flux:label>{{ __('Freight amount') }}</flux:label>
@@ -396,6 +458,11 @@ new #[Lazy, Title('Order detail')] class extends Component
                                 <flux:error name="editCurrencyCode" />
                             </flux:field>
                             <flux:field>
+                                <flux:label>{{ __('Exchange rate') }}</flux:label>
+                                <flux:input wire:model="editExchangeRate" type="number" step="0.0001" min="0" />
+                                <flux:error name="editExchangeRate" />
+                            </flux:field>
+                            <flux:field>
                                 <flux:label>{{ __('Distance (km)') }}</flux:label>
                                 <flux:input wire:model="editDistanceKm" type="number" step="0.1" min="0" />
                                 <flux:error name="editDistanceKm" />
@@ -404,6 +471,26 @@ new #[Lazy, Title('Order detail')] class extends Component
                                 <flux:label>{{ __('Tonnage') }}</flux:label>
                                 <flux:input wire:model="editTonnage" type="number" step="0.01" min="0" />
                                 <flux:error name="editTonnage" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Gross weight (kg)') }}</flux:label>
+                                <flux:input wire:model="editGrossWeightKg" type="number" step="0.01" min="0" />
+                                <flux:error name="editGrossWeightKg" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Tare weight (kg)') }}</flux:label>
+                                <flux:input wire:model="editTaraWeightKg" type="number" step="0.01" min="0" />
+                                <flux:error name="editTaraWeightKg" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Net weight (kg)') }}</flux:label>
+                                <flux:input wire:model="editNetWeightKg" type="number" step="0.01" min="0" />
+                                <flux:error name="editNetWeightKg" />
+                            </flux:field>
+                            <flux:field>
+                                <flux:label>{{ __('Moisture (%)') }}</flux:label>
+                                <flux:input wire:model="editMoisturePercent" type="number" step="0.1" min="0" max="100" />
+                                <flux:error name="editMoisturePercent" />
                             </flux:field>
                             <flux:field class="sm:col-span-2">
                                 <flux:label>{{ __('Loading site') }}</flux:label>
@@ -423,28 +510,44 @@ new #[Lazy, Title('Order detail')] class extends Component
                     </form>
                 @else
                     {{-- Locked: read-only view --}}
-                    <flux:heading size="lg" class="mb-4">{{ __('Freight and sites') }}</flux:heading>
+                    <flux:heading size="lg" class="mb-4">{{ __('Order details') }}</flux:heading>
                     <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                        <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Customer') }}</dt><dd class="font-medium">{{ $o->customer?->legal_name ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Ordered at') }}</dt><dd class="font-medium">{{ $o->ordered_at?->format('d M Y') ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Due date') }}</dt><dd class="font-medium">{{ $o->due_date?->format('d M Y') ?? '—' }}</dd></div>
                         <div><dt class="text-zinc-500">{{ __('SAS / PO reference') }}</dt><dd class="font-medium">{{ $o->sas_no ?? '—' }}</dd></div>
-                        <div><dt class="text-zinc-500">{{ __('Currency') }}</dt><dd class="font-medium">{{ $o->currency_code }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Incoterms') }}</dt><dd class="font-medium">{{ $o->incoterms ?? '—' }}</dd></div>
                         <div><dt class="text-zinc-500">{{ __('Freight amount') }}</dt><dd class="font-medium">{{ $o->freight_amount ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Currency') }}</dt><dd class="font-medium">{{ $o->currency_code }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Exchange rate') }}</dt><dd class="font-medium">{{ $o->exchange_rate ?? '—' }}</dd></div>
                         <div><dt class="text-zinc-500">{{ __('Distance (km)') }}</dt><dd class="font-medium">{{ $o->distance_km ?? '—' }}</dd></div>
                         <div><dt class="text-zinc-500">{{ __('Tonnage') }}</dt><dd class="font-medium">{{ $o->tonnage ?? '—' }}</dd></div>
-                        <div><dt class="text-zinc-500">{{ __('Due date') }}</dt><dd class="font-medium">{{ $o->due_date?->format('d M Y') ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Gross weight (kg)') }}</dt><dd class="font-medium">{{ $o->gross_weight_kg ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Tare weight (kg)') }}</dt><dd class="font-medium">{{ $o->tara_weight_kg ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Net weight (kg)') }}</dt><dd class="font-medium">{{ $o->net_weight_kg ?? '—' }}</dd></div>
+                        <div><dt class="text-zinc-500">{{ __('Moisture (%)') }}</dt><dd class="font-medium">{{ $o->moisture_percent ?? '—' }}</dd></div>
                         <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Loading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd></div>
                         <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Unloading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd></div>
                     </dl>
                 @endif
             @else
                 {{-- Non-admin: read-only --}}
-                <flux:heading size="lg" class="mb-4">{{ __('Freight and sites') }}</flux:heading>
+                <flux:heading size="lg" class="mb-4">{{ __('Order details') }}</flux:heading>
                 <dl class="grid gap-3 text-sm sm:grid-cols-2">
+                    <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Customer') }}</dt><dd class="font-medium">{{ $o->customer?->legal_name ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Ordered at') }}</dt><dd class="font-medium">{{ $o->ordered_at?->format('d M Y') ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Due date') }}</dt><dd class="font-medium">{{ $o->due_date?->format('d M Y') ?? '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('SAS / PO reference') }}</dt><dd class="font-medium">{{ $o->sas_no ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Currency') }}</dt><dd class="font-medium">{{ $o->currency_code }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Incoterms') }}</dt><dd class="font-medium">{{ $o->incoterms ?? '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('Freight amount') }}</dt><dd class="font-medium">{{ $o->freight_amount ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Currency') }}</dt><dd class="font-medium">{{ $o->currency_code }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Exchange rate') }}</dt><dd class="font-medium">{{ $o->exchange_rate ?? '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('Distance (km)') }}</dt><dd class="font-medium">{{ $o->distance_km ?? '—' }}</dd></div>
                     <div><dt class="text-zinc-500">{{ __('Tonnage') }}</dt><dd class="font-medium">{{ $o->tonnage ?? '—' }}</dd></div>
-                    <div><dt class="text-zinc-500">{{ __('Due date') }}</dt><dd class="font-medium">{{ $o->due_date?->format('d M Y') ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Gross weight (kg)') }}</dt><dd class="font-medium">{{ $o->gross_weight_kg ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Tare weight (kg)') }}</dt><dd class="font-medium">{{ $o->tara_weight_kg ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Net weight (kg)') }}</dt><dd class="font-medium">{{ $o->net_weight_kg ?? '—' }}</dd></div>
+                    <div><dt class="text-zinc-500">{{ __('Moisture (%)') }}</dt><dd class="font-medium">{{ $o->moisture_percent ?? '—' }}</dd></div>
                     <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Loading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->loading_site ?? '—' }}</dd></div>
                     <div class="sm:col-span-2"><dt class="text-zinc-500">{{ __('Unloading site') }}</dt><dd class="font-medium whitespace-pre-wrap">{{ $o->unloading_site ?? '—' }}</dd></div>
                 </dl>

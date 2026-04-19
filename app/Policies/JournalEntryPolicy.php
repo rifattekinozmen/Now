@@ -25,4 +25,11 @@ class JournalEntryPolicy
         return $user->tenant_id !== null
             && LogisticsPermission::canWrite($user, LogisticsPermission::FINANCE_WRITE);
     }
+
+    public function delete(User $user, JournalEntry $journalEntry): bool
+    {
+        return (int) $user->tenant_id === (int) $journalEntry->tenant_id
+            && LogisticsPermission::canWrite($user, LogisticsPermission::FINANCE_WRITE)
+            && $journalEntry->source_type === null;
+    }
 }

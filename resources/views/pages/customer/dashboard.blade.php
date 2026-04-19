@@ -153,8 +153,12 @@ new #[Lazy, Title('My Dashboard')] class extends Component
                 <div class="space-y-2">
                     @foreach ($this->recentOrders as $order)
                         <div class="flex items-center justify-between rounded-lg border border-zinc-100 px-3 py-2 dark:border-zinc-800">
-                            <div>
-                                <div class="text-sm font-medium">{{ $order->order_number }}</div>
+                            <div class="min-w-0 flex-1">
+                                <div class="text-sm font-medium">
+                                    <flux:link :href="route('customer.orders.show', $order)" wire:navigate>
+                                        {{ $order->order_number }}
+                                    </flux:link>
+                                </div>
                                 <div class="text-xs text-zinc-500">{{ $order->ordered_at?->format('d M Y') }}</div>
                             </div>
                             <flux:badge color="{{ $this->statusColor($order->status instanceof \App\Enums\OrderStatus ? $order->status->value : $order->status) }}" size="sm">
@@ -195,7 +199,17 @@ new #[Lazy, Title('My Dashboard')] class extends Component
     </div>
 
     {{-- Quick links --}}
-    <div class="grid gap-3 sm:grid-cols-2">
+    <div class="grid gap-3 sm:grid-cols-3">
+        <flux:card class="flex items-center gap-4 p-4 transition-shadow hover:shadow-md">
+            <flux:icon.plus-circle class="size-8 text-green-500" />
+            <div class="flex-1">
+                <div class="font-semibold">{{ __('Place order') }}</div>
+                <div class="text-sm text-zinc-500">{{ __('Submit a new order request') }}</div>
+            </div>
+            <flux:button :href="route('customer.orders.create')" variant="primary" size="sm" wire:navigate>
+                {{ __('New') }}
+            </flux:button>
+        </flux:card>
         <flux:card class="flex items-center gap-4 p-4 transition-shadow hover:shadow-md">
             <flux:icon.clipboard-document-list class="size-8 text-blue-500" />
             <div class="flex-1">

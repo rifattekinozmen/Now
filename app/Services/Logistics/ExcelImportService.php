@@ -2,8 +2,10 @@
 
 namespace App\Services\Logistics;
 
+use App\Enums\BusinessPartnerType;
 use App\Enums\DeliveryNumberStatus;
 use App\Enums\OrderStatus;
+use App\Models\BusinessPartner;
 use App\Models\Customer;
 use App\Models\DeliveryNumber;
 use App\Models\Employee;
@@ -123,6 +125,122 @@ class ExcelImportService
         }
 
         return ['created' => $created, 'errors' => $errors];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getBusinessPartnerImportMapping(): array
+    {
+        return [
+            'İsim' => 'name',
+            'Name' => 'name',
+            'Tip' => 'type',
+            'Type' => 'type',
+            'Vergi No' => 'tax_no',
+            'Tax No' => 'tax_no',
+            'İletişim Kişisi' => 'contact_person',
+            'Contact' => 'contact_person',
+            'Telefon' => 'phone',
+            'Phone' => 'phone',
+            'Email' => 'email',
+            'Şehir' => 'city',
+            'City' => 'city',
+            'Ülke' => 'country',
+            'Country' => 'country',
+            'IBAN' => 'iban',
+            'Vade Gün' => 'payment_terms_days',
+            'Payment Terms' => 'payment_terms_days',
+        ];
+    }
+
+    /**
+     * @return array{created: int, errors: list<array{row: int, message: string}>}
+     */
+    public function importBusinessPartnersFromPath(string $path, int $tenantId): array
+    {
+        $mapping = $this->getBusinessPartnerImportMapping();
+        $matrix = $this->loadMatrixFromFile($path);
+        if ($matrix === []) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        $headerRow = array_shift($matrix);
+        if (! is_array($headerRow)) {
+            return ['created' => 0, 'errors' => []];
+        }
+
+        /** @var list<string> $headers */
+        $headers = array_map(function (mixed $cell): string {
+            if ($cell === null) {
+                return '';
+            }
+
+            return is_string($cell) ? trim($cell) : trim((string) $cell);
+        }, $headerRow);
+
+        $created = 0;
+        /** @var list<array{row: int, message: string}> $errors */
+        $errors = [];
+
+        foreach ($matrix as $offset => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $rowNumber = $offset + 2;
+            if ($this->rowIsEmpty($row)) {
+                continue;
+            }
+
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                if ($header === '') {
+                    continue;
+                }
+                $assoc[$header] = $row[$index] ?? null;
+            }
+
+            try {
+                $attributes = $this->normalizeRow($assoc, $mapping);
+                $attributes['tenant_id'] = $tenantId;
+                $this->validateBusinessPartnerAttributes($attributes);
+                BusinessPartner::query()->create($attributes);
+                $created++;
+            } catch (ValidationException $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->validator->errors()->first() ?? $e->getMessage(),
+                ];
+            } catch (\Throwable $e) {
+                $errors[] = [
+                    'row' => $rowNumber,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return ['created' => $created, 'errors' => $errors];
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function validateBusinessPartnerAttributes(array $attributes): void
+    {
+        Validator::make($attributes, [
+            'tenant_id' => ['required', 'integer', 'exists:tenants,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'type' => ['nullable', 'string', 'in:'.implode(',', array_column(BusinessPartnerType::cases(), 'value'))],
+            'tax_no' => ['nullable', 'string', 'max:20'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'country' => ['nullable', 'string', 'max:100'],
+            'iban' => ['nullable', 'string', 'max:34'],
+            'payment_terms_days' => ['nullable', 'integer', 'min:0', 'max:3650'],
+        ])->validate();
     }
 
     /**
@@ -347,10 +465,11 @@ class ExcelImportService
         }
 
         return match ($field) {
-            'payment_term_days' => is_numeric($value) ? (int) $value : null,
+            'payment_term_days', 'payment_terms_days' => is_numeric($value) ? (int) $value : null,
             'partner_number', 'tax_id', 'legal_name', 'trade_name', 'pin_code', 'sas_no',
             'customer_legal_name', 'currency_code', 'loading_site', 'unloading_site',
-            'plate', 'vin', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone' => is_scalar($value) ? trim((string) $value) : null,
+            'plate', 'vin', 'brand', 'model', 'first_name', 'last_name', 'national_id', 'blood_group', 'phone',
+            'name', 'tax_no', 'contact_person', 'city', 'country', 'iban', 'type', 'email', 'address' => is_scalar($value) ? trim((string) $value) : null,
             'distance_km', 'tonnage', 'gross_weight_kg', 'tara_weight_kg', 'net_weight_kg', 'moisture_percent' => is_numeric($value) ? $value : null,
             'liters' => is_numeric($value) ? $value : null,
             'odometer_km' => is_numeric($value) ? $value : null,
@@ -570,6 +689,9 @@ class ExcelImportService
             'Marka' => 'brand',
             'Brand' => 'brand',
             'Model' => 'model',
+            'Yıl' => 'manufacture_year',
+            'Yil' => 'manufacture_year',
+            'Year' => 'manufacture_year',
             'Muayene' => 'inspection_valid_until',
             'Inspection' => 'inspection_valid_until',
         ];
@@ -640,12 +762,21 @@ class ExcelImportService
                 $vinCompact = isset($raw['vin']) ? preg_replace('/\s+/', '', (string) $raw['vin']) : '';
                 $vin = $vinCompact !== '' ? strtoupper($vinCompact) : null;
 
+                $manufactureYear = null;
+                if (isset($raw['manufacture_year']) && $raw['manufacture_year'] !== '') {
+                    $y = (int) $raw['manufacture_year'];
+                    if ($y >= 1900 && $y <= (int) now()->addYears(2)->year) {
+                        $manufactureYear = $y;
+                    }
+                }
+
                 Vehicle::query()->create([
                     'tenant_id' => $tenantId,
                     'plate' => $plate,
                     'vin' => $vin,
                     'brand' => isset($raw['brand']) ? (string) $raw['brand'] : null,
                     'model' => isset($raw['model']) ? (string) $raw['model'] : null,
+                    'manufacture_year' => $manufactureYear,
                     'inspection_valid_until' => $raw['inspection_valid_until'] ?? null,
                 ]);
                 $created++;

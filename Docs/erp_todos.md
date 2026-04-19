@@ -1,7 +1,7 @@
 # Lojistik ERP — Tam Uygulama Planı (TODOs)
 
-> Son güncelleme: 2026-04-17
-> Mevcut: Sprint 1–22 tamamlandı — 534 test geçiyor
+> Son güncelleme: 2026-04-19
+> Mevcut: Sprint 1–34 tamamlandı — 603 test geçiyor
 
 ## Durum Özeti
 
@@ -22,6 +22,11 @@
 | 13 | Cost Center P&L + Billing Preview raporları | ✅ TAMAM |
 | 21 | Order Price Approval + Order Locking | ✅ TAMAM |
 | 22 | Customer Self-Service Portal | ✅ TAMAM |
+| 23 | Delivery Imports Modülü | ✅ TAMAM |
+| 24 | Operasyonel Takvim | ✅ TAMAM |
+| 25 | RegistrationTest fix + Customer partner_number | ✅ TAMAM |
+| 26 | Journal Entry CRUD + Customer Portal Order Create | ✅ TAMAM |
+| 27 | Order edit tam alanlar + Müşteri show/create portali | ✅ TAMAM |
 
 ---
 
@@ -320,7 +325,116 @@
 
 ---
 
+## SPRINT 25 — Payroll Bulk Generate + Journal Entries ✅
+
+### TODO-25.1: Payroll Bulk Generate ✅
+- [x] `payroll-index.blade.php`: bulkPeriodMonth + bulkGrossSalary + bulkCurrencyCode form eklendi
+- [x] `bulkGenerate()` action: tüm aktif çalışanlar için Payroll::create()
+- [x] Flux modal (`<flux:modal name="bulk-generate">`) + wire:model binding
+- [x] Pest: 3 test (bulk generate başarı, yetki, tenant izolasyon)
+
+### TODO-25.2: Journal Entries (Yevmiye Kayıtları) ✅
+- [x] `journal-entries-index.blade.php`: satır bazlı double-entry, silme, KPI
+- [x] Route: `admin/finance/journal-entries` → `admin.finance.journal-entries.index`
+- [x] Sidebar: Finans grubuna "Yevmiye Kayıtları" eklendi
+- [x] Pest: yevmiye testleri geçiyor
+
+---
+
+## SPRINT 26-27 — Müşteri Portalı Genişletme ✅
+
+### TODO-26.1: Customer Order Create + Show ✅
+- [x] `pages::customer.order-create`: sipariş oluşturma formu, CR-YYYYMMDD-XXXX numarası
+- [x] `pages::customer.order-show`: durum badge, sipariş detay, sevkiyat listesi
+- [x] Pest: müşteri portal testleri geçiyor
+
+---
+
+## SPRINT 28 — Personel Profil Düzenleme ✅
+
+### TODO-28.1: Personnel Profile Edit ✅
+- [x] `my-profile.blade.php`: phone + email düzenleme modal eklendi
+- [x] `saveContact()`: validate + Employee::update + unset($this->employee) + flash
+- [x] Pest: 4 test (update, clear, invalid email, tenant isolation)
+
+---
+
+## SPRINT 29 — Kalan Geliştirmeler ✅
+
+### TODO-29.1: Filtre Geliştirmeleri ✅
+- [x] `orders-index`: customer dropdown + date range (filterDateFrom/To) eklendi
+- [x] `shipments-index`: filterVehicle + filterDriver eklendi; driver dropdown create formda
+- [x] `advances-index`: filterDateFrom/To eklendi (requested_at)
+- [x] `leaves-index`: filterDateFrom/To eklendi (start_date)
+- [x] `maintenance-index`: filterDateFrom/To eklendi (scheduled_date)
+
+### TODO-29.2: Veri Zenginleştirme ✅
+- [x] `vehicle-show`: yakıt verimliliği km/L hesabı (ardışık odometer farkı) eklendi
+- [x] `employee-show`: Trips sekmesi (is_driver ise) + drivenShipments HasMany
+- [x] `shipment-show`: driver satırı overview sekmesinde
+- [x] `Employee::drivenShipments()` HasMany relationship eklendi
+
+### TODO-29.3: Vehicle Import Geliştirme ✅
+- [x] `ExcelImportService::getVehicleImportMapping()`: Yıl/Yil/Year → manufacture_year eklendi
+- [x] `importVehiclesFromPath()`: manufacture_year validasyon + Vehicle::create'e eklendi
+- [x] `VehicleImportTemplateExport`: Yıl sütunu + örnek değer (2021) eklendi
+- [x] `vehicles-index`: VIN + manufacture_year form alanları eklendi
+
+### TODO-29.4: Finance Reports Geliştirme ✅
+- [x] `finance-reports`: "Top Customers by Revenue" bölümü eklendi (topCustomers() #[Computed])
+- [x] topCustomersPeriod seçici: 1ay/3ay/6ay/YTD/12ay
+- [x] `cost-center-pl`: YTD (Yılbaşından beri) periyot seçeneği eklendi
+
+---
+
+## SPRINT 30 — Banka Modülü Tamamlama ✅
+
+### TODO-30.1: Bank Accounts KPI Güncelleme ✅
+- [x] 4. KPI kart: toplam bakiye (opening + credits - debits) eklendi
+- [x] `kpiStats()` metodu tüm hesapları tek sorguda çekiyor
+
+### TODO-30.2: Bank Dashboard Sayfası ✅
+- [x] `bank-dashboard.blade.php` Livewire SFC: TRY/USD bakiye KPI, aylık özet (gelir/gider/net), hesap bakiye listesi, son 10 işlem tablosu
+- [x] Route: `finance/bank-dashboard` → `admin.finance.bank-dashboard`
+- [x] Sidebar: Finans grubuna "Bank Dashboard" eklendi (her iki görünüm)
+- [x] Pest: 5 test (erişim, tenant izolasyon, aylık özet)
+
+---
+
+## SPRINT 31 — Finans Raporları Gerçek Veri ✅
+
+### TODO-31.1: Aylık Navlun Trend ✅
+- [x] `finance-index.blade.php`: `monthlyFreightTrend()` computed metodu (son 6 ay, TRY, MySQL+SQLite uyumlu)
+- [x] Bar chart görselleştirme (CSS width-based, JS gerektirmez)
+- [x] "Cost Center P&L" link butonu
+
+---
+
+## SPRINT 32 — Document Show Sayfası ✅
+
+### TODO-32.1: Document Show + Download ✅
+- [x] `document-show.blade.php`: meta, bağlı model, download butonu, inline edit modal
+- [x] `DownloadDocumentController`: local disk storage download (tenant güvenli)
+- [x] Route: `documents/{document}` + `documents/{document}/download`
+- [x] `documents-index.blade.php`: "View" butonu (eye icon) eklendi
+
+---
+
+## SPRINT 33 — Şirket Ayarları ✅ (Zaten Mevcut)
+
+> `settings/company.blade.php` + route `settings/company` → zaten tamamlanmıştı.
+> İçerik: şirket profili (ad, vergi no, adres, logo upload), team & roles sekmesi.
+
+---
+
+## SPRINT 34 — Bildirim & Shifts ✅ (Zaten Mevcut)
+
+> `notification-show.blade.php` + route `notifications/{notification}` → zaten tamamlanmıştı.
+> `shifts-index.blade.php`: liste + haftalık grid viewMode → zaten tamamlanmıştı.
+
+---
+
 ## Kalan Görevler
 
-> Sprint 1-24 tamamlandı. Proje çalışar durumda.
+> Sprint 1-34 tamamlandı. 603 test geçiyor. Proje çalışar durumda.
 

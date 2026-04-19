@@ -4,7 +4,9 @@ use App\Authorization\LogisticsPermission;
 use App\Enums\AdvanceStatus;
 use App\Models\Advance;
 use App\Models\Employee;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -19,24 +21,37 @@ new #[Lazy, Title('Advances')] class extends Component
     public ?int $editingId = null;
 
     // Form
-    public string $employee_id    = '';
-    public string $amount         = '';
-    public string $currency_code  = 'TRY';
-    public string $requested_at   = '';
+    public string $employee_id = '';
+
+    public string $amount = '';
+
+    public string $currency_code = 'TRY';
+
+    public string $requested_at = '';
+
     public string $repayment_date = '';
-    public string $reason         = '';
+
+    public string $reason = '';
 
     // Filters
-    public string $filterSearch   = '';
-    public string $filterStatus   = '';
+    public string $filterSearch = '';
+
+    public string $filterStatus = '';
+
     public string $filterEmployee = '';
+
+    public string $filterDateFrom = '';
+
+    public string $filterDateTo = '';
 
     public bool $filtersOpen = false;
 
     public string $sortColumn = 'requested_at';
+
     public string $sortDirection = 'desc';
 
     public ?int $confirmingId = null;
+
     public string $confirmingAction = '';
 
     /** @var int[] */
@@ -45,13 +60,34 @@ new #[Lazy, Title('Advances')] class extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', Advance::class);
-        $this->requested_at   = now()->format('Y-m-d');
+        $this->requested_at = now()->format('Y-m-d');
         $this->repayment_date = now()->addMonths(3)->format('Y-m-d');
     }
 
-    public function updatedFilterSearch(): void { $this->resetPage(); }
-    public function updatedFilterStatus(): void { $this->resetPage(); }
-    public function updatedFilterEmployee(): void { $this->resetPage(); }
+    public function updatedFilterSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterEmployee(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateTo(): void
+    {
+        $this->resetPage();
+    }
 
     public function sortBy(string $column): void
     {
@@ -81,11 +117,11 @@ new #[Lazy, Title('Advances')] class extends Component
             return;
         }
         match ($this->confirmingAction) {
-            'approve'  => $this->approve($this->confirmingId),
-            'reject'   => $this->reject($this->confirmingId),
-            'repaid'   => $this->markRepaid($this->confirmingId),
-            'delete'   => $this->delete($this->confirmingId),
-            default    => null,
+            'approve' => $this->approve($this->confirmingId),
+            'reject' => $this->reject($this->confirmingId),
+            'repaid' => $this->markRepaid($this->confirmingId),
+            'delete' => $this->delete($this->confirmingId),
+            default => null,
         };
         $this->confirmingId = null;
         $this->confirmingAction = '';
@@ -98,21 +134,21 @@ new #[Lazy, Title('Advances')] class extends Component
     public function kpiStats(): array
     {
         $approvedTotal = (float) Advance::query()->approved()->sum('amount');
-        $repaidTotal   = (float) Advance::query()->where('status', AdvanceStatus::Repaid->value)->sum('amount');
+        $repaidTotal = (float) Advance::query()->where('status', AdvanceStatus::Repaid->value)->sum('amount');
 
         return [
-            'pending'        => Advance::query()->pending()->count(),
+            'pending' => Advance::query()->pending()->count(),
             'approved_total' => $approvedTotal,
-            'repaid_total'   => $repaidTotal,
-            'outstanding'    => max(0.0, $approvedTotal - $repaidTotal),
+            'repaid_total' => $repaidTotal,
+            'outstanding' => max(0.0, $approvedTotal - $repaidTotal),
         ];
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Employee>
+     * @return Collection<int, Employee>
      */
     #[Computed]
-    public function employees(): \Illuminate\Database\Eloquent\Collection
+    public function employees(): Collection
     {
         return Employee::query()->orderBy('first_name')->get();
     }
@@ -134,6 +170,14 @@ new #[Lazy, Title('Advances')] class extends Component
 
         if ($this->filterEmployee !== '') {
             $q->where('employee_id', (int) $this->filterEmployee);
+        }
+
+        if ($this->filterDateFrom !== '') {
+            $q->where('requested_at', '>=', $this->filterDateFrom);
+        }
+
+        if ($this->filterDateTo !== '') {
+            $q->where('requested_at', '<=', $this->filterDateTo.' 23:59:59');
         }
 
         return $q->orderBy($this->sortColumn, $this->sortDirection)->orderByDesc('id');
@@ -187,28 +231,28 @@ new #[Lazy, Title('Advances')] class extends Component
     public function save(): void
     {
         $user = auth()->user();
-        if (! ($user instanceof \App\Models\User) || ! LogisticsPermission::canWrite($user, LogisticsPermission::ADVANCES_WRITE)) {
+        if (! ($user instanceof User) || ! LogisticsPermission::canWrite($user, LogisticsPermission::ADVANCES_WRITE)) {
             abort(403);
         }
 
         $validated = $this->validate([
-            'employee_id'    => ['required', 'integer', 'exists:employees,id'],
-            'amount'         => ['required', 'numeric', 'min:1', 'max:9999999'],
-            'currency_code'  => ['required', 'in:TRY,USD,EUR'],
-            'requested_at'   => ['required', 'date'],
+            'employee_id' => ['required', 'integer', 'exists:employees,id'],
+            'amount' => ['required', 'numeric', 'min:1', 'max:9999999'],
+            'currency_code' => ['required', 'in:TRY,USD,EUR'],
+            'requested_at' => ['required', 'date'],
             'repayment_date' => ['nullable', 'date', 'after:requested_at'],
-            'reason'         => ['nullable', 'string', 'max:500'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
         Gate::authorize('create', Advance::class);
         Advance::query()->create([
-            'employee_id'    => (int) $validated['employee_id'],
-            'amount'         => $validated['amount'],
-            'currency_code'  => $validated['currency_code'],
-            'requested_at'   => $validated['requested_at'],
+            'employee_id' => (int) $validated['employee_id'],
+            'amount' => $validated['amount'],
+            'currency_code' => $validated['currency_code'],
+            'requested_at' => $validated['requested_at'],
             'repayment_date' => filled($validated['repayment_date']) ? $validated['repayment_date'] : null,
-            'status'         => AdvanceStatus::Pending->value,
-            'reason'         => filled($validated['reason']) ? $validated['reason'] : null,
+            'status' => AdvanceStatus::Pending->value,
+            'reason' => filled($validated['reason']) ? $validated['reason'] : null,
         ]);
 
         $this->editingId = null;
@@ -222,12 +266,12 @@ new #[Lazy, Title('Advances')] class extends Component
         Gate::authorize('approve', $advance);
 
         $user = auth()->user();
-        if (! ($user instanceof \App\Models\User)) {
+        if (! ($user instanceof User)) {
             abort(403);
         }
 
         $advance->update([
-            'status'      => AdvanceStatus::Approved->value,
+            'status' => AdvanceStatus::Approved->value,
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
@@ -239,7 +283,7 @@ new #[Lazy, Title('Advances')] class extends Component
         Gate::authorize('approve', $advance);
 
         $advance->update([
-            'status'           => AdvanceStatus::Rejected->value,
+            'status' => AdvanceStatus::Rejected->value,
             'rejection_reason' => __('Rejected by admin.'),
         ]);
     }
@@ -262,12 +306,12 @@ new #[Lazy, Title('Advances')] class extends Component
 
     private function resetForm(): void
     {
-        $this->employee_id    = '';
-        $this->amount         = '';
-        $this->currency_code  = 'TRY';
-        $this->requested_at   = now()->format('Y-m-d');
+        $this->employee_id = '';
+        $this->amount = '';
+        $this->currency_code = 'TRY';
+        $this->requested_at = now()->format('Y-m-d');
         $this->repayment_date = now()->addMonths(3)->format('Y-m-d');
-        $this->reason         = '';
+        $this->reason = '';
     }
 }; ?>
 
@@ -329,19 +373,31 @@ new #[Lazy, Title('Advances')] class extends Component
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
-            <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
-                <option value="">{{ __('All employees') }}</option>
-                @foreach ($this->employees as $emp)
-                    <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
-                @endforeach
-            </flux:select>
-            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-                <option value="">{{ __('All statuses') }}</option>
-                @foreach (\App\Enums\AdvanceStatus::cases() as $as)
-                    <option value="{{ $as->value }}">{{ $as->label() }}</option>
-                @endforeach
-            </flux:select>
+            <div class="flex flex-wrap gap-3">
+                <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
+                <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
+                    <option value="">{{ __('All employees') }}</option>
+                    @foreach ($this->employees as $emp)
+                        <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (\App\Enums\AdvanceStatus::cases() as $as)
+                        <option value="{{ $as->value }}">{{ $as->label() }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('Requested from')" class="w-40" />
+                <flux:input wire:model.live="filterDateTo" type="date" :label="__('Requested to')" class="w-40" />
+                @if ($filterDateFrom || $filterDateTo || $filterEmployee || $filterStatus)
+                    <div class="flex items-end">
+                        <flux:button variant="ghost" size="sm"
+                            wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterEmployee',''); $set('filterStatus','')">
+                            {{ __('Clear filters') }}
+                        </flux:button>
+                    </div>
+                @endif
+            </div>
         @endif
     </x-admin.filter-bar>
 

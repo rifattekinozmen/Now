@@ -2,31 +2,38 @@
 
 namespace App\Models;
 
+use App\Enums\BusinessPartnerType;
 use App\Models\Concerns\BelongsToTenant;
-use Database\Factories\BankAccountFactory;
+use Database\Factories\BusinessPartnerFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'tenant_id',
     'name',
-    'bank_name',
-    'account_number',
+    'type',
+    'tax_no',
+    'contact_person',
+    'phone',
+    'email',
+    'address',
+    'city',
+    'country',
     'iban',
-    'currency_code',
-    'opening_balance',
-    'opened_at',
+    'payment_terms_days',
     'is_active',
     'notes',
     'meta',
 ])]
-class BankAccount extends Model
+class BusinessPartner extends Model
 {
-    /** @use HasFactory<BankAccountFactory> */
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant;
+
+    /** @use HasFactory<BusinessPartnerFactory> */
+    use HasFactory;
 
     /**
      * @return array<string, string>
@@ -34,8 +41,7 @@ class BankAccount extends Model
     protected function casts(): array
     {
         return [
-            'opening_balance' => 'decimal:2',
-            'opened_at' => 'date',
+            'type' => BusinessPartnerType::class,
             'is_active' => 'boolean',
             'meta' => 'array',
         ];
@@ -50,10 +56,11 @@ class BankAccount extends Model
     }
 
     /**
-     * @return HasMany<BankTransaction, $this>
+     * @param  Builder<BusinessPartner>  $query
+     * @return Builder<BusinessPartner>
      */
-    public function transactions(): HasMany
+    public function scopeActive(Builder $query): Builder
     {
-        return $this->hasMany(BankTransaction::class);
+        return $query->where('is_active', true);
     }
 }

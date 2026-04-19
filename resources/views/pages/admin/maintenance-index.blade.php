@@ -1,10 +1,10 @@
 <?php
 
 use App\Enums\MaintenanceStatus;
-use App\Enums\MaintenanceType;
 use App\Models\MaintenanceSchedule;
 use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -19,22 +19,37 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     public ?int $editingId = null;
 
     // Form
-    public string $vehicle_id       = '';
-    public string $title            = '';
-    public string $type             = 'periodic';
-    public string $scheduled_date   = '';
-    public string $km_at_service    = '';
-    public string $next_km          = '';
-    public string $cost             = '';
+    public string $vehicle_id = '';
+
+    public string $title = '';
+
+    public string $type = 'periodic';
+
+    public string $scheduled_date = '';
+
+    public string $km_at_service = '';
+
+    public string $next_km = '';
+
+    public string $cost = '';
+
     public string $service_provider = '';
-    public string $notes            = '';
+
+    public string $notes = '';
 
     // Filters
     public string $filterVehicle = '';
-    public string $filterType    = '';
-    public string $filterStatus  = '';
+
+    public string $filterType = '';
+
+    public string $filterStatus = '';
+
+    public string $filterDateFrom = '';
+
+    public string $filterDateTo = '';
 
     public string $sortColumn = 'scheduled_date';
+
     public string $sortDirection = 'desc';
 
     public bool $filtersOpen = false;
@@ -43,6 +58,7 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     public array $selectedIds = [];
 
     public ?int $confirmingId = null;
+
     public string $confirmingAction = '';
 
     public function mount(): void
@@ -51,9 +67,30 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
         $this->scheduled_date = now()->format('Y-m-d');
     }
 
-    public function updatedFilterVehicle(): void { $this->resetPage(); }
-    public function updatedFilterType(): void { $this->resetPage(); }
-    public function updatedFilterStatus(): void { $this->resetPage(); }
+    public function updatedFilterVehicle(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateTo(): void
+    {
+        $this->resetPage();
+    }
 
     public function sortBy(string $column): void
     {
@@ -121,9 +158,9 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     public function kpiStats(): array
     {
         return [
-            'upcoming_7d'           => MaintenanceSchedule::query()->upcoming(7)->count(),
-            'overdue'               => MaintenanceSchedule::query()->overdue()->count(),
-            'done_this_month'       => MaintenanceSchedule::query()
+            'upcoming_7d' => MaintenanceSchedule::query()->upcoming(7)->count(),
+            'overdue' => MaintenanceSchedule::query()->overdue()->count(),
+            'done_this_month' => MaintenanceSchedule::query()
                 ->where('status', MaintenanceStatus::Done->value)
                 ->whereMonth('completed_date', now()->month)->count(),
             'total_cost_this_month' => (float) MaintenanceSchedule::query()
@@ -134,10 +171,10 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, MaintenanceSchedule>
+     * @return Collection<int, MaintenanceSchedule>
      */
     #[Computed]
-    public function upcomingList(): \Illuminate\Database\Eloquent\Collection
+    public function upcomingList(): Collection
     {
         return MaintenanceSchedule::query()
             ->with('vehicle')
@@ -148,10 +185,10 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Vehicle>
+     * @return Collection<int, Vehicle>
      */
     #[Computed]
-    public function vehicles(): \Illuminate\Database\Eloquent\Collection
+    public function vehicles(): Collection
     {
         return Vehicle::query()->orderBy('plate')->get();
     }
@@ -170,6 +207,14 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
 
         if ($this->filterStatus !== '') {
             $q->where('status', $this->filterStatus);
+        }
+
+        if ($this->filterDateFrom !== '') {
+            $q->where('scheduled_date', '>=', $this->filterDateFrom);
+        }
+
+        if ($this->filterDateTo !== '') {
+            $q->where('scheduled_date', '<=', $this->filterDateTo);
         }
 
         return $q->orderBy($this->sortColumn, $this->sortDirection)->orderByDesc('id');
@@ -196,28 +241,28 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     public function save(): void
     {
         $validated = $this->validate([
-            'vehicle_id'       => ['required', 'integer', 'exists:vehicles,id'],
-            'title'            => ['required', 'string', 'max:160'],
-            'type'             => ['required', 'in:periodic,inspection,repair,tire'],
-            'scheduled_date'   => ['required', 'date'],
-            'km_at_service'    => ['nullable', 'integer', 'min:0'],
-            'next_km'          => ['nullable', 'integer', 'min:0'],
-            'cost'             => ['nullable', 'numeric', 'min:0'],
+            'vehicle_id' => ['required', 'integer', 'exists:vehicles,id'],
+            'title' => ['required', 'string', 'max:160'],
+            'type' => ['required', 'in:periodic,inspection,repair,tire'],
+            'scheduled_date' => ['required', 'date'],
+            'km_at_service' => ['nullable', 'integer', 'min:0'],
+            'next_km' => ['nullable', 'integer', 'min:0'],
+            'cost' => ['nullable', 'numeric', 'min:0'],
             'service_provider' => ['nullable', 'string', 'max:180'],
-            'notes'            => ['nullable', 'string', 'max:1000'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         MaintenanceSchedule::query()->create([
-            'vehicle_id'       => (int) $validated['vehicle_id'],
-            'title'            => $validated['title'],
-            'type'             => $validated['type'],
-            'status'           => MaintenanceStatus::Scheduled->value,
-            'scheduled_date'   => $validated['scheduled_date'],
-            'km_at_service'    => filled($validated['km_at_service']) ? (int) $validated['km_at_service'] : null,
-            'next_km'          => filled($validated['next_km']) ? (int) $validated['next_km'] : null,
-            'cost'             => filled($validated['cost']) ? (float) $validated['cost'] : null,
+            'vehicle_id' => (int) $validated['vehicle_id'],
+            'title' => $validated['title'],
+            'type' => $validated['type'],
+            'status' => MaintenanceStatus::Scheduled->value,
+            'scheduled_date' => $validated['scheduled_date'],
+            'km_at_service' => filled($validated['km_at_service']) ? (int) $validated['km_at_service'] : null,
+            'next_km' => filled($validated['next_km']) ? (int) $validated['next_km'] : null,
+            'cost' => filled($validated['cost']) ? (float) $validated['cost'] : null,
             'service_provider' => filled($validated['service_provider']) ? $validated['service_provider'] : null,
-            'notes'            => filled($validated['notes']) ? $validated['notes'] : null,
+            'notes' => filled($validated['notes']) ? $validated['notes'] : null,
         ]);
 
         $this->editingId = null;
@@ -229,7 +274,7 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     {
         $s = MaintenanceSchedule::query()->findOrFail($id);
         $s->update([
-            'status'         => MaintenanceStatus::Done->value,
+            'status' => MaintenanceStatus::Done->value,
             'completed_date' => now()->format('Y-m-d'),
         ]);
     }
@@ -248,15 +293,15 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
 
     private function resetForm(): void
     {
-        $this->vehicle_id       = '';
-        $this->title            = '';
-        $this->type             = 'periodic';
-        $this->scheduled_date   = now()->format('Y-m-d');
-        $this->km_at_service    = '';
-        $this->next_km          = '';
-        $this->cost             = '';
+        $this->vehicle_id = '';
+        $this->title = '';
+        $this->type = 'periodic';
+        $this->scheduled_date = now()->format('Y-m-d');
+        $this->km_at_service = '';
+        $this->next_km = '';
+        $this->cost = '';
         $this->service_provider = '';
-        $this->notes            = '';
+        $this->notes = '';
     }
 }; ?>
 
@@ -341,6 +386,16 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
                         <option value="{{ $ms->value }}">{{ $ms->label() }}</option>
                     @endforeach
                 </flux:select>
+                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('Scheduled from')" class="w-40" />
+                <flux:input wire:model.live="filterDateTo" type="date" :label="__('Scheduled to')" class="w-40" />
+                @if ($filterDateFrom || $filterDateTo || $filterVehicle || $filterStatus || $filterType)
+                    <div class="flex items-end">
+                        <flux:button variant="ghost" size="sm"
+                            wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterVehicle',''); $set('filterStatus',''); $set('filterType','')">
+                            {{ __('Clear filters') }}
+                        </flux:button>
+                    </div>
+                @endif
             </div>
         @endif
     </x-admin.filter-bar>

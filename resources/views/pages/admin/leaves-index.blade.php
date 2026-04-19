@@ -2,10 +2,12 @@
 
 use App\Authorization\LogisticsPermission;
 use App\Enums\LeaveStatus;
-use App\Enums\LeaveType;
 use App\Models\Employee;
 use App\Models\Leave;
+use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -20,24 +22,37 @@ new #[Lazy, Title('Leave Requests')] class extends Component
     public ?int $editingId = null;
 
     // Form
-    public string $employee_id  = '';
-    public string $type         = 'annual';
-    public string $start_date   = '';
-    public string $end_date     = '';
-    public string $reason       = '';
+    public string $employee_id = '';
+
+    public string $type = 'annual';
+
+    public string $start_date = '';
+
+    public string $end_date = '';
+
+    public string $reason = '';
 
     // Filters
-    public string $filterSearch    = '';
-    public string $filterType      = '';
-    public string $filterStatus    = '';
-    public string $filterEmployee  = '';
+    public string $filterSearch = '';
+
+    public string $filterType = '';
+
+    public string $filterStatus = '';
+
+    public string $filterEmployee = '';
+
+    public string $filterDateFrom = '';
+
+    public string $filterDateTo = '';
 
     public bool $filtersOpen = false;
 
     public string $sortColumn = 'start_date';
+
     public string $sortDirection = 'desc';
 
     public ?int $confirmingId = null;
+
     public string $confirmingAction = '';
 
     /** @var int[] */
@@ -47,13 +62,38 @@ new #[Lazy, Title('Leave Requests')] class extends Component
     {
         Gate::authorize('viewAny', Leave::class);
         $this->start_date = now()->format('Y-m-d');
-        $this->end_date   = now()->addDay()->format('Y-m-d');
+        $this->end_date = now()->addDay()->format('Y-m-d');
     }
 
-    public function updatedFilterSearch(): void { $this->resetPage(); }
-    public function updatedFilterType(): void { $this->resetPage(); }
-    public function updatedFilterStatus(): void { $this->resetPage(); }
-    public function updatedFilterEmployee(): void { $this->resetPage(); }
+    public function updatedFilterSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterType(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterEmployee(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterDateTo(): void
+    {
+        $this->resetPage();
+    }
 
     public function sortBy(string $column): void
     {
@@ -84,9 +124,9 @@ new #[Lazy, Title('Leave Requests')] class extends Component
         }
         match ($this->confirmingAction) {
             'approve' => $this->approve($this->confirmingId),
-            'reject'  => $this->reject($this->confirmingId),
-            'delete'  => $this->delete($this->confirmingId),
-            default   => null,
+            'reject' => $this->reject($this->confirmingId),
+            'delete' => $this->delete($this->confirmingId),
+            default => null,
         };
         $this->confirmingId = null;
         $this->confirmingAction = '';
@@ -99,19 +139,19 @@ new #[Lazy, Title('Leave Requests')] class extends Component
     public function kpiStats(): array
     {
         return [
-            'pending'             => Leave::query()->pending()->count(),
+            'pending' => Leave::query()->pending()->count(),
             'approved_this_month' => Leave::query()->approved()
                 ->whereMonth('start_date', now()->month)->count(),
-            'total_days'          => (int) Leave::query()->approved()->sum('days_count'),
-            'unique_employees'    => Leave::query()->approved()->distinct('employee_id')->count('employee_id'),
+            'total_days' => (int) Leave::query()->approved()->sum('days_count'),
+            'unique_employees' => Leave::query()->approved()->distinct('employee_id')->count('employee_id'),
         ];
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Employee>
+     * @return Collection<int, Employee>
      */
     #[Computed]
-    public function employees(): \Illuminate\Database\Eloquent\Collection
+    public function employees(): Collection
     {
         return Employee::query()->orderBy('first_name')->get();
     }
@@ -138,6 +178,14 @@ new #[Lazy, Title('Leave Requests')] class extends Component
 
         if ($this->filterEmployee !== '') {
             $q->where('employee_id', (int) $this->filterEmployee);
+        }
+
+        if ($this->filterDateFrom !== '') {
+            $q->where('start_date', '>=', $this->filterDateFrom);
+        }
+
+        if ($this->filterDateTo !== '') {
+            $q->where('start_date', '<=', $this->filterDateTo);
         }
 
         return $q->orderBy($this->sortColumn, $this->sortDirection)->orderByDesc('id');
@@ -191,31 +239,31 @@ new #[Lazy, Title('Leave Requests')] class extends Component
     public function save(): void
     {
         $user = auth()->user();
-        if (! ($user instanceof \App\Models\User) || ! LogisticsPermission::canWrite($user, LogisticsPermission::LEAVES_WRITE)) {
+        if (! ($user instanceof User) || ! LogisticsPermission::canWrite($user, LogisticsPermission::LEAVES_WRITE)) {
             abort(403);
         }
 
         $validated = $this->validate([
             'employee_id' => ['required', 'integer', 'exists:employees,id'],
-            'type'        => ['required', 'in:annual,sick,unpaid,compensatory'],
-            'start_date'  => ['required', 'date'],
-            'end_date'    => ['required', 'date', 'after_or_equal:start_date'],
-            'reason'      => ['nullable', 'string', 'max:500'],
+            'type' => ['required', 'in:annual,sick,unpaid,compensatory'],
+            'start_date' => ['required', 'date'],
+            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'reason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $start  = \Carbon\CarbonImmutable::parse($validated['start_date']);
-        $end    = \Carbon\CarbonImmutable::parse($validated['end_date']);
-        $days   = (int) $start->diffInDays($end) + 1;
+        $start = CarbonImmutable::parse($validated['start_date']);
+        $end = CarbonImmutable::parse($validated['end_date']);
+        $days = (int) $start->diffInDays($end) + 1;
 
         Gate::authorize('create', Leave::class);
         Leave::query()->create([
             'employee_id' => (int) $validated['employee_id'],
-            'type'        => $validated['type'],
-            'status'      => LeaveStatus::Pending->value,
-            'start_date'  => $validated['start_date'],
-            'end_date'    => $validated['end_date'],
-            'days_count'  => $days,
-            'reason'      => filled($validated['reason']) ? $validated['reason'] : null,
+            'type' => $validated['type'],
+            'status' => LeaveStatus::Pending->value,
+            'start_date' => $validated['start_date'],
+            'end_date' => $validated['end_date'],
+            'days_count' => $days,
+            'reason' => filled($validated['reason']) ? $validated['reason'] : null,
         ]);
 
         $this->editingId = null;
@@ -230,12 +278,12 @@ new #[Lazy, Title('Leave Requests')] class extends Component
         Gate::authorize('approve', $leave);
 
         $user = auth()->user();
-        if (! ($user instanceof \App\Models\User)) {
+        if (! ($user instanceof User)) {
             abort(403);
         }
 
         $leave->update([
-            'status'      => LeaveStatus::Approved->value,
+            'status' => LeaveStatus::Approved->value,
             'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
@@ -248,7 +296,7 @@ new #[Lazy, Title('Leave Requests')] class extends Component
         Gate::authorize('approve', $leave);
 
         $leave->update([
-            'status'           => LeaveStatus::Rejected->value,
+            'status' => LeaveStatus::Rejected->value,
             'rejection_reason' => filled($reason) ? $reason : __('Rejected by admin.'),
         ]);
     }
@@ -264,10 +312,10 @@ new #[Lazy, Title('Leave Requests')] class extends Component
     private function resetForm(): void
     {
         $this->employee_id = '';
-        $this->type        = 'annual';
-        $this->start_date  = now()->format('Y-m-d');
-        $this->end_date    = now()->addDay()->format('Y-m-d');
-        $this->reason      = '';
+        $this->type = 'annual';
+        $this->start_date = now()->format('Y-m-d');
+        $this->end_date = now()->addDay()->format('Y-m-d');
+        $this->reason = '';
     }
 }; ?>
 
@@ -346,6 +394,16 @@ new #[Lazy, Title('Leave Requests')] class extends Component
                     <option value="{{ $ls->value }}">{{ $ls->label() }}</option>
                 @endforeach
             </flux:select>
+            <flux:input wire:model.live="filterDateFrom" type="date" :label="__('Start from')" class="w-40" />
+            <flux:input wire:model.live="filterDateTo" type="date" :label="__('Start to')" class="w-40" />
+            @if ($filterDateFrom || $filterDateTo || $filterEmployee || $filterStatus || $filterType)
+                <div class="flex items-end">
+                    <flux:button variant="ghost" size="sm"
+                        wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterEmployee',''); $set('filterStatus',''); $set('filterType','')">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                </div>
+            @endif
         @endif
     </x-admin.filter-bar>
 

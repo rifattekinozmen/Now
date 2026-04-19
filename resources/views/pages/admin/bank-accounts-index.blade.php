@@ -16,20 +16,30 @@ new #[Lazy, Title('Bank accounts')] class extends Component
     public ?int $editingId = null;
 
     // Form
-    public string $name           = '';
-    public string $bankName       = '';
-    public string $accountNumber  = '';
-    public string $iban           = '';
-    public string $currencyCode   = 'TRY';
+    public string $name = '';
+
+    public string $bankName = '';
+
+    public string $accountNumber = '';
+
+    public string $iban = '';
+
+    public string $currencyCode = 'TRY';
+
     public string $openingBalance = '0';
-    public string $openedAt       = '';
-    public bool   $isActive       = true;
-    public string $notes          = '';
+
+    public string $openedAt = '';
+
+    public bool $isActive = true;
+
+    public string $notes = '';
 
     // Filters
-    public string $filterSearch   = '';
+    public string $filterSearch = '';
+
     public string $filterCurrency = '';
-    public string $filterStatus   = '';
+
+    public string $filterStatus = '';
 
     public ?int $confirmingDeleteId = null;
 
@@ -38,20 +48,41 @@ new #[Lazy, Title('Bank accounts')] class extends Component
         Gate::authorize('viewAny', BankAccount::class);
     }
 
-    public function updatedFilterSearch(): void { $this->resetPage(); }
-    public function updatedFilterCurrency(): void { $this->resetPage(); }
-    public function updatedFilterStatus(): void { $this->resetPage(); }
+    public function updatedFilterSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterCurrency(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+    }
 
     /**
-     * @return array{total:int, active:int, inactive:int}
+     * @return array{total:int, active:int, inactive:int, total_balance:float}
      */
     #[Computed]
     public function kpiStats(): array
     {
+        $accounts = BankAccount::query()
+            ->withSum(['transactions as credits_sum' => fn ($q) => $q->where('transaction_type', 'credit')], 'amount')
+            ->withSum(['transactions as debits_sum' => fn ($q) => $q->where('transaction_type', 'debit')], 'amount')
+            ->get();
+
+        $totalBalance = $accounts->sum(fn ($a) => (float) $a->opening_balance
+            + (float) ($a->credits_sum ?? 0)
+            - (float) ($a->debits_sum ?? 0));
+
         return [
-            'total'    => BankAccount::query()->count(),
-            'active'   => BankAccount::query()->where('is_active', true)->count(),
-            'inactive' => BankAccount::query()->where('is_active', false)->count(),
+            'total' => $accounts->count(),
+            'active' => $accounts->where('is_active', true)->count(),
+            'inactive' => $accounts->where('is_active', false)->count(),
+            'total_balance' => $totalBalance,
         ];
     }
 
@@ -85,7 +116,10 @@ new #[Lazy, Title('Bank accounts')] class extends Component
     #[Computed]
     public function paginatedAccounts(): LengthAwarePaginator
     {
-        return $this->accountQuery()->paginate(20);
+        return $this->accountQuery()
+            ->withSum(['transactions as credits_sum' => fn ($q) => $q->where('transaction_type', 'credit')], 'amount')
+            ->withSum(['transactions as debits_sum' => fn ($q) => $q->where('transaction_type', 'debit')], 'amount')
+            ->paginate(20);
     }
 
     public function startCreate(): void
@@ -100,16 +134,16 @@ new #[Lazy, Title('Bank accounts')] class extends Component
         $account = BankAccount::query()->findOrFail($id);
         Gate::authorize('update', $account);
 
-        $this->editingId      = $id;
-        $this->name           = $account->name;
-        $this->bankName       = $account->bank_name;
-        $this->accountNumber  = $account->account_number ?? '';
-        $this->iban           = $account->iban ?? '';
-        $this->currencyCode   = $account->currency_code;
+        $this->editingId = $id;
+        $this->name = $account->name;
+        $this->bankName = $account->bank_name;
+        $this->accountNumber = $account->account_number ?? '';
+        $this->iban = $account->iban ?? '';
+        $this->currencyCode = $account->currency_code;
         $this->openingBalance = (string) $account->opening_balance;
-        $this->openedAt       = $account->opened_at?->format('Y-m-d') ?? '';
-        $this->isActive       = $account->is_active;
-        $this->notes          = $account->notes ?? '';
+        $this->openedAt = $account->opened_at?->format('Y-m-d') ?? '';
+        $this->isActive = $account->is_active;
+        $this->notes = $account->notes ?? '';
     }
 
     public function cancelForm(): void
@@ -121,27 +155,27 @@ new #[Lazy, Title('Bank accounts')] class extends Component
     public function save(): void
     {
         $validated = $this->validate([
-            'name'           => ['required', 'string', 'max:255'],
-            'bankName'       => ['required', 'string', 'max:255'],
-            'accountNumber'  => ['nullable', 'string', 'max:64'],
-            'iban'           => ['nullable', 'string', 'max:34'],
-            'currencyCode'   => ['required', 'string', 'size:3'],
+            'name' => ['required', 'string', 'max:255'],
+            'bankName' => ['required', 'string', 'max:255'],
+            'accountNumber' => ['nullable', 'string', 'max:64'],
+            'iban' => ['nullable', 'string', 'max:34'],
+            'currencyCode' => ['required', 'string', 'size:3'],
             'openingBalance' => ['required', 'numeric', 'min:0'],
-            'openedAt'       => ['nullable', 'date'],
-            'isActive'       => ['boolean'],
-            'notes'          => ['nullable', 'string', 'max:1000'],
+            'openedAt' => ['nullable', 'date'],
+            'isActive' => ['boolean'],
+            'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $data = [
-            'name'            => $validated['name'],
-            'bank_name'       => $validated['bankName'],
-            'account_number'  => $validated['accountNumber'] ?: null,
-            'iban'            => $validated['iban'] ?: null,
-            'currency_code'   => $validated['currencyCode'],
+            'name' => $validated['name'],
+            'bank_name' => $validated['bankName'],
+            'account_number' => $validated['accountNumber'] ?: null,
+            'iban' => $validated['iban'] ?: null,
+            'currency_code' => $validated['currencyCode'],
             'opening_balance' => $validated['openingBalance'],
-            'opened_at'       => $validated['openedAt'] ?: null,
-            'is_active'       => $validated['isActive'],
-            'notes'           => $validated['notes'] ?: null,
+            'opened_at' => $validated['openedAt'] ?: null,
+            'is_active' => $validated['isActive'],
+            'notes' => $validated['notes'] ?: null,
         ];
 
         if ($this->editingId && $this->editingId > 0) {
@@ -178,15 +212,15 @@ new #[Lazy, Title('Bank accounts')] class extends Component
 
     private function resetForm(): void
     {
-        $this->name           = '';
-        $this->bankName       = '';
-        $this->accountNumber  = '';
-        $this->iban           = '';
-        $this->currencyCode   = 'TRY';
+        $this->name = '';
+        $this->bankName = '';
+        $this->accountNumber = '';
+        $this->iban = '';
+        $this->currencyCode = 'TRY';
         $this->openingBalance = '0';
-        $this->openedAt       = '';
-        $this->isActive       = true;
-        $this->notes          = '';
+        $this->openedAt = '';
+        $this->isActive = true;
+        $this->notes = '';
     }
 }; ?>
 
@@ -209,7 +243,7 @@ new #[Lazy, Title('Bank accounts')] class extends Component
     </x-admin.page-header>
 
     {{-- KPI --}}
-    <div class="grid gap-3 sm:grid-cols-3">
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <flux:card class="p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total accounts') }}</flux:text>
             <flux:heading size="lg">{{ $this->kpiStats['total'] }}</flux:heading>
@@ -221,6 +255,12 @@ new #[Lazy, Title('Bank accounts')] class extends Component
         <flux:card class="p-4">
             <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Inactive') }}</flux:text>
             <flux:heading size="lg" class="text-zinc-400">{{ $this->kpiStats['inactive'] }}</flux:heading>
+        </flux:card>
+        <flux:card class="p-4">
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total balance') }}</flux:text>
+            <flux:heading size="lg" class="{{ $this->kpiStats['total_balance'] >= 0 ? 'text-blue-600' : 'text-red-500' }}">
+                {{ number_format($this->kpiStats['total_balance'], 2) }}
+            </flux:heading>
         </flux:card>
     </div>
 
@@ -291,6 +331,7 @@ new #[Lazy, Title('Bank accounts')] class extends Component
                         <th class="py-2 pe-3 font-medium">{{ __('Bank') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('IBAN / Account No') }}</th>
                         <th class="py-2 pe-3 text-end font-medium">{{ __('Opening balance') }}</th>
+                        <th class="py-2 pe-3 text-end font-medium">{{ __('Current balance') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Currency') }}</th>
                         <th class="py-2 pe-3 font-medium">{{ __('Status') }}</th>
                         <th class="py-2 text-end font-medium">{{ __('Actions') }}</th>
@@ -304,8 +345,18 @@ new #[Lazy, Title('Bank accounts')] class extends Component
                             <td class="py-2 pe-3 font-mono text-xs text-zinc-500">
                                 {{ $account->iban ?? $account->account_number ?? '—' }}
                             </td>
-                            <td class="py-2 pe-3 text-end font-mono font-semibold">
+                            <td class="py-2 pe-3 text-end font-mono font-semibold text-zinc-500">
                                 {{ number_format((float) $account->opening_balance, 2) }}
+                            </td>
+                            <td class="py-2 pe-3 text-end font-mono font-semibold">
+                                @php
+                                    $currentBalance = (float) $account->opening_balance
+                                        + (float) ($account->credits_sum ?? 0)
+                                        - (float) ($account->debits_sum ?? 0);
+                                @endphp
+                                <span class="{{ $currentBalance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500' }}">
+                                    {{ number_format($currentBalance, 2) }}
+                                </span>
                             </td>
                             <td class="py-2 pe-3">
                                 <flux:badge color="zinc" size="sm">{{ $account->currency_code }}</flux:badge>

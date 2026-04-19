@@ -112,6 +112,13 @@ new #[Lazy, Title('Operations analytics')] class extends Component
         :description="__('Order distribution, monthly shipment trend, driver performance (last 30 days).')"
     />
 
+    {{-- Analytics tab navigation --}}
+    <div class="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+        <a href="{{ route('admin.analytics.fleet') }}" wire:navigate class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">{{ __('Fleet') }}</a>
+        <a href="{{ route('admin.analytics.operations') }}" wire:navigate class="border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">{{ __('Operations') }}</a>
+        <a href="{{ route('admin.analytics.cost-centers') }}" wire:navigate class="border-b-2 border-transparent px-4 py-2 text-sm font-medium text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">{{ __('Finance P&L') }}</a>
+    </div>
+
     {{-- Order status distribution --}}
     <flux:card class="p-4">
         <flux:heading size="sm" class="mb-3">{{ __('Order status') }}</flux:heading>

@@ -74,7 +74,22 @@
       "Bash(grep -l \"flux:dropdown\\\\|flux:menu\" resources/views/pages/admin/*.blade.php)",
       "Bash(php -r \"echo \\(new \\\\Flux\\\\FluxManager\\)->version\\(\\);\")",
       "Bash(find /c/laragon/www/Now/app/Models -name \"*.php\" -exec grep -l \"->delete\\(\\)\\\\|->destroy\\(\\)\" {} \\\\;)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(grep -v '^\\\\s*[0-9]*:\\\\s*$\\\\|^\\\\s*[0-9]*:\\\\s*'\\\\''\\\\|^\\\\s*[0-9]*:\\\\s*//\\\\|^\\\\s*[0-9]*:\\\\s*$this\\\\|^\\\\s*[0-9]*:\\\\s*'\\\\''src\\\\|^\\\\s*[0-9]*:\\\\s*'\\\\''national\\\\|^\\\\s*[0-9]*:\\\\s*'\\\\''blood\\\\|^\\\\s*[0-9]*:\\\\s*'\\\\''is_driver\\\\|^\\\\s*[0-9]*:\\\\s*'\\\\''license')",
+      "Bash(wc -l resources/views/pages/customer/*.blade.php)",
+      "Bash(wc -l resources/views/pages/personnel/*.blade.php)",
+      "Bash(grep -n \"public string \\\\$\\\\|public int \\\\$\\\\|public ?\\\\|public bool \\\\$\" resources/views/pages/admin/orders-index.blade.php)",
+      "Bash(grep -v \"YOK-\\\\|#\\\\|^\\\\s*$\")",
+      "Bash(grep -v \"^\\\\s*$\")",
+      "Bash(vendor/bin/pint resources/views/pages/admin/finance-reports.blade.php --format agent)",
+      "Bash(vendor/bin/pint resources/views/pages/admin/cost-center-pl.blade.php --format agent)",
+      "Bash(vendor/bin/pint resources/views/pages/admin/advances-index.blade.php --format agent)",
+      "Bash(vendor/bin/pint resources/views/pages/admin/leaves-index.blade.php --format agent)",
+      "Bash(vendor/bin/pint resources/views/pages/admin/maintenance-index.blade.php --format agent)",
+      "Bash(vendor/bin/pint app/Services/Logistics/ExcelImportService.php app/Exports/VehicleImportTemplateExport.php --format agent)",
+      "Bash(vendor/bin/pint resources/views/pages/admin/bank-accounts-index.blade.php resources/views/pages/admin/bank-transactions-index.blade.php --format agent)",
+      "Bash(vendor/bin/pint app/Models/BankAccount.php --format agent)",
+      "Bash(wc -l C:/laragon/www/Now/resources/views/pages/admin/*.blade.php)"
     ]
   }
 }

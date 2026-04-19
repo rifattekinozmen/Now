@@ -20,6 +20,9 @@ test('registration screen can be rendered', function () {
 
 test('new users can register', function () {
     /** @var TestCase $this */
+    // Ensure this is not the very first user (first user gets super-admin, not tenant-user)
+    User::factory()->create();
+
     $response = $this->post(route('register.store'), [
         'name' => 'John Doe',
         'email' => 'test@example.com',
