@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -42,7 +43,7 @@ new #[Lazy, Title('Vehicles')] class extends Component
 
     public string $sortDirection = 'desc';
 
-    public bool $filtersOpen = false;
+    public bool $vehicleFormOpen = false;
 
     /** @var list<int|string> */
     public array $selectedIds = [];
@@ -214,6 +215,7 @@ new #[Lazy, Title('Vehicles')] class extends Component
         ]);
 
         $this->reset('plate', 'vin', 'brand', 'model', 'manufacture_year', 'inspection_valid_until');
+        $this->vehicleFormOpen = false;
     }
 
     public function startEdit(int $vehicleId): void
@@ -224,6 +226,7 @@ new #[Lazy, Title('Vehicles')] class extends Component
         Gate::authorize('update', $vehicle);
 
         $this->editingVehicleId      = $vehicle->id;
+        $this->vehicleFormOpen       = false;
         $this->plate                 = $vehicle->plate;
         $this->vin                   = $vehicle->vin ?? '';
         $this->brand                 = $vehicle->brand ?? '';
@@ -293,6 +296,20 @@ new #[Lazy, Title('Vehicles')] class extends Component
         $this->reset('importFile');
         $this->resetPage();
     }
+
+    public function updatedImportFile(): void
+    {
+        if ($this->importFile === null) {
+            return;
+        }
+
+        try {
+            $this->importVehicles(app(ExcelImportService::class));
+        } catch (ValidationException $e) {
+            $this->reset('importFile');
+            throw $e;
+        }
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
@@ -303,16 +320,47 @@ new #[Lazy, Title('Vehicles')] class extends Component
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::VEHICLES_WRITE);
     @endphp
     <x-admin.page-header :heading="__('Vehicles')">
-        <x-slot name="breadcrumb">
-            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Vehicles') }}</span>
-        </x-slot>
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="export">
-                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.vehicles.template.xlsx')" />
-                    </flux:tooltip>
+                    <flux:button size="sm" icon="document-arrow-down" variant="outline" :href="route('admin.vehicles.template.xlsx')">
+                        {{ __('Download XLSX template') }}
+                    </flux:button>
                 </x-slot>
+                @if ($canWriteVehicles)
+                    <x-slot name="import">
+                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
+                            <input
+                                type="file"
+                                wire:model="importFile"
+                                accept=".xlsx,.xls,.csv"
+                                class="sr-only"
+                                x-ref="importFileInput"
+                            />
+                            <flux:tooltip
+                                :content="__('Headers: Plaka, Şasi (isteğe bağlı), Marka, Model, Muayene. English: Plate, VIN, Brand, Model, Inspection.')"
+                                position="bottom"
+                            >
+                                <flux:button
+                                    type="button"
+                                    icon="information-circle"
+                                    variant="ghost"
+                                    size="sm"
+                                    :aria-label="__('Import format help')"
+                                />
+                            </flux:tooltip>
+                            <flux:button
+                                type="button"
+                                size="sm"
+                                icon="arrow-up-tray"
+                                variant="primary"
+                                @click.prevent="$refs.importFileInput.click()"
+                            >
+                                {{ __('Import file') }}
+                            </flux:button>
+                        </div>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -359,25 +407,21 @@ new #[Lazy, Title('Vehicles')] class extends Component
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <flux:input
-                wire:model.live.debounce.400ms="filterSearch"
-                :label="__('Search (plate, brand, model)')"
-            />
-        @endif
-    </x-admin.filter-bar>
+    <flux:card class="p-4">
+        <flux:input
+            wire:model.live.debounce.400ms="filterSearch"
+            :label="__('Quick search')"
+            :placeholder="__('Search (plate, brand, model)')"
+            icon="magnifying-glass"
+            class="max-w-full sm:max-w-md"
+        />
+    </flux:card>
 
     @if ($canWriteVehicles)
         @if ($editingVehicleId !== null)
             <flux:card>
                 <flux:heading size="lg" class="mb-4">{{ __('Edit vehicle') }}</flux:heading>
-                <form wire:submit="updateVehicle" class="flex max-w-xl flex-col gap-4">
+                <form wire:submit="updateVehicle" class="flex w-full flex-col gap-4">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="plate" :label="__('Plate')" required />
                         <flux:input wire:model="vin" :label="__('VIN / Chassis')" />
@@ -397,41 +441,39 @@ new #[Lazy, Title('Vehicles')] class extends Component
                 </form>
             </flux:card>
         @else
-            <flux:card>
-                <flux:heading size="lg" class="mb-4">{{ __('New vehicle') }}</flux:heading>
-                <form wire:submit="saveVehicle" class="flex max-w-xl flex-col gap-4">
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <flux:input wire:model="plate" :label="__('Plate')" required />
-                        <flux:input wire:model="vin" :label="__('VIN / Chassis')" />
-                    </div>
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <flux:input wire:model="brand" :label="__('Brand')" />
-                        <flux:input wire:model="model" :label="__('Model')" />
-                    </div>
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <flux:input wire:model="manufacture_year" type="number" :label="__('Year')" min="1900" :max="date('Y')" />
-                        <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
-                    </div>
-                    <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                </form>
-            </flux:card>
+            <x-admin.filter-bar :label="__('New vehicle')">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('vehicleFormOpen')">
+                        {{ $vehicleFormOpen ? __('Hide') : __('Show') }}
+                    </flux:button>
+                </div>
+                @if ($vehicleFormOpen)
+                    <form wire:submit="saveVehicle" class="mt-2 flex w-full flex-col gap-4">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="plate" :label="__('Plate')" required />
+                            <flux:input wire:model="vin" :label="__('VIN / Chassis')" />
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="brand" :label="__('Brand')" />
+                            <flux:input wire:model="model" :label="__('Model')" />
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="manufacture_year" type="number" :label="__('Year')" min="1900" :max="date('Y')" />
+                            <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
+                        </div>
+                        <div class="flex justify-end">
+                            <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                        </div>
+                    </form>
+                @endif
+            </x-admin.filter-bar>
         @endif
 
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Import vehicles (CSV / Excel)') }}</flux:heading>
-            <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Headers: Plaka, Şasi (isteğe bağlı), Marka, Model, Muayene. English: Plate, VIN, Brand, Model, Inspection.') }}
-            </flux:text>
-            <div class="flex max-w-xl flex-col gap-3">
-                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                <flux:button type="button" wire:click="importVehicles" variant="ghost">{{ __('Import') }}</flux:button>
-            </div>
-        </flux:card>
     @endif
 
     @can(\App\Authorization\LogisticsPermission::ADMIN)
         @if (count($selectedIds) > 0)
-            <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
                 <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
                 <flux:button
                     type="button"

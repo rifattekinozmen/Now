@@ -333,14 +333,14 @@ new #[Lazy, Title('Trip Expenses')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+    <flux:card class="p-4">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-wrap gap-4">
+            <div class="mt-3 flex flex-wrap gap-4">
                 <flux:select wire:model.live="filterVehicle" :label="__('Vehicle')" class="max-w-[200px]">
                     <option value="">{{ __('All vehicles') }}</option>
                     @foreach ($this->vehicles as $v)
@@ -357,7 +357,7 @@ new #[Lazy, Title('Trip Expenses')] class extends Component
                 <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Create / Edit Form --}}
     @if ($canWrite && $editingId !== null)

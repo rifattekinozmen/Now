@@ -366,15 +366,28 @@ new #[Lazy, Title('Advances')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
+            <flux:input
+                wire:model.live.debounce.300ms="filterSearch"
+                :placeholder="__('Search employee')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-sm"
+            />
+            <div class="flex flex-wrap items-center gap-2">
+                @if ($filterDateFrom || $filterDateTo || $filterEmployee || $filterStatus)
+                    <flux:button variant="ghost" size="sm"
+                        wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterEmployee',''); $set('filterStatus','')">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                @endif
+                <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                    {{ __('Filters') }}
+                </flux:button>
+            </div>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-wrap gap-3">
-                <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search employee')" class="max-w-sm" />
+            <div class="mt-3 flex flex-wrap gap-3">
                 <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[200px]">
                     <option value="">{{ __('All employees') }}</option>
                     @foreach ($this->employees as $emp)
@@ -389,17 +402,9 @@ new #[Lazy, Title('Advances')] class extends Component
                 </flux:select>
                 <flux:input wire:model.live="filterDateFrom" type="date" :label="__('Requested from')" class="w-40" />
                 <flux:input wire:model.live="filterDateTo" type="date" :label="__('Requested to')" class="w-40" />
-                @if ($filterDateFrom || $filterDateTo || $filterEmployee || $filterStatus)
-                    <div class="flex items-end">
-                        <flux:button variant="ghost" size="sm"
-                            wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterEmployee',''); $set('filterStatus','')">
-                            {{ __('Clear filters') }}
-                        </flux:button>
-                    </div>
-                @endif
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Create Form --}}
     @if ($canWrite && $editingId !== null)

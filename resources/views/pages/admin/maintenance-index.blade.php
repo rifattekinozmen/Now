@@ -360,14 +360,20 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
     @endif
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+    <flux:card class="p-4">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            @if ($filterDateFrom || $filterDateTo || $filterVehicle || $filterStatus || $filterType)
+                <flux:button variant="ghost" size="sm"
+                    wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterVehicle',''); $set('filterStatus',''); $set('filterType','')">
+                    {{ __('Clear filters') }}
+                </flux:button>
+            @endif
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-wrap gap-4">
+            <div class="mt-3 flex flex-wrap gap-4">
                 <flux:select wire:model.live="filterVehicle" :label="__('Vehicle')" class="max-w-[220px]">
                     <option value="">{{ __('All vehicles') }}</option>
                     @foreach ($this->vehicles as $v)
@@ -388,17 +394,9 @@ new #[Lazy, Title('Maintenance Schedules')] class extends Component
                 </flux:select>
                 <flux:input wire:model.live="filterDateFrom" type="date" :label="__('Scheduled from')" class="w-40" />
                 <flux:input wire:model.live="filterDateTo" type="date" :label="__('Scheduled to')" class="w-40" />
-                @if ($filterDateFrom || $filterDateTo || $filterVehicle || $filterStatus || $filterType)
-                    <div class="flex items-end">
-                        <flux:button variant="ghost" size="sm"
-                            wire:click="$set('filterDateFrom',''); $set('filterDateTo',''); $set('filterVehicle',''); $set('filterStatus',''); $set('filterType','')">
-                            {{ __('Clear filters') }}
-                        </flux:button>
-                    </div>
-                @endif
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Create Form --}}
     @if ($editingId !== null)

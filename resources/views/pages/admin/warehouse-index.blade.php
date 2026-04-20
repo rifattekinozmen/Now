@@ -23,7 +23,6 @@ new #[Lazy, Title('Warehouse')] class extends Component
 
     public string $filterWarehouse = '';
 
-    public bool $filtersOpen = false;
 
     public string $sortColumn = 'code';
 
@@ -448,16 +447,16 @@ new #[Lazy, Title('Warehouse')] class extends Component
     <flux:card class="p-4">
         <flux:heading size="lg" class="mb-4">{{ __('Warehouses') }}</flux:heading>
 
-        <x-admin.filter-bar :label="__('Advanced filters')">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-                <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                    {{ $filtersOpen ? __('Hide') : __('Show') }}
-                </flux:button>
-            </div>
-            @if ($filtersOpen)
-                <flux:input wire:model.live.debounce.400ms="filterWarehouse" :label="__('Search (code, name)')" size="sm" />
-            @endif
-        </x-admin.filter-bar>
+        <div class="mb-4">
+            <flux:input
+                wire:model.live.debounce.400ms="filterWarehouse"
+                :label="__('Quick search')"
+                :placeholder="__('Search (code, name)')"
+                icon="magnifying-glass"
+                class="max-w-full sm:max-w-md"
+                size="sm"
+            />
+        </div>
 
         @if ($canWriteWarehouse)
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">

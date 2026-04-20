@@ -27,6 +27,8 @@ new #[Lazy, Title('Invoices')] class extends Component
 
     public string $filterDateTo = '';
 
+    public bool $filtersOpen = false;
+
     // Form state
     public bool $showForm = false;
 
@@ -358,17 +360,31 @@ new #[Lazy, Title('Invoices')] class extends Component
     @endif
 
     {{-- Filter bar --}}
-    <x-admin.filter-bar>
-        <flux:input wire:model.live.debounce.400ms="filterSearch" :label="__('Search invoice no / customer')" />
-        <flux:select wire:model.live="filterStatus" :label="__('Status')">
-            <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-            @foreach (InvoiceStatus::cases() as $s)
-                <flux:select.option :value="$s->value">{{ $s->label() }}</flux:select.option>
-            @endforeach
-        </flux:select>
-        <flux:input wire:model.live="filterDateFrom" :label="__('From')" type="date" />
-        <flux:input wire:model.live="filterDateTo" :label="__('To')" type="date" />
-    </x-admin.filter-bar>
+    <flux:card class="p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search invoice no / customer')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="mt-3 flex flex-wrap gap-3">
+                <flux:select wire:model.live="filterStatus" :label="__('Status')">
+                    <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+                    @foreach (InvoiceStatus::cases() as $s)
+                        <flux:select.option :value="$s->value">{{ $s->label() }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:input wire:model.live="filterDateFrom" :label="__('From')" type="date" />
+                <flux:input wire:model.live="filterDateTo" :label="__('To')" type="date" />
+            </div>
+        @endif
+    </flux:card>
 
     {{-- Table --}}
     <flux:card>

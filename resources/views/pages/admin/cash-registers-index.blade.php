@@ -294,27 +294,34 @@ new #[Lazy, Title('Cash Registers')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.300ms="filterSearch"
+                :placeholder="__('Search name / code')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-sm"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search name / code')" class="max-w-sm" />
-            <flux:select wire:model.live="filterCurrency" :label="__('Currency')" class="max-w-[140px]">
-                <option value="">{{ __('All') }}</option>
-                <option value="TRY">TRY</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-            </flux:select>
-            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[140px]">
-                <option value="">{{ __('All') }}</option>
-                <option value="active">{{ __('Active') }}</option>
-                <option value="inactive">{{ __('Inactive') }}</option>
-            </flux:select>
+            <div class="mt-3 flex flex-wrap gap-3">
+                <flux:select wire:model.live="filterCurrency" :label="__('Currency')" class="max-w-[140px]">
+                    <option value="">{{ __('All') }}</option>
+                    <option value="TRY">TRY</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                </flux:select>
+                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[140px]">
+                    <option value="">{{ __('All') }}</option>
+                    <option value="active">{{ __('Active') }}</option>
+                    <option value="inactive">{{ __('Inactive') }}</option>
+                </flux:select>
+            </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Create / Edit Form --}}
     @if ($canWrite && $editingId !== null)

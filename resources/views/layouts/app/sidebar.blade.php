@@ -394,7 +394,7 @@
                 {{-- Breadcrumb / page title --}}
                 <div class="min-w-0 flex-1">
                     @isset($title)
-                        <span class="truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ $title }}</span>
+                        <span class="truncate text-sm font-medium text-zinc-700 dark:text-zinc-200">{{ __($title) }}</span>
                     @endisset
                 </div>
 

@@ -33,8 +33,6 @@ new #[Lazy, Title('Documents')] class extends Component
     public string $filterCategory = '';
     public string $filterExpiry   = '';
 
-    public bool $filtersOpen = false;
-
     public string $sortColumn    = 'created_at';
     public string $sortDirection = 'desc';
 

@@ -335,10 +335,9 @@ new #[Lazy, Title('Work Orders')] class extends Component
 
     {{-- Filters --}}
     <flux:card class="p-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:text class="font-medium">{{ __('Filters') }}</flux:text>
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)

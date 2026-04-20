@@ -436,36 +436,43 @@ new #[Lazy, Title('Vouchers')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.300ms="filterSearch"
+                :placeholder="__('Search ref / description')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-sm"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search ref / description')" class="max-w-sm" />
-            <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[140px]">
-                <option value="">{{ __('All types') }}</option>
-                <option value="expense">{{ __('Expense') }}</option>
-                <option value="income">{{ __('Income') }}</option>
-                <option value="transfer">{{ __('Transfer') }}</option>
-            </flux:select>
-            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-                <option value="">{{ __('All statuses') }}</option>
-                <option value="pending">{{ __('Pending') }}</option>
-                <option value="approved">{{ __('Approved') }}</option>
-                <option value="rejected">{{ __('Rejected') }}</option>
-            </flux:select>
-            <flux:select wire:model.live="filterCashRegister" :label="__('Cash register')" class="max-w-[200px]">
-                <option value="">{{ __('All registers') }}</option>
-                @foreach ($this->cashRegisters as $reg)
-                    <option value="{{ $reg->id }}">{{ $reg->name }}</option>
-                @endforeach
-            </flux:select>
-            <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="max-w-[160px]" />
-            <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
+            <div class="mt-3 flex flex-wrap gap-3">
+                <flux:select wire:model.live="filterType" :label="__('Type')" class="max-w-[140px]">
+                    <option value="">{{ __('All types') }}</option>
+                    <option value="expense">{{ __('Expense') }}</option>
+                    <option value="income">{{ __('Income') }}</option>
+                    <option value="transfer">{{ __('Transfer') }}</option>
+                </flux:select>
+                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                    <option value="">{{ __('All statuses') }}</option>
+                    <option value="pending">{{ __('Pending') }}</option>
+                    <option value="approved">{{ __('Approved') }}</option>
+                    <option value="rejected">{{ __('Rejected') }}</option>
+                </flux:select>
+                <flux:select wire:model.live="filterCashRegister" :label="__('Cash register')" class="max-w-[200px]">
+                    <option value="">{{ __('All registers') }}</option>
+                    @foreach ($this->cashRegisters as $reg)
+                        <option value="{{ $reg->id }}">{{ $reg->name }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:input wire:model.live="filterDateFrom" type="date" :label="__('From')" class="max-w-[160px]" />
+                <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="max-w-[160px]" />
+            </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Create Form --}}
     @if ($canWrite && $editingId !== null)

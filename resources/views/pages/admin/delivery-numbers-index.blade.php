@@ -354,9 +354,6 @@ new #[Lazy, Title('PIN pool')] class extends Component
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::PINS_WRITE);
     @endphp
     <x-admin.page-header :heading="__('PIN pool')">
-        <x-slot name="breadcrumb">
-            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('PIN pool') }}</span>
-        </x-slot>
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="export">
@@ -422,19 +419,21 @@ new #[Lazy, Title('PIN pool')] class extends Component
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search (PIN, SAS)')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-col gap-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (PIN, SAS)')"
-                />
-                <flux:select wire:model.live="filterStatus" :label="__('Filter by PIN status')" class="max-w-md">
+            <div class="mt-3 max-w-md">
+                <flux:select wire:model.live="filterStatus" :label="__('Filter by PIN status')">
                     <option value="">{{ __('All statuses') }}</option>
                     @foreach (\App\Enums\DeliveryNumberStatus::cases() as $case)
                         <option value="{{ $case->value }}">{{ $this->pinStatusLabel($case) }}</option>
@@ -442,7 +441,7 @@ new #[Lazy, Title('PIN pool')] class extends Component
                 </flux:select>
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     <flux:card>
         <flux:heading size="lg" class="mb-4">{{ __('Bulk import (CSV)') }}</flux:heading>

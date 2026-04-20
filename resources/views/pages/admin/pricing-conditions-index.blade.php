@@ -356,15 +356,20 @@ new #[Lazy, Title('Pricing Conditions')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.300ms="filterSearch"
+                :placeholder="__('Search name / route')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-sm"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-wrap gap-4">
-                <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search name / route')" class="max-w-sm" />
+            <div class="mt-3 flex flex-wrap gap-4">
                 <flux:select wire:model.live="filterCustomer" :label="__('Customer')" class="max-w-[200px]">
                     <option value="">{{ __('All customers') }}</option>
                     @foreach ($this->customers as $c)
@@ -378,7 +383,7 @@ new #[Lazy, Title('Pricing Conditions')] class extends Component
                 </flux:select>
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Create / Edit Form --}}
     @if ($canWrite && $editingId !== null)

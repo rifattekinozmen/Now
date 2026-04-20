@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -658,6 +659,20 @@ new #[Lazy, Title('Orders')] class extends Component
         $this->resetPage();
     }
 
+    public function updatedImportFile(): void
+    {
+        if ($this->importFile === null) {
+            return;
+        }
+
+        try {
+            $this->importOrders(app(ExcelImportService::class));
+        } catch (ValidationException $e) {
+            $this->reset('importFile');
+            throw $e;
+        }
+    }
+
     private function uniqueOrderNumber(): string
     {
         do {
@@ -679,19 +694,50 @@ new #[Lazy, Title('Orders')] class extends Component
         :heading="__('Orders')"
         :description="__('Freight, SAS, incoterms, and links to shipments and finance export.')"
     >
-        <x-slot name="breadcrumb">
-            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Orders') }}</span>
-        </x-slot>
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="export">
-                    <flux:tooltip :content="__('Export finance CSV')" position="bottom">
-                        <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.orders.export.finance.csv')" />
-                    </flux:tooltip>
-                    <flux:tooltip :content="__('Export Logo XML')" position="bottom">
-                        <flux:button icon="code-bracket" variant="outline" :href="route('admin.orders.export.logo.xml')" />
-                    </flux:tooltip>
+                    <flux:button size="sm" icon="arrow-down-tray" variant="outline" :href="route('admin.orders.export.finance.csv')">
+                        {{ __('Export finance CSV') }}
+                    </flux:button>
+                    <flux:button size="sm" icon="code-bracket" variant="outline" :href="route('admin.orders.export.logo.xml')">
+                        {{ __('Export Logo XML') }}
+                    </flux:button>
                 </x-slot>
+                @if ($canWriteOrders)
+                    <x-slot name="import">
+                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
+                            <input
+                                type="file"
+                                wire:model="importFile"
+                                accept=".xlsx,.xls,.csv"
+                                class="sr-only"
+                                x-ref="importFileInput"
+                            />
+                            <flux:tooltip
+                                :content="__('Headers: Ünvan (müşteri), Para Birimi, SAS, Yükleme, Boşaltma, Mesafe (km), Tonaj')"
+                                position="bottom"
+                            >
+                                <flux:button
+                                    type="button"
+                                    icon="information-circle"
+                                    variant="ghost"
+                                    size="sm"
+                                    :aria-label="__('Import format help')"
+                                />
+                            </flux:tooltip>
+                            <flux:button
+                                type="button"
+                                size="sm"
+                                icon="arrow-up-tray"
+                                variant="primary"
+                                @click.prevent="$refs.importFileInput.click()"
+                            >
+                                {{ __('Import file') }}
+                            </flux:button>
+                        </div>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -740,18 +786,20 @@ new #[Lazy, Title('Orders')] class extends Component
     </div>
     @endcache
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search (order no, SAS, customer)')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-col gap-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (order no, SAS, customer)')"
-                />
+            <div class="mt-3 flex flex-col gap-4">
                 <flux:select wire:model.live="filterStatus" :label="__('Filter by status')" class="max-w-md">
                     <option value="">{{ __('All statuses') }}</option>
                     @foreach (\App\Enums\OrderStatus::cases() as $case)
@@ -770,7 +818,7 @@ new #[Lazy, Title('Orders')] class extends Component
                 </div>
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     @if ($canWriteOrders && $editingOrderId !== null)
         <flux:card>
@@ -911,22 +959,11 @@ new #[Lazy, Title('Orders')] class extends Component
                 <flux:button type="submit" variant="primary">{{ __('Save order') }}</flux:button>
             </form>
         </flux:card>
-
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Import orders (CSV / Excel)') }}</flux:heading>
-            <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Headers: Ünvan (müşteri), Para Birimi, SAS, Yükleme, Boşaltma, Mesafe (km), Tonaj') }}
-            </flux:text>
-            <div class="flex max-w-xl flex-col gap-3">
-                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                <flux:button type="button" wire:click="importOrders" variant="ghost">{{ __('Import') }}</flux:button>
-            </div>
-        </flux:card>
     @endif
 
     @if ($canWriteOrders)
         @if (count($selectedIds) > 0)
-            <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+            <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
                 <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
                 <flux:button
                     type="button"

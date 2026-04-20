@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -42,7 +43,6 @@ new #[Lazy, Title('Fuel prices')] class extends Component
 
     public string $sortDirection = 'desc';
 
-    public bool $filtersOpen = false;
 
     /** @var list<int> */
     public array $selectedIds = [];
@@ -290,6 +290,20 @@ new #[Lazy, Title('Fuel prices')] class extends Component
         $this->reset('importFile');
         $this->resetPage();
     }
+
+    public function updatedImportFile(): void
+    {
+        if ($this->importFile === null) {
+            return;
+        }
+
+        try {
+            $this->importFuelPrices(app(ExcelImportService::class));
+        } catch (ValidationException $e) {
+            $this->reset('importFile');
+            throw $e;
+        }
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
@@ -307,13 +321,47 @@ new #[Lazy, Title('Fuel prices')] class extends Component
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="back">
-                    <flux:button :href="route('admin.fuel-intakes.index')" variant="ghost" wire:navigate>{{ __('Fuel intakes') }}</flux:button>
+                    <flux:button size="sm" :href="route('admin.fuel-intakes.index')" variant="ghost" wire:navigate>{{ __('Fuel intakes') }}</flux:button>
                 </x-slot>
                 <x-slot name="export">
-                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.fuel-prices.template.xlsx')" />
-                    </flux:tooltip>
+                    <flux:button size="sm" icon="document-arrow-down" variant="outline" :href="route('admin.fuel-prices.template.xlsx')">
+                        {{ __('Download XLSX template') }}
+                    </flux:button>
                 </x-slot>
+                @if ($canWrite)
+                    <x-slot name="import">
+                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
+                            <input
+                                type="file"
+                                wire:model="importFile"
+                                accept=".xlsx,.xls,.csv"
+                                class="sr-only"
+                                x-ref="importFileInput"
+                            />
+                            <flux:tooltip
+                                :content="__('Template headers: Yakıt Tipi, Fiyat, Para Birimi, Kayıt Tarihi, Kaynak, Bölge')"
+                                position="bottom"
+                            >
+                                <flux:button
+                                    type="button"
+                                    icon="information-circle"
+                                    variant="ghost"
+                                    size="sm"
+                                    :aria-label="__('Import format help')"
+                                />
+                            </flux:tooltip>
+                            <flux:button
+                                type="button"
+                                size="sm"
+                                icon="arrow-up-tray"
+                                variant="primary"
+                                @click.prevent="$refs.importFileInput.click()"
+                            >
+                                {{ __('Import file') }}
+                            </flux:button>
+                        </div>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -337,16 +385,15 @@ new #[Lazy, Title('Fuel prices')] class extends Component
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by type / source / region')" class="max-w-md" />
-        @endif
-    </x-admin.filter-bar>
+    <flux:card class="p-4">
+        <flux:input
+            wire:model.live.debounce.300ms="filterSearch"
+            :label="__('Quick search')"
+            :placeholder="__('Search by type / source / region')"
+            icon="magnifying-glass"
+            class="max-w-full sm:max-w-md"
+        />
+    </flux:card>
 
     @if (session()->has('bulk_deleted'))
         <flux:callout variant="success" icon="check-circle">
@@ -369,19 +416,6 @@ new #[Lazy, Title('Fuel prices')] class extends Component
                 @endforeach
             </ul>
         </flux:callout>
-    @endif
-
-    @if ($canWrite)
-        <flux:card class="p-4">
-            <flux:heading size="lg" class="mb-2">{{ __('Import fuel prices (CSV / Excel)') }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Template headers: Yakıt Tipi, Fiyat, Para Birimi, Kayıt Tarihi, Kaynak, Bölge') }}
-            </flux:text>
-            <div class="flex flex-wrap items-end gap-4">
-                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                <flux:button type="button" wire:click="importFuelPrices" icon="arrow-up-tray" variant="primary">{{ __('Import') }}</flux:button>
-            </div>
-        </flux:card>
     @endif
 
     @if ($canWrite)

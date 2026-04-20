@@ -9,6 +9,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -69,7 +70,7 @@ new #[Lazy, Title('Employees')] class extends Component
 
     public string $sortDirection = 'desc';
 
-    public bool $filtersOpen = false;
+    public bool $employeeFormOpen = false;
 
     /** @var list<int|string> */
     public array $selectedIds = [];
@@ -280,6 +281,7 @@ new #[Lazy, Title('Employees')] class extends Component
             'emergency_contact_phone', 'blood_group', 'is_driver', 'license_class', 'license_valid_until',
             'src_valid_until', 'psychotechnical_valid_until', 'phone', 'email',
         );
+        $this->employeeFormOpen = false;
     }
 
     public function startEditEmployee(int $employeeId): void
@@ -290,6 +292,7 @@ new #[Lazy, Title('Employees')] class extends Component
         Gate::authorize('update', $employee);
 
         $this->editingEmployeeId = $employee->id;
+        $this->employeeFormOpen = false;
         $this->first_name = $employee->first_name;
         $this->last_name = $employee->last_name;
         $this->national_id = $employee->national_id ?? '';
@@ -417,6 +420,20 @@ new #[Lazy, Title('Employees')] class extends Component
         $this->reset('importFile');
         $this->resetPage();
     }
+
+    public function updatedImportFile(): void
+    {
+        if ($this->importFile === null) {
+            return;
+        }
+
+        try {
+            $this->importEmployees(app(ExcelImportService::class));
+        } catch (ValidationException $e) {
+            $this->reset('importFile');
+            throw $e;
+        }
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
@@ -427,16 +444,44 @@ new #[Lazy, Title('Employees')] class extends Component
             && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::EMPLOYEES_WRITE);
     @endphp
     <x-admin.page-header :heading="__('Employees')">
-        <x-slot name="breadcrumb">
-            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Employees') }}</span>
-        </x-slot>
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="export">
-                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.employees.template.xlsx')" />
-                    </flux:tooltip>
+                    <flux:button size="sm" icon="document-arrow-down" variant="outline" :href="route('admin.employees.template.xlsx')">
+                        {{ __('Download XLSX template') }}
+                    </flux:button>
                 </x-slot>
+                @if ($canWriteEmployees)
+                    <x-slot name="import">
+                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
+                            <input
+                                type="file"
+                                wire:model="importFile"
+                                accept=".xlsx,.xls,.csv"
+                                class="sr-only"
+                                x-ref="importFileInput"
+                            />
+                            <flux:tooltip :content="__('Headers: Ad, Soyad, T.C., Kan, Telefon')" position="bottom">
+                                <flux:button
+                                    type="button"
+                                    icon="information-circle"
+                                    variant="ghost"
+                                    size="sm"
+                                    :aria-label="__('Import format help')"
+                                />
+                            </flux:tooltip>
+                            <flux:button
+                                type="button"
+                                size="sm"
+                                icon="arrow-up-tray"
+                                variant="primary"
+                                @click.prevent="$refs.importFileInput.click()"
+                            >
+                                {{ __('Import file') }}
+                            </flux:button>
+                        </div>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -483,25 +528,21 @@ new #[Lazy, Title('Employees')] class extends Component
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-        </div>
-        @if ($filtersOpen)
-            <flux:input
-                wire:model.live.debounce.400ms="filterSearch"
-                :label="__('Search (name, national ID, phone)')"
-            />
-        @endif
-    </x-admin.filter-bar>
+    <flux:card class="p-4">
+        <flux:input
+            wire:model.live.debounce.400ms="filterSearch"
+            :label="__('Quick search')"
+            :placeholder="__('Search (name, national ID, phone)')"
+            icon="magnifying-glass"
+            class="max-w-full sm:max-w-md"
+        />
+    </flux:card>
 
     @if ($canWriteEmployees)
         @if ($editingEmployeeId !== null)
             <flux:card>
                 <flux:heading size="lg" class="mb-4">{{ __('Edit employee') }}</flux:heading>
-                <form wire:submit="updateEmployee" class="flex max-w-2xl flex-col gap-4">
+                <form wire:submit="updateEmployee" class="flex w-full flex-col gap-4">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="first_name" :label="__('First name')" required />
                         <flux:input wire:model="last_name" :label="__('Last name')" required />
@@ -561,16 +602,21 @@ new #[Lazy, Title('Employees')] class extends Component
                         <flux:input wire:model="emergency_contact_relation" :label="__('Relation')" />
                         <flux:input wire:model="emergency_contact_phone" :label="__('Emergency Phone')" />
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
                         <flux:button type="button" variant="ghost" wire:click="cancelEmployeeEdit">{{ __('Cancel') }}</flux:button>
+                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
                     </div>
                 </form>
             </flux:card>
         @else
-            <flux:card>
-                <flux:heading size="lg" class="mb-4">{{ __('New employee') }}</flux:heading>
-                <form wire:submit="saveEmployee" class="flex max-w-2xl flex-col gap-4">
+            <x-admin.filter-bar :label="__('New employee')">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('employeeFormOpen')">
+                        {{ $employeeFormOpen ? __('Hide') : __('Show') }}
+                    </flux:button>
+                </div>
+                @if ($employeeFormOpen)
+                <form wire:submit="saveEmployee" class="mt-2 flex w-full flex-col gap-4">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="first_name" :label="__('First name')" required />
                         <flux:input wire:model="last_name" :label="__('Last name')" required />
@@ -630,25 +676,17 @@ new #[Lazy, Title('Employees')] class extends Component
                         <flux:input wire:model="emergency_contact_relation" :label="__('Relation')" />
                         <flux:input wire:model="emergency_contact_phone" :label="__('Emergency Phone')" />
                     </div>
-                    <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                    <div class="flex justify-end">
+                        <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                    </div>
                 </form>
-            </flux:card>
+                @endif
+            </x-admin.filter-bar>
         @endif
-
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Import employees (CSV / Excel)') }}</flux:heading>
-            <flux:text class="mb-3 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Headers: Ad, Soyad, T.C., Kan, Telefon') }}
-            </flux:text>
-            <div class="flex max-w-xl flex-col gap-3">
-                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                <flux:button type="button" wire:click="importEmployees" variant="ghost">{{ __('Import') }}</flux:button>
-            </div>
-        </flux:card>
     @endif
 
     @if ($canWriteEmployees && count($selectedIds) > 0)
-        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+        <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
             <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
             <flux:button
                 type="button"

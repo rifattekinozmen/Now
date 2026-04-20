@@ -288,27 +288,24 @@ new #[Lazy, Title('Finance summary')] class extends Component
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
         <x-admin.page-header :heading="__('Finance summary')">
-            <x-slot name="breadcrumb">
-                <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Finance summary') }}</span>
-            </x-slot>
             <x-slot name="actions">
                 <x-admin.index-actions>
                     <x-slot name="extra">
-                        <flux:button :href="route('admin.finance.reports')" variant="outline" wire:navigate>{{ __('Finance reports') }}</flux:button>
-                        <flux:button :href="route('admin.finance.payment-due-calendar')" variant="outline" wire:navigate>{{ __('Payment due calendar') }}</flux:button>
+                        <flux:button size="sm" :href="route('admin.finance.reports')" variant="outline" wire:navigate>{{ __('Finance reports') }}</flux:button>
+                        <flux:button size="sm" :href="route('admin.finance.payment-due-calendar')" variant="outline" wire:navigate>{{ __('Payment due calendar') }}</flux:button>
                     </x-slot>
                     <x-slot name="export">
-                        <flux:tooltip :content="__('Export orders CSV')" position="bottom">
-                            <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.orders.export.finance.csv')" />
-                        </flux:tooltip>
-                        <flux:tooltip :content="__('Export Logo XML')" position="bottom">
-                            <flux:button icon="code-bracket" variant="outline" :href="route('admin.orders.export.logo.xml')" />
-                        </flux:tooltip>
+                        <flux:button size="sm" icon="arrow-down-tray" variant="outline" :href="route('admin.orders.export.finance.csv')">
+                            {{ __('Export finance CSV') }}
+                        </flux:button>
+                        <flux:button size="sm" icon="code-bracket" variant="outline" :href="route('admin.orders.export.logo.xml')">
+                            {{ __('Export Logo XML') }}
+                        </flux:button>
                     </x-slot>
                     <x-slot name="import">
-                        <flux:tooltip :content="__('Bank statement CSV import')" position="bottom">
-                            <flux:button icon="arrow-up-tray" variant="outline" :href="route('admin.finance.bank-statement-csv')" wire:navigate />
-                        </flux:tooltip>
+                        <flux:button size="sm" icon="arrow-up-tray" variant="outline" :href="route('admin.finance.bank-statement-csv')" wire:navigate>
+                            {{ __('Bank statement CSV import') }}
+                        </flux:button>
                     </x-slot>
                 </x-admin.index-actions>
             </x-slot>

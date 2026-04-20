@@ -210,18 +210,32 @@ new #[Lazy, Title('Material codes')] class extends Component
     @endif
 
     {{-- Filter bar --}}
-    <x-admin.filter-bar>
-        <flux:input wire:model.live.debounce.400ms="filterSearch" :label="__('Search code / name')" />
-        <flux:select wire:model.live="filterCategory" :label="__('Category')">
-            <flux:select.option value="">{{ __('All categories') }}</flux:select.option>
-            <flux:select.option value="raw_material">{{ __('Raw Material') }}</flux:select.option>
-            <flux:select.option value="cement">{{ __('Cement') }}</flux:select.option>
-            <flux:select.option value="packaged">{{ __('Packaged') }}</flux:select.option>
-            <flux:select.option value="fertilizer">{{ __('Fertilizer') }}</flux:select.option>
-            <flux:select.option value="mine">{{ __('Mine') }}</flux:select.option>
-            <flux:select.option value="other">{{ __('Other') }}</flux:select.option>
-        </flux:select>
-    </x-admin.filter-bar>
+    <flux:card class="p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search code / name')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="mt-3 max-w-xs">
+                <flux:select wire:model.live="filterCategory" :label="__('Category')">
+                    <flux:select.option value="">{{ __('All categories') }}</flux:select.option>
+                    <flux:select.option value="raw_material">{{ __('Raw Material') }}</flux:select.option>
+                    <flux:select.option value="cement">{{ __('Cement') }}</flux:select.option>
+                    <flux:select.option value="packaged">{{ __('Packaged') }}</flux:select.option>
+                    <flux:select.option value="fertilizer">{{ __('Fertilizer') }}</flux:select.option>
+                    <flux:select.option value="mine">{{ __('Mine') }}</flux:select.option>
+                    <flux:select.option value="other">{{ __('Other') }}</flux:select.option>
+                </flux:select>
+            </div>
+        @endif
+    </flux:card>
 
     {{-- Create / Edit Form --}}
     <flux:card>

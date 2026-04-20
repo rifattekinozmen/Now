@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -59,6 +60,8 @@ new #[Lazy, Title('Business Partners')] class extends Component
     public string $sortDirection = 'desc';
 
     public bool $filtersOpen = false;
+
+    public bool $partnerFormOpen = false;
 
     /** @var list<int|string> */
     public array $selectedIds = [];
@@ -259,6 +262,7 @@ $partner = BusinessPartner::query()->findOrFail($partnerId);
         Gate::authorize('update', $partner);
 
         $this->editingPartnerId  = $partner->id;
+        $this->partnerFormOpen   = false;
         $this->name              = $partner->name;
         $this->type              = $partner->type->value;
         $this->tax_no            = $partner->tax_no ?? '';
@@ -356,6 +360,20 @@ Gate::authorize('create', BusinessPartner::class);
         $this->reset('importFile');
     }
 
+    public function updatedImportFile(): void
+    {
+        if ($this->importFile === null) {
+            return;
+        }
+
+        try {
+            $this->importPartners(app(ExcelImportService::class));
+        } catch (ValidationException $e) {
+            $this->reset('importFile');
+            throw $e;
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
@@ -385,6 +403,7 @@ Gate::authorize('create', BusinessPartner::class);
         $this->type = 'supplier';
         $this->payment_terms_days = 30;
         $this->is_active = true;
+        $this->partnerFormOpen = false;
     }
 }; ?>
 
@@ -399,8 +418,43 @@ Gate::authorize('create', BusinessPartner::class);
         :heading="__('Business Partners')"
         :description="__('Carriers, suppliers, brokers and agents — scoped to your tenant.')"
     >
-        <x-slot name="breadcrumb">
-            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Business Partners') }}</span>
+        <x-slot name="actions">
+            @if ($canWrite)
+                <x-admin.index-actions>
+                    <x-slot name="import">
+                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
+                            <input
+                                type="file"
+                                wire:model="importFile"
+                                accept=".xlsx,.xls,.csv"
+                                class="sr-only"
+                                x-ref="importFileInput"
+                            />
+                            <flux:tooltip
+                                :content="__('First row must be headers: İsim, Tip, Vergi No, İletişim Kişisi, Telefon, Email, Şehir, Ülke, IBAN, Vade Gün.')"
+                                position="bottom"
+                            >
+                                <flux:button
+                                    type="button"
+                                    icon="information-circle"
+                                    variant="ghost"
+                                    size="sm"
+                                    :aria-label="__('Import format help')"
+                                />
+                            </flux:tooltip>
+                            <flux:button
+                                type="button"
+                                size="sm"
+                                icon="arrow-up-tray"
+                                variant="primary"
+                                @click.prevent="$refs.importFileInput.click()"
+                            >
+                                {{ __('Import file') }}
+                            </flux:button>
+                        </div>
+                    </x-slot>
+                </x-admin.index-actions>
+            @endif
         </x-slot>
     </x-admin.page-header>
 
@@ -456,18 +510,20 @@ Gate::authorize('create', BusinessPartner::class);
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search (name, tax no, city)')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="grid gap-4 sm:grid-cols-3">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (name, tax no, city)')"
-                />
+            <div class="mt-3 grid gap-4 sm:grid-cols-2">
                 <flux:select wire:model.live="filterType" :label="__('Type')">
                     <flux:select.option value="">{{ __('All types') }}</flux:select.option>
                     @foreach ($types as $t)
@@ -481,76 +537,91 @@ Gate::authorize('create', BusinessPartner::class);
                 </flux:select>
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     @if ($canWrite)
-        <div class="grid gap-6 lg:grid-cols-2">
-            @if ($editingPartnerId !== null)
-                <flux:card>
-                    <flux:heading size="lg" class="mb-4">{{ __('Edit partner') }}</flux:heading>
-                    <form wire:submit="updatePartner" class="flex flex-col gap-4">
+        @if ($editingPartnerId !== null)
+            <flux:card>
+                <flux:heading size="lg" class="mb-4">{{ __('Edit partner') }}</flux:heading>
+                <form wire:submit="updatePartner" class="flex flex-col gap-4">
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="name" :label="__('Name')" required />
                         <flux:select wire:model="type" :label="__('Type')">
                             @foreach ($types as $t)
                                 <flux:select.option :value="$t->value">{{ $t->label() }}</flux:select.option>
                             @endforeach
                         </flux:select>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="tax_no" :label="__('Tax No')" />
                         <flux:input wire:model="contact_person" :label="__('Contact Person')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="phone" :label="__('Phone')" />
                         <flux:input wire:model="email" type="email" :label="__('Email')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="city" :label="__('City')" />
                         <flux:input wire:model="country" :label="__('Country')" />
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="iban" :label="__('IBAN')" />
                         <flux:input wire:model="payment_terms_days" type="number" min="0" max="3650" :label="__('Payment Terms (days)')" />
+                    </div>
+                    <flux:checkbox wire:model="is_active" :label="__('Active')" />
+                    <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" />
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <flux:button type="button" variant="ghost" wire:click="cancelEdit">{{ __('Cancel') }}</flux:button>
+                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                    </div>
+                </form>
+            </flux:card>
+        @else
+            <x-admin.filter-bar :label="__('New partner')">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('partnerFormOpen')">
+                        {{ $partnerFormOpen ? __('Hide') : __('Show') }}
+                    </flux:button>
+                </div>
+                @if ($partnerFormOpen)
+                    <form wire:submit="savePartner" class="mt-2 flex flex-col gap-4">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="name" :label="__('Name')" required />
+                            <flux:select wire:model="type" :label="__('Type')">
+                                @foreach ($types as $t)
+                                    <flux:select.option :value="$t->value">{{ $t->label() }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="tax_no" :label="__('Tax No')" />
+                            <flux:input wire:model="contact_person" :label="__('Contact Person')" />
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="phone" :label="__('Phone')" />
+                            <flux:input wire:model="email" type="email" :label="__('Email')" />
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="city" :label="__('City')" />
+                            <flux:input wire:model="country" :label="__('Country')" />
+                        </div>
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <flux:input wire:model="iban" :label="__('IBAN')" />
+                            <flux:input wire:model="payment_terms_days" type="number" min="0" max="3650" :label="__('Payment Terms (days)')" />
+                        </div>
                         <flux:checkbox wire:model="is_active" :label="__('Active')" />
                         <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" />
-                        <div class="flex flex-wrap gap-2">
-                            <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
-                            <flux:button type="button" variant="ghost" wire:click="cancelEdit">{{ __('Cancel') }}</flux:button>
+                        <div class="flex justify-end">
+                            <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                         </div>
                     </form>
-                </flux:card>
-            @else
-                <flux:card>
-                    <flux:heading size="lg" class="mb-4">{{ __('New partner') }}</flux:heading>
-                    <form wire:submit="savePartner" class="flex flex-col gap-4">
-                        <flux:input wire:model="name" :label="__('Name')" required />
-                        <flux:select wire:model="type" :label="__('Type')">
-                            @foreach ($types as $t)
-                                <flux:select.option :value="$t->value">{{ $t->label() }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                        <flux:input wire:model="tax_no" :label="__('Tax No')" />
-                        <flux:input wire:model="contact_person" :label="__('Contact Person')" />
-                        <flux:input wire:model="phone" :label="__('Phone')" />
-                        <flux:input wire:model="email" type="email" :label="__('Email')" />
-                        <flux:input wire:model="city" :label="__('City')" />
-                        <flux:input wire:model="country" :label="__('Country')" />
-                        <flux:input wire:model="iban" :label="__('IBAN')" />
-                        <flux:input wire:model="payment_terms_days" type="number" min="0" max="3650" :label="__('Payment Terms (days)')" />
-                        <flux:checkbox wire:model="is_active" :label="__('Active')" />
-                        <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" />
-                        <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                    </form>
-                </flux:card>
-            @endif
-
-            <flux:card>
-                <flux:heading size="lg" class="mb-4">{{ __('Import Excel') }}</flux:heading>
-                <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                    {{ __('First row must be headers: İsim, Tip, Vergi No, İletişim Kişisi, Telefon, Email, Şehir, Ülke, IBAN, Vade Gün.') }}
-                </p>
-                <div class="flex flex-col gap-4">
-                    <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                    <flux:button wire:click="importPartners" variant="primary">{{ __('Import') }}</flux:button>
-                </div>
-            </flux:card>
-        </div>
+                @endif
+            </x-admin.filter-bar>
+        @endif
     @endif
 
     @if ($canWrite && count($selectedIds) > 0)
-        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+        <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
             <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
             <flux:button
                 type="button"

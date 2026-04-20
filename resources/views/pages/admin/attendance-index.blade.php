@@ -296,28 +296,30 @@ new #[Lazy, Title('Attendance')] class extends Component
     </div>
 
     {{-- Filters --}}
-    <x-admin.filter-bar :label="__('Advanced filters')">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+    <flux:card class="p-4">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[220px]">
-                <option value="">{{ __('All employees') }}</option>
-                @foreach ($this->employees as $emp)
-                    <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
-                @endforeach
-            </flux:select>
-            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
-                <option value="">{{ __('All statuses') }}</option>
-                @foreach (\App\Enums\AttendanceStatus::cases() as $s)
-                    <option value="{{ $s->value }}">{{ $s->label() }}</option>
-                @endforeach
-            </flux:select>
-            <flux:input wire:model.live="filterDate" type="date" :label="__('Date')" class="max-w-[180px]" />
+            <div class="mt-3 flex flex-wrap gap-3">
+                <flux:select wire:model.live="filterEmployee" :label="__('Employee')" class="max-w-[220px]">
+                    <option value="">{{ __('All employees') }}</option>
+                    @foreach ($this->employees as $emp)
+                        <option value="{{ $emp->id }}">{{ $emp->fullName() }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[160px]">
+                    <option value="">{{ __('All statuses') }}</option>
+                    @foreach (\App\Enums\AttendanceStatus::cases() as $s)
+                        <option value="{{ $s->value }}">{{ $s->label() }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:input wire:model.live="filterDate" type="date" :label="__('Date')" class="max-w-[180px]" />
+            </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     {{-- Form --}}
     @if ($canWrite && $editingId !== null)

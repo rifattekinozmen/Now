@@ -43,6 +43,8 @@ new #[Lazy, Title('Shipments')] class extends Component
 
     public bool $filtersOpen = false;
 
+    public bool $shipmentFormOpen = false;
+
     /** @var list<int|string> */
     public array $selectedIds = [];
 
@@ -339,6 +341,7 @@ new #[Lazy, Title('Shipments')] class extends Component
         ]);
 
         $this->reset('order_id', 'vehicle_id', 'driver_employee_id');
+        $this->shipmentFormOpen = false;
     }
 
     public function markDispatched(int $id, ShipmentStatusTransitionService $transitions): void
@@ -395,9 +398,6 @@ new #[Lazy, Title('Shipments')] class extends Component
         :heading="__('Shipments')"
         :description="__('Dispatch, POD, QR tracking, and status transitions for operations.')"
     >
-        <x-slot name="breadcrumb">
-            <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Shipments') }}</span>
-        </x-slot>
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="back">
@@ -436,18 +436,20 @@ new #[Lazy, Title('Shipments')] class extends Component
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search (shipment id, order no, plate)')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
             </flux:button>
         </div>
         @if ($filtersOpen)
-            <div class="flex flex-col gap-4">
-                <flux:input
-                    wire:model.live.debounce.400ms="filterSearch"
-                    :label="__('Search (shipment id, order no, plate)')"
-                />
+            <div class="mt-3 flex flex-col gap-4">
                 <flux:select wire:model.live="filterStatus" :label="__('Filter by shipment status')" class="max-w-md">
                     <option value="">{{ __('All statuses') }}</option>
                     @foreach (\App\Enums\ShipmentStatus::cases() as $case)
@@ -468,36 +470,42 @@ new #[Lazy, Title('Shipments')] class extends Component
                 </flux:select>
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     @if ($canWriteShipments)
-        <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('New shipment') }}</flux:heading>
-            <form wire:submit="saveShipment" class="flex max-w-xl flex-col gap-4">
-                <flux:select wire:model="order_id" :label="__('Order')" required>
-                    <option value="">{{ __('Select…') }}</option>
-                    @foreach ($this->orderOptions() as $o)
-                        <option value="{{ $o['id'] }}">{{ $o['order_number'] }} — {{ $o['legal_name'] }}</option>
-                    @endforeach
-                </flux:select>
+        <x-admin.filter-bar :label="__('New shipment')">
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('shipmentFormOpen')">
+                    {{ $shipmentFormOpen ? __('Hide') : __('Show') }}
+                </flux:button>
+            </div>
+            @if ($shipmentFormOpen)
+                <form wire:submit="saveShipment" class="mt-2 flex max-w-xl flex-col gap-4">
+                    <flux:select wire:model="order_id" :label="__('Order')" required>
+                        <option value="">{{ __('Select…') }}</option>
+                        @foreach ($this->orderOptions() as $o)
+                            <option value="{{ $o['id'] }}">{{ $o['order_number'] }} — {{ $o['legal_name'] }}</option>
+                        @endforeach
+                    </flux:select>
 
-                <flux:select wire:model="vehicle_id" :label="__('Vehicle (optional)')">
-                    <option value="">{{ __('—') }}</option>
-                    @foreach ($this->vehicleOptions() as $v)
-                        <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
-                    @endforeach
-                </flux:select>
+                    <flux:select wire:model="vehicle_id" :label="__('Vehicle (optional)')">
+                        <option value="">{{ __('—') }}</option>
+                        @foreach ($this->vehicleOptions() as $v)
+                            <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
+                        @endforeach
+                    </flux:select>
 
-                <flux:select wire:model="driver_employee_id" :label="__('Driver (optional)')">
-                    <option value="">{{ __('—') }}</option>
-                    @foreach ($this->driverOptions() as $d)
-                        <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
-                    @endforeach
-                </flux:select>
+                    <flux:select wire:model="driver_employee_id" :label="__('Driver (optional)')">
+                        <option value="">{{ __('—') }}</option>
+                        @foreach ($this->driverOptions() as $d)
+                            <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
+                        @endforeach
+                    </flux:select>
 
-                <flux:button type="submit" variant="primary">{{ __('Save shipment') }}</flux:button>
-            </form>
-        </flux:card>
+                    <flux:button type="submit" variant="primary">{{ __('Save shipment') }}</flux:button>
+                </form>
+            @endif
+        </x-admin.filter-bar>
     @endif
 
     @if ($canWriteShipments)

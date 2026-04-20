@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -315,6 +316,20 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
         $this->reset('importFile');
         $this->resetPage();
     }
+
+    public function updatedImportFile(): void
+    {
+        if ($this->importFile === null) {
+            return;
+        }
+
+        try {
+            $this->importFuelIntakes(app(ExcelImportService::class));
+        } catch (ValidationException $e) {
+            $this->reset('importFile');
+            throw $e;
+        }
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
@@ -332,13 +347,47 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
         <x-slot name="actions">
             <x-admin.index-actions>
                 <x-slot name="back">
-                    <flux:button :href="route('admin.vehicles.index')" variant="ghost" wire:navigate>{{ __('Vehicles') }}</flux:button>
+                    <flux:button size="sm" :href="route('admin.vehicles.index')" variant="ghost" wire:navigate>{{ __('Vehicles') }}</flux:button>
                 </x-slot>
                 <x-slot name="export">
-                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.fuel-intakes.template.xlsx')" />
-                    </flux:tooltip>
+                    <flux:button size="sm" icon="document-arrow-down" variant="outline" :href="route('admin.fuel-intakes.template.xlsx')">
+                        {{ __('Download XLSX template') }}
+                    </flux:button>
                 </x-slot>
+                @if ($canWriteFuel)
+                    <x-slot name="import">
+                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
+                            <input
+                                type="file"
+                                wire:model="importFile"
+                                accept=".xlsx,.xls,.csv"
+                                class="sr-only"
+                                x-ref="importFileInput"
+                            />
+                            <flux:tooltip
+                                :content="__('Use the template headers: Plaka, Litre, Kilometre, Kayıt Tarihi. Vehicle plate must exist in this tenant.')"
+                                position="bottom"
+                            >
+                                <flux:button
+                                    type="button"
+                                    icon="information-circle"
+                                    variant="ghost"
+                                    size="sm"
+                                    :aria-label="__('Import format help')"
+                                />
+                            </flux:tooltip>
+                            <flux:button
+                                type="button"
+                                size="sm"
+                                icon="arrow-up-tray"
+                                variant="primary"
+                                @click.prevent="$refs.importFileInput.click()"
+                            >
+                                {{ __('Import file') }}
+                            </flux:button>
+                        </div>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -362,21 +411,28 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
         </flux:card>
     </div>
 
-    <x-admin.filter-bar :label="__('Advanced filters')">
+    <flux:card class="p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('filtersOpen')">
-                {{ $filtersOpen ? __('Hide') : __('Show') }}
-            </flux:button>
-            @if ($filterVehicle !== '' || $filterDateFrom !== '' || $filterDateTo !== '' || $filterSearch !== '')
-                <flux:button type="button" variant="ghost" size="sm"
-                    wire:click="$set('filterVehicle',''); $set('filterDateFrom',''); $set('filterDateTo',''); $set('filterSearch','')">
-                    {{ __('Clear filters') }}
+            <flux:input
+                wire:model.live.debounce.300ms="filterSearch"
+                :placeholder="__('Search by plate')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-xs"
+            />
+            <div class="flex flex-wrap items-center gap-2">
+                @if ($filterVehicle !== '' || $filterDateFrom !== '' || $filterDateTo !== '' || $filterSearch !== '')
+                    <flux:button type="button" variant="ghost" size="sm"
+                        wire:click="$set('filterVehicle',''); $set('filterDateFrom',''); $set('filterDateTo',''); $set('filterSearch','')">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                @endif
+                <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                    {{ __('Filters') }}
                 </flux:button>
-            @endif
+            </div>
         </div>
         @if ($filtersOpen)
             <div class="mt-3 flex flex-wrap gap-3">
-                <flux:input wire:model.live.debounce.300ms="filterSearch" :label="__('Search by plate')" class="w-48" />
                 <div>
                     <flux:label>{{ __('Vehicle') }}</flux:label>
                     <flux:select wire:model.live="filterVehicle" class="w-48">
@@ -390,7 +446,7 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
                 <flux:input wire:model.live="filterDateTo" type="date" :label="__('To')" class="w-36" />
             </div>
         @endif
-    </x-admin.filter-bar>
+    </flux:card>
 
     @if (session()->has('anomaly_warning'))
         <flux:callout variant="warning" icon="exclamation-triangle">
@@ -423,19 +479,6 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
 
     @if ($canWriteFuel)
         <flux:card class="p-4">
-            <flux:heading size="lg" class="mb-2">{{ __('Import fuel intakes (CSV / Excel)') }}</flux:heading>
-            <flux:text class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-                {{ __('Use the template headers: Plaka, Litre, Kilometre, Kayıt Tarihi. Vehicle plate must exist in this tenant.') }}
-            </flux:text>
-            <div class="flex flex-wrap items-end gap-4">
-                <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
-                <flux:button type="button" wire:click="importFuelIntakes" icon="arrow-up-tray" variant="primary">{{ __('Import') }}</flux:button>
-            </div>
-        </flux:card>
-    @endif
-
-    @if ($canWriteFuel)
-        <flux:card class="p-4">
             <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <flux:heading size="lg">{{ __('Add or edit record') }}</flux:heading>
                 @if ($editingId === null)
@@ -444,8 +487,8 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
             </div>
 
             @if ($editingId !== null)
-                <form wire:submit="save" class="grid max-w-xl gap-4">
-                    <flux:select wire:model="vehicle_id" :label="__('Vehicle')" required>
+                <form wire:submit="save" class="grid w-full gap-4 sm:grid-cols-2">
+                    <flux:select wire:model="vehicle_id" :label="__('Vehicle')" required class="sm:col-span-2">
                         <option value="">{{ __('Select vehicle') }}</option>
                         @foreach (\App\Models\Vehicle::query()->orderBy('plate')->get() as $v)
                             <option value="{{ $v->id }}">{{ $v->plate }}</option>
@@ -453,10 +496,10 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
                     </flux:select>
                     <flux:input wire:model="liters" type="text" :label="__('Liters')" required />
                     <flux:input wire:model="odometer_km" type="text" :label="__('Odometer (km)')" />
-                    <flux:input wire:model="recorded_at" type="datetime-local" :label="__('Recorded at')" required />
-                    <div class="flex flex-wrap gap-2">
-                        <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+                    <flux:input wire:model="recorded_at" type="datetime-local" :label="__('Recorded at')" required class="sm:col-span-2" />
+                    <div class="flex flex-wrap items-center justify-end gap-2 sm:col-span-2">
                         <flux:button type="button" variant="ghost" wire:click="cancelForm">{{ __('Cancel') }}</flux:button>
+                        <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                     </div>
                 </form>
             @endif
@@ -464,7 +507,7 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
     @endif
 
     @if ($canWriteFuel && count($selectedIds) > 0)
-        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
+        <div class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
             <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
             <flux:button
                 type="button"

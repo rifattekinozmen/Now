@@ -122,21 +122,35 @@ new #[Lazy, Title('Traffic fines')] class extends Component
     </div>
 
     {{-- Filter bar --}}
-    <x-admin.filter-bar>
-        <flux:input wire:model.live.debounce.400ms="filterSearch" :label="__('Search plate / fine no / location')" />
-        <flux:select wire:model.live="filterStatus" :label="__('Status')">
-            <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
-            @foreach (VehicleFineStatus::cases() as $s)
-                <flux:select.option :value="$s->value">{{ $s->label() }}</flux:select.option>
-            @endforeach
-        </flux:select>
-        <flux:select wire:model.live="filterType" :label="__('Type')">
-            <flux:select.option value="">{{ __('All types') }}</flux:select.option>
-            @foreach (VehicleFineType::cases() as $t)
-                <flux:select.option :value="$t->value">{{ $t->label() }}</flux:select.option>
-            @endforeach
-        </flux:select>
-    </x-admin.filter-bar>
+    <flux:card class="p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search plate / fine no / location')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
+                {{ __('Filters') }}
+            </flux:button>
+        </div>
+        @if ($filtersOpen)
+            <div class="mt-3 flex flex-wrap gap-3">
+                <flux:select wire:model.live="filterStatus" :label="__('Status')">
+                    <flux:select.option value="">{{ __('All statuses') }}</flux:select.option>
+                    @foreach (VehicleFineStatus::cases() as $s)
+                        <flux:select.option :value="$s->value">{{ $s->label() }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+                <flux:select wire:model.live="filterType" :label="__('Type')">
+                    <flux:select.option value="">{{ __('All types') }}</flux:select.option>
+                    @foreach (VehicleFineType::cases() as $t)
+                        <flux:select.option :value="$t->value">{{ $t->label() }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
+        @endif
+    </flux:card>
 
     {{-- Table --}}
     <flux:card>
