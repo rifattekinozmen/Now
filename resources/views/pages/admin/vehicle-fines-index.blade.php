@@ -93,11 +93,6 @@ new #[Lazy, Title('Traffic Fines')] class extends Component
         $fine->update(['status' => VehicleFineStatus::Paid->value, 'paid_at' => now()]);
         unset($this->paginatedFines, $this->stats);
     }
-
-    public function render(): \Illuminate\View\View
-    {
-        return view('livewire.pages.admin.vehicle-fines-index');
-    }
 }; ?>
 
 <div class="flex flex-col gap-6">

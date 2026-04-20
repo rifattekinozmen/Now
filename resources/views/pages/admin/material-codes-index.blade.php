@@ -177,11 +177,6 @@ new #[Lazy, Title('Material Codes')] class extends Component
         $this->unit = 'ton';
         $this->is_active = true;
     }
-
-    public function render(): \Illuminate\View\View
-    {
-        return view('livewire.pages.admin.material-codes-index');
-    }
 }; ?>
 
 <div class="flex flex-col gap-6">

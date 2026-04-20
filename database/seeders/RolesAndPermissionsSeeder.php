@@ -38,11 +38,12 @@ class RolesAndPermissionsSeeder extends Seeder
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $permSuperAdmin = Permission::findOrCreate(LogisticsPermission::SUPER_ADMIN, 'web');
-        $roleSuperAdmin = Role::findOrCreate(self::ROLE_SUPER_ADMIN, 'web');
-        $roleSuperAdmin->syncPermissions([$permSuperAdmin]);
-
         $permAdmin = Permission::findOrCreate(LogisticsPermission::ADMIN, 'web');
         $permView = Permission::findOrCreate(LogisticsPermission::VIEW, 'web');
+
+        $roleSuperAdmin = Role::findOrCreate(self::ROLE_SUPER_ADMIN, 'web');
+        // Platform + tüm lojistik paneli (sidebar, logistics.access middleware) — yalnızca SUPER_ADMIN yetersiz kalıyordu.
+        $roleSuperAdmin->syncPermissions([$permSuperAdmin, $permAdmin, $permView]);
         foreach ([
             LogisticsPermission::CUSTOMERS_WRITE,
             LogisticsPermission::ORDERS_WRITE,

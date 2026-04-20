@@ -68,6 +68,29 @@ it('admin only sees users from their own tenant', function (): void {
         ->not->toContain($userB->id);
 })->group('behaviour');
 
+it('admin sees users for the active tenant when primary tenant_id differs', function (): void {
+    RolesAndPermissionsSeeder::ensureDefaults();
+
+    $tenantA = Tenant::factory()->create();
+    $tenantB = Tenant::factory()->create();
+
+    $admin = User::factory()->create(['tenant_id' => $tenantA->id]);
+    $admin->tenants()->syncWithoutDetaching([$tenantA->id, $tenantB->id]);
+    $admin->givePermissionTo(LogisticsPermission::ADMIN);
+    $admin->update(['active_tenant_id' => $tenantB->id]);
+
+    $userOnlyInB = User::factory()->create(['tenant_id' => $tenantB->id]);
+    $userOnlyInA = User::factory()->withoutLogisticsRole()->create(['tenant_id' => $tenantA->id]);
+
+    $this->actingAs($admin);
+
+    $component = Livewire::test('pages::admin.team-users-index');
+
+    $ids = $component->get('teamUsers')->pluck('id')->toArray();
+    expect($ids)->toContain($userOnlyInB->id)
+        ->not->toContain($userOnlyInA->id);
+})->group('behaviour');
+
 // ─────────────────────────────────────────────
 // BEHAVIOUR — role changes
 // ─────────────────────────────────────────────

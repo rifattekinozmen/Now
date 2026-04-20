@@ -134,7 +134,7 @@ class UserFactory extends Factory
             if ($role === null) {
                 return;
             }
-            $user->assignRole($role);
+            $user->syncRoles([$role]);
             $user->forgetCachedPermissions();
         });
     }
@@ -142,6 +142,10 @@ class UserFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (User $user): void {
+            if ($user->hasRole(RolesAndPermissionsSeeder::ROLE_SUPER_ADMIN)) {
+                return;
+            }
+
             if ($user->hasRole(RolesAndPermissionsSeeder::ROLE_LOGISTICS_VIEWER)) {
                 return;
             }

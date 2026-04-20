@@ -20,6 +20,11 @@ new #[Lazy, Title('Team')] class extends Component
         }
     }
 
+    private function activeTenantId(): int
+    {
+        return (int) (Auth::user()->active_tenant_id ?? Auth::user()->tenant_id);
+    }
+
     /**
      * @return array{total:int, admins:int, viewers:int, noAccess:int}
      */
@@ -42,10 +47,16 @@ new #[Lazy, Title('Team')] class extends Component
     #[Computed]
     public function teamUsers(): \Illuminate\Database\Eloquent\Collection
     {
+        $tid = $this->activeTenantId();
+
         return User::query()
-            ->where('tenant_id', Auth::user()->tenant_id)
+            ->where(function ($q) use ($tid): void {
+                $q->where('tenant_id', $tid)
+                    ->orWhereHas('tenants', fn ($inner) => $inner->where('tenants.id', $tid));
+            })
             ->with('roles', 'permissions')
             ->orderBy('name')
+            ->distinct()
             ->get();
     }
 
@@ -107,12 +118,15 @@ new #[Lazy, Title('Team')] class extends Component
 
     private function findUserInTenant(int $userId): User
     {
-        $user = User::query()
-            ->where('id', $userId)
-            ->where('tenant_id', Auth::user()->tenant_id)
-            ->firstOrFail();
+        $tid = $this->activeTenantId();
 
-        return $user;
+        return User::query()
+            ->where('id', $userId)
+            ->where(function ($q) use ($tid): void {
+                $q->where('tenant_id', $tid)
+                    ->orWhereHas('tenants', fn ($inner) => $inner->where('tenants.id', $tid));
+            })
+            ->firstOrFail();
     }
 }; ?>
 

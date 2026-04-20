@@ -89,7 +89,13 @@
       "Bash(vendor/bin/pint app/Services/Logistics/ExcelImportService.php app/Exports/VehicleImportTemplateExport.php --format agent)",
       "Bash(vendor/bin/pint resources/views/pages/admin/bank-accounts-index.blade.php resources/views/pages/admin/bank-transactions-index.blade.php --format agent)",
       "Bash(vendor/bin/pint app/Models/BankAccount.php --format agent)",
-      "Bash(wc -l C:/laragon/www/Now/resources/views/pages/admin/*.blade.php)"
+      "Bash(wc -l C:/laragon/www/Now/resources/views/pages/admin/*.blade.php)",
+      "Bash(git commit -m ' *)",
+      "Bash(dir resources/views/pages/customer/ /b)",
+      "Bash(grep -n 'public $shipment\\\\|public Shipment' 'C:\\\\laragon\\\\www\\\\Now\\\\app\\\\Events\\\\Logistics\\\\ShipmentDispatched.php')",
+      "Bash(dir \"C:\\\\laragon\\\\www\\\\Now\\\\routes\" /B)",
+      "Bash(comm -13 /tmp/en_keys.txt /tmp/tr_keys.txt)",
+      "Read(//tmp/**)"
     ]
   }
 }
