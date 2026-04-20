@@ -32,7 +32,7 @@ new #[Title('Notification')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-3xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
     <div class="flex items-center gap-3">
         <flux:button :href="route('admin.notifications.index')" variant="ghost" wire:navigate icon="arrow-left" size="sm">

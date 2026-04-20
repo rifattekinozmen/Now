@@ -2,6 +2,19 @@
 
 Bu dosyayı isteğe bağlı doldurun; Cursor komutu **Session** ile devam ederken bağlam olarak kullanılır.
 
+## Dış bağımlılıklar ve backlog (tek liste — 2026-04-20)
+
+Aşağıdakiler [roadmap.md](roadmap.md) “sonraki iterasyon” ile aynıdır; kod tabanında iskelet veya kısmi uygulama vardır, üretim doğrulaması bekler:
+
+| Konu | Not |
+|------|-----|
+| TotalEnergies | Canlı API gövdesi / müşteri sözleşmesi ile uçtan uca doğrulama |
+| Banka ekstresi | Görüntü-only (taranmış) PDF için harici OCR; şu an metin katmanı (`BankStatementOcrService`) |
+| Logo XML | Canlı Logo Connect şemasına göre alan genişletmesi |
+| Finans | TFRS / yasal bilanço; operasyonel özet ve açılış birleştirmesi UI mevcut, denetim çıktısı değildir |
+| SMS/WhatsApp | Gerçek sağlayıcı adaptörü ([roadmap.md](roadmap.md) Faz D/E) |
+| BI / gelişmiş rapor | Harici BI veya derin finans raporları — ayrı epik |
+
 ## Current Focus (2026-04-17)
 
 **Sprint 22 tamamlandı — 534/534 test geçiyor.**

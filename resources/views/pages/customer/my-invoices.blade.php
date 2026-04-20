@@ -68,8 +68,8 @@ new #[Lazy, Title('My Invoices')] class extends Component
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <flux:heading size="xl">{{ __('My Invoices') }}</flux:heading>
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
+    <x-admin.page-header :heading="__('My Invoices')" :description="__('Invoices linked to your customer account.')" />
 
     {{-- KPI Cards --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

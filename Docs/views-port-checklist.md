@@ -112,7 +112,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| PIN listesi, siparişe atama (dokümantasyon bölüm 6) | `pages::admin.delivery-numbers-index` | KISMI _(manuel PIN + atama + CSV toplu import)_ _(2026-03-30)_ |
+| PIN listesi, siparişe atama (dokümantasyon bölüm 6) | `pages::admin.delivery-numbers-index` | KISMI / **MVP** _(manuel PIN + atama + CSV toplu import; şoför push/WhatsApp/bot sonraki iterasyon — [Logistics_Proje_Dokumantasyonu §6](Logistics_Proje_Dokumantasyonu.md) vizyonu)_ _(2026-03-30, kapsam notu: 2026-04-20)_ |
 
 ### admin/delivery-imports
 
@@ -142,7 +142,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show`, `import`, `_vehicle_styles`, `_license-card` | `pages::admin.vehicles-index` | KISMI _(CSV/XLSX import + XLSX şablon; Şasi/VIN kolonu; 2026-03-29)_ |
+| `index`, `create`, `edit`, `show`, `import`, `_vehicle_styles`, `_license-card` | `pages::admin.vehicles-index` + `pages::admin.vehicle-show` (sekmeli profil) | VAR _(liste/import + detay show; referanstaki ayrı create/edit rotaları yerine inline index modal — 2026-04-20)_ |
 
 ### admin/vehicles/tyres
 
@@ -315,7 +315,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `show` | `bank-documents` | KISMI |
+| `index`, `show` | Ayrı `bank-documents` rotası yok; banka hareketleri + CSV içe aktarma ile kapsanır | KISMI _(ekran ayrımı istenirse `admin.finance.bank-transactions` + Bank Import ile birlikte planlanır — 2026-04-20)_ |
 
 ---
 
@@ -335,7 +335,8 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 | `orders/index` | `pages::customer.orders-index` — KPI, arama/filtre, sayfalama | VAR _(Sprint 21)_ |
 | `orders/show` | `pages::customer.order-show` — durum badge, sipariş detay, sevkiyat listesi | VAR _(Sprint 27 — 2026-04-17)_ |
 | `orders/create` | `pages::customer.order-create` — form, CR-YYYYMMDD-XXXX numarası, Draft status | VAR _(Sprint 27 — 2026-04-17)_ |
-| `invoices/index`, `payments/index`, `documents/index` | — | YOK _(Invoice modeli yok; aspirasyonel)_ |
+| `invoices/index` | `pages::customer.my-invoices` — KPI, filtre, kiracı+müşteri kapsamı (`Invoice` modeli) | VAR _(2026-04-20 checklist)_ |
+| `payments/index`, `documents/index` | `customer.documents.index` (my-documents) mevcut; ödemeler için ayrı portal sayfası yok | KISMI _(ödemeler: operasyonel olarak admin finans; müşteri salt okunur genişleme backlog)_ |
 | `notifications/index`, `notifications/show` | — (admin bildirim ayrı) | YOK |
 | `order-templates/index`, `favorite-addresses/index` | — | YOK |
 
@@ -390,6 +391,16 @@ Her faz bitince: ilgili modül için **Pest** (`assertSuccessful`, mümkünse ç
 
 ---
 
-*Son güncelleme: 2026-04-19 — Sprint 30: Bank Dashboard VAR, Bank Accounts 4 KPI VAR. Sprint 31: Finance Index aylık navlun trend VAR. Sprint 32: Document show+download VAR. Sprint 33: Company settings zaten VAR. Sprint 34: Notification show + Shifts weekly zaten VAR. Toplam test: 603.*
+## Admin kabuk tutarlılığı (2026-04-20)
+
+Hedef: `mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8` + `x-admin.page-header` ([design-tokens.md](design-tokens.md)).
+
+**Bu turda hizalanan sayfalar:** `invoices-index`, `dispatch-board`, `document-show`, `notification-show` (admin); müşteri `my-invoices`.
+
+**Örnek tam uyumlu referans:** `pages::admin.vehicles-index`, `pages::admin.customers-index`.
+
+---
+
+*Son güncelleme: 2026-04-20 — UI kabuk: invoices, dispatch-board, document-show, notification-show, customer my-invoices. Ürün notları: PIN MVP, vehicles VAR, bank documents açıklaması, müşteri faturaları VAR.*
 
 *Dosya yolu: `Docs/views-port-checklist.md`.*

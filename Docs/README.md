@@ -7,7 +7,7 @@
 | [project.md](project.md) | Stack, klasörler, komutlar |
 | [roadmap.md](roadmap.md) | Fazlar, modül özeti, sonraki adımlar |
 | [architecture.md](architecture.md) | Yerel geliştirme, çok kiracı, Excel, harici ERP köprüsü |
-| [prompts.md](prompts.md) | İstem etiketleri + kopyala-yapıştır şablon |
+| [prompts.md](prompts.md) | İstem etiketleri (`Now-design` dahil), Optimizer formatı, şablonlar |
 | [design-tokens.md](design-tokens.md) | Tema CSS referansı (`app.css` ile birleştirme) |
 | [cursor-ai-setup.md](cursor-ai-setup.md) | Cursor Rules, Skills, Commands, MCP, `.ai/session` rehberi |
 

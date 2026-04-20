@@ -275,13 +275,14 @@ new #[Lazy, Title('Invoices')] class extends Component
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl">{{ __('Invoices') }}</flux:heading>
-        <flux:button variant="primary" wire:click="openCreate" icon="plus">
-            {{ __('New Invoice') }}
-        </flux:button>
-    </div>
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
+    <x-admin.page-header :heading="__('Invoices')">
+        <x-slot name="actions">
+            <flux:button variant="primary" wire:click="openCreate" icon="plus">
+                {{ __('New Invoice') }}
+            </flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     {{-- KPI Cards --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

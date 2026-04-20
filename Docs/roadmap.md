@@ -29,6 +29,8 @@ Ortak yüzey: CRUD, arama/filtre, içe-dışa aktarım, bildirim kanalları (soy
 
 Otomasyon motoru, BI, gelişmiş DMS (OCR/onay), WMS (barkod), mobil şoför, AI (PII/onay politikası ile). Bunlar çekirdek fazlardan sonra önceliklendirilir.
 
+**Dış bağımlılık / üretim backlog (tek liste):** [session.md](session.md) — «Dış bağımlılıklar ve backlog» (TotalEnergies, banka PDF OCR, Logo şema, TFRS, SMS/WhatsApp).
+
 ## Faz A — ilerleme (tamamlanan / kısmi)
 
 _Kayıt standardı: tamamlanan maddeler işaret + tarih._

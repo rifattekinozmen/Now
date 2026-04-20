@@ -1,28 +1,25 @@
-# Çift taraflı muhasebe — epik taslağı (beklemede)
+# Çift taraflı muhasebe — epik durumu (güncel)
 
-Bu belge [Logistics_Proje_Dokumantasyonu.md](Logistics_Proje_Dokumantasyonu.md) §7.3 vizyonu için kapsam taslağıdır; uygulama henüz başlamamıştır.
+Bu belge [Logistics_Proje_Dokumantasyonu.md](Logistics_Proje_Dokumantasyonu.md) §7.3 vizyonu ile uyumludur. **Çekirdek GL uygulaması depoda mevcuttur** (2026-03/04 teslimleri); aşağıdaki “kalan işler” ürün/entegrasyon genişlemesidir.
 
-## Hedef
+## Uygulanmış olanlar (kod ile hizalı)
 
-- Tek düzen hesap planına uygun yevmiye (journal entry) ve hesap bazlı bakiye.
-- Mizan / basit bilanço raporu (kiracı kapsamında).
-- Mevcut `Voucher` / `AccountTransaction` kavramlarıyla çakışmayı önlemek için ya genişletme ya da ayrı `ledger_entries` tablosu kararı.
+- **Hesap planı:** `ChartAccount` modeli + `admin.finance.chart-of-accounts` (Livewire index).
+- **Yevmiye:** `JournalEntry` / `JournalLine` (satır bazlı double-entry), `JournalPostingService`, `admin.finance.journal-entries.index`.
+- **Mizan / özet:** `TrialBalanceService` + `admin.finance.trial-balance`; `BalanceSheetService` / `LegalFinancialStatementsService` + bilanço özeti ve **fiscal opening balances** (`fiscal_opening_balances`, `admin.finance.fiscal-opening-balances.index`).
+- **Banka köprüsü:** `BankStatementJournalPoster` (CSV eşleştirme sonrası yevmiye); idempotans `source_type` / `source_key`.
+- **Kiracı:** `tenant_id` iş tablolarında; Pest ile izolasyon testleri (bkz. [erp_todos.md](erp_todos.md)).
+- **Operasyonel finans ayrı:** `Voucher` / `AccountTransaction` / kasa akışı GL ile birlikte kullanılabilir; yasal muhasebe çıktısı iddiası yok ([CLAUDE.md](../CLAUDE.md) uyarıları).
 
-## Önerilen fazlama
+## Kalan / sonraki iterasyon
 
-1. **Şema:** `accounts` (kod, ad, tip: asset/liability/equity/revenue/expense), `journal_entries` (tarih, açıklama, tenant), `journal_lines` (entry_id, account_id, borç/alacak, tutar, para birimi).
-2. **Hizmet:** `JournalEntryService::post(lines)` — borç=alacak doğrulaması, para birimi tutarlılığı.
-3. **UI:** yevmiye listesi + taslak/onay (Maker-Checker ile hizalanabilir).
-4. **Entegrasyon:** Logo XML / banka import ile otomatik satır üretimi ayrı köprüler.
+- Yevmiye satırlarında **taslak → onay (Maker-Checker)** ayrı bir UI akışı (isteğe bağlı).
+- **Çok para birimi:** satır bazlı kur farkı ve TCMB damgası derinlemesine (operasyonel özetler mevcut).
+- **Logo XML / banka:** otomatik satır üretimi genişletmesi canlı şema ile ayrı onay ([session.md](session.md) Pending).
 
-## Riskler
+## Riskler (değişmedi)
 
 - Mevcut finans ekranları operasyonel özet; hukuki muhasebe tavsiyesi değildir.
-- Çok para birimi: TCMB kuru damgası ile satır bazlı kur farkı ayrı tasarlanmalı.
+- Resmi TFRS / denetim tablosu ayrı süreç ve uzman onayı gerektirir.
 
-## Bağımlılıklar
-
-- `tenant_id` tüm ledger tablolarında zorunlu.
-- Pest: iki kiracı ile satır sızıntısı testi.
-
-*Son güncelleme: 2026-03-29 (plan teslimi).*
+*Son güncelleme: 2026-04-20 — doküman–kod senkronu (epik “beklemede” ifadesi kaldırıldı).*

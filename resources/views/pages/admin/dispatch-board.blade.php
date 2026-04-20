@@ -148,7 +148,7 @@ new #[Lazy, Title('Dispatch Board')] class extends Component
 }; ?>
 
 <div
-    class="flex flex-col gap-4"
+    class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8"
     x-data="{
         draggingOrderId: null,
         draggingOrderNo: '',
@@ -167,11 +167,11 @@ new #[Lazy, Title('Dispatch Board')] class extends Component
         }
     }"
 >
-    {{-- Header --}}
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl">{{ __('Dispatch Board') }}</flux:heading>
-        <flux:input wire:model.live.debounce.300ms="filterSearch" :placeholder="__('Search order / customer…')" class="max-w-xs" />
-    </div>
+    <x-admin.page-header :heading="__('Dispatch Board')" :description="__('Drag orders onto vehicles to create shipments.')">
+        <x-slot name="actions">
+            <flux:input wire:model.live.debounce.300ms="filterSearch" :placeholder="__('Search order / customer…')" class="max-w-xs min-w-0" />
+        </x-slot>
+    </x-admin.page-header>
 
     {{-- Toast --}}
     @if ($toast)
