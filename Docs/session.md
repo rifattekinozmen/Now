@@ -68,13 +68,13 @@ Ayrıntı: `database/seeders/RolesAndPermissionsSeeder.php`.
 
 ## Safe Next Actions
 
-- **Docker (tercih):** `docker compose up -d` → `docker compose exec app php artisan migrate` → `docker compose exec app php artisan db:seed` (isteğe bağlı). Uygulama: `http://localhost:8080` (`.env` içinde `APP_URL` / `DOCKER_HTTP_PORT`).
-- **Host’tan `php artisan`:** `.env` içinde `DB_HOST=127.0.0.1`, `DB_PORT=${DOCKER_MYSQL_PORT}` (varsayılan 33061; port çakışırsa `.env`’de artırın); Redis için host portu veya `CACHE_STORE=database` geçici kullanım.
-- Testler (SQLite bellek): `php artisan test --compact` — `phpunit.xml` DB’yi override eder.
+- **Yerel ortam:** Laragon veya `php artisan serve`; `.env` içinde `DB_HOST=127.0.0.1`, `REDIS_HOST=127.0.0.1` (gerekirse `REDIS_CLIENT=predis`). `php artisan migrate` → `db:seed` (isteğe bağlı).
+- **Önbellek:** `php artisan config:clear` yapılandırma değişiminden sonra; testlerde SQLite kullanılıyorsa `phpunit.xml` DB’yi override eder.
+- Testler: `php artisan test --compact` — `phpunit.xml` DB’yi override eder.
 
 ## Completed (2026-03-28)
 
-- `docker-compose.yml`, `docker/app/Dockerfile`, `docker/nginx/default.conf`
+- Yerel geliştirme notları: [architecture.md](architecture.md) _(Docker Compose kaldırıldı: 2026-04)_
 - `TenantContext`, `BelongsToTenant`, Tenant/Customer/Vehicle/Order/Shipment + politikalar
 - `routes/web.php` admin: customers, vehicles, orders, shipments, delivery-numbers; `dashboard` → `pages::dashboard`
 - `FreightCalculationService`, `ExcelImportService` (CSV)

@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Lazy, Title('Weekly SAS Reconciliation')] class extends Component
+new #[Lazy, Title('Weekly SAS reconciliation')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithPagination;
@@ -116,13 +116,20 @@ new #[Lazy, Title('Weekly SAS Reconciliation')] class extends Component
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl">{{ __('Weekly SAS Reconciliation') }}</flux:heading>
-        <flux:button wire:click="exportCsv" icon="arrow-down-tray" variant="ghost">
-            {{ __('Export CSV') }}
-        </flux:button>
-    </div>
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
+    <x-admin.page-header
+        :heading="__('Weekly SAS reconciliation')"
+        :description="__('Match orders to SAS references for the selected period. Export CSV or Logo XML for billing.')"
+    >
+        <x-slot name="actions">
+            <flux:button wire:click="exportCsv" icon="arrow-down-tray" variant="outline">
+                {{ __('Export CSV') }}
+            </flux:button>
+            <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.orders.export.logo.xml')">
+                {{ __('Export Logo XML') }}
+            </flux:button>
+        </x-slot>
+    </x-admin.page-header>
 
     {{-- Date filters --}}
     <div class="flex flex-wrap gap-4">
@@ -155,13 +162,6 @@ new #[Lazy, Title('Weekly SAS Reconciliation')] class extends Component
             <flux:heading>{{ __('Total Freight') }}</flux:heading>
             <p class="mt-1 text-2xl font-bold">{{ number_format($this->stats['totalFreight'], 2) }}</p>
         </flux:card>
-    </div>
-
-    {{-- Logo XML export button --}}
-    <div class="flex gap-2">
-        <a href="{{ route('admin.orders.export.logo.xml') }}" class="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800">
-            📄 {{ __('Export Logo XML') }}
-        </a>
     </div>
 
     {{-- Orders table --}}

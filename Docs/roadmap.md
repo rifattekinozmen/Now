@@ -6,7 +6,7 @@ Parça parça ilerle: **tek istemde tüm ERP’yi isteme**. Aşağıdaki fazlar 
 
 | Faz | Odak | Çıktı |
 |-----|------|--------|
-| **A** | Altyapı + kiracı + örnek domain | Docker/DB/Redis, `tenant_id`, **Customer** + **Vehicle**, Excel import/export iskeleti, Pest (kiracı sızıntısı yok) — _çekirdek teslim: 2026-03-28_ |
+| **A** | Altyapı + kiracı + örnek domain | Yerel DB/Redis, `tenant_id`, **Customer** + **Vehicle**, Excel import/export iskeleti, Pest (kiracı sızıntısı yok) — _çekirdek teslim: 2026-03-28_ |
 | **B** | Sipariş & navlun | Yükleme/boşaltma, döviz, navlun servisi — _çekirdek iskelet: 2026-03-28_ |
 | **C** | Dashboard & finans özeti | Grafikler, rapor; finans modülü hukuki tavsiye değildir — _işletme özeti (KPI + TCMB önbellek): 2026-03-30_ |
 | **D** | Otomasyon & bildirim | Kurallar, `schedule`, kuyruk job’ları — _TCMB günlük önbellek komutu + zamanlama: 2026-03-30_ |
@@ -33,7 +33,7 @@ Otomasyon motoru, BI, gelişmiş DMS (OCR/onay), WMS (barkod), mobil şoför, AI
 
 _Kayıt standardı: tamamlanan maddeler işaret + tarih._
 
-- [x] Kök `docker-compose.yml` (nginx, PHP-FPM `docker/app/Dockerfile`, MySQL 8, Redis 7) ve `.env.example` Docker notları _(tamamlandı: 2026-03-28)_
+- [x] ~~Kök `docker-compose.yml`~~ _(kaldırıldı: 2026-04; geliştirme Laragon/host — bkz. [architecture.md](architecture.md))_ · `.env.example` yerel MySQL/Redis _(güncellendi: 2026-04)_
 - [x] `Tenant` + kullanıcıda `tenant_id`, `BelongsToTenant` global scope (`auth()->user()->tenant_id`), Fortify kayıtta otomatik kiracı _(tamamlandı: 2026-03-28)_
 - [x] `Customer` + `Vehicle` (migration, model, factory, policy), admin Livewire sayfaları (`admin.customers.index`, `admin.vehicles.index`) _(tamamlandı: 2026-03-28)_
 - [x] `App\Services\Logistics\ExcelImportService` — `getCustomerImportMapping()`, `normalizeRow()`, CSV içe aktarma; `.xlsx` için isteğe bağlı `composer require maatwebsite/excel` (PhpSpreadsheet) _(tamamlandı: 2026-03-28)_

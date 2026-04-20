@@ -1429,5 +1429,15 @@
     "No shifts found for the selected period.": "No shifts found for the selected period.",
     "Go to related page": "Go to related page",
     "Marked as read now": "Marked as read now",
-    "Read at :time": "Read at :time"
+    "Read at :time": "Read at :time",
+    "Weekly SAS reconciliation": "Weekly SAS reconciliation",
+    "Match orders to SAS references for the selected period. Export CSV or Logo XML for billing.": "Match orders to SAS references for the selected period. Export CSV or Logo XML for billing.",
+    "Material codes": "Material codes",
+    "CEM, raw materials, packaging and ADR flags for pricing and operations.": "CEM, raw materials, packaging and ADR flags for pricing and operations.",
+    "Traffic fines": "Traffic fines",
+    "Penalties linked to fleet vehicles and payment status.": "Penalties linked to fleet vehicles and payment status.",
+    "Driver leaderboard": "Driver leaderboard",
+    "Monthly delivery scores and on-time performance by driver.": "Monthly delivery scores and on-time performance by driver.",
+    "Period: :month": "Period: :month",
+    "Month": "Month"
 }

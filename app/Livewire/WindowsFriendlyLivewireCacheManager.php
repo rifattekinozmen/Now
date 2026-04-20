@@ -5,10 +5,10 @@ namespace App\Livewire;
 use Livewire\Compiler\CacheManager;
 
 /**
- * Docker Desktop + Windows/WSL bind mount üzerinde kaynak dosyalarda `touch()` / utime
+ * Windows (ve bazı bind mount) ortamlarında kaynak dosyalarda `touch()` / utime
  * reddedilebiliyor; Livewire derleyicisi bu durumda log spam üretir. Başarısız olursa yutulur.
  */
-class DockerFriendlyCacheManager extends CacheManager
+class WindowsFriendlyLivewireCacheManager extends CacheManager
 {
     public function mutateFileModificationTime(string $path): void
     {

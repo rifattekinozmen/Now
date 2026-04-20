@@ -1439,5 +1439,15 @@
     "Employee leave": "Personel izni",
     "Payment due": "Ödeme vadesi",
     "Order deadline": "Sipariş teslim",
-    "more": "daha fazla"
+    "more": "daha fazla",
+    "Weekly SAS reconciliation": "Haftalık SAS mutabakatı",
+    "Match orders to SAS references for the selected period. Export CSV or Logo XML for billing.": "Seçilen dönemde siparişleri SAS referanslarıyla eşleştirin. Faturalama için CSV veya Logo XML dışa aktarın.",
+    "Material codes": "Malzeme kodları",
+    "CEM, raw materials, packaging and ADR flags for pricing and operations.": "Fiyatlandırma ve operasyon için CEM, hammadde, ambalaj ve ADR işaretleri.",
+    "Traffic fines": "Trafik cezaları",
+    "Penalties linked to fleet vehicles and payment status.": "Filo araçlarına bağlı cezalar ve ödeme durumu.",
+    "Driver leaderboard": "Şoför skor tablosu",
+    "Monthly delivery scores and on-time performance by driver.": "Aylık teslimat puanları ve şoför bazında zamanında performans.",
+    "Period: :month": "Dönem: :month",
+    "Month": "Ay"
 }

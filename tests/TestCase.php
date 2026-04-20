@@ -12,7 +12,7 @@ abstract class TestCase extends BaseTestCase
 {
     /**
      * Önbelleğe alınmış config (php artisan config:cache) PHPUnit ortamını ve sqlite test
-     * veritabanını yok sayar; doğrudan mysql/docker host kullanılır. Testlerde önbelleği kaldır.
+     * veritabanını yok sayar; önbellekte kalmış production DB host’u kullanılmaz. Testlerde önbelleği kaldır.
      */
     public function createApplication(): Application
     {

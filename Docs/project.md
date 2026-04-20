@@ -36,7 +36,7 @@ Kayıt/giriş, e-posta doğrulama, şifre sıfırlama, 2FA, profil / güvenlik /
 |------|--------|
 | İlk kurulum | `composer run setup` |
 | Geliştirme | `composer run dev` |
-| Docker (MySQL/Redis) | `docker compose up -d` — ayrıntı [architecture.md](architecture.md) _(2026-03-28)_ |
+| Yerel DB/Redis | Laragon veya host MySQL/Redis — ayrıntı [architecture.md](architecture.md) |
 | Test | `php artisan test --compact` |
 | Lint | `composer run lint` / `composer run lint:check` |
 

@@ -5,7 +5,9 @@ namespace App\Providers;
 use App\Contracts\CustomerEngagementNotifier;
 use App\Contracts\Finance\ScannedPdfOcrAdapter;
 use App\Contracts\Operations\OperationalNotifier;
-use App\Livewire\DockerFriendlyCacheManager;
+use App\Livewire\WindowsFriendlyLivewireCacheManager;
+use App\Models\AppNotification;
+use App\Models\User;
 use App\Services\Finance\NullScannedPdfOcrAdapter;
 use App\Services\Integrations\TotalEnergies\TotalEnergiesFuelQuoteService;
 use App\Services\Notifications\CompositeCustomerEngagementNotifier;
@@ -107,7 +109,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->extend('livewire.compiler', function (Compiler $compiler): Compiler {
             return new Compiler(
-                new DockerFriendlyCacheManager($compiler->cacheManager->cacheDirectory)
+                new WindowsFriendlyLivewireCacheManager($compiler->cacheManager->cacheDirectory)
             );
         });
     }
@@ -128,14 +130,14 @@ class AppServiceProvider extends ServiceProvider
     private function registerCacheInvalidationListeners(): void
     {
         // Listen for user updates to invalidate sidebar cache
-        \App\Models\User::updated(function ($user): void {
-            Cache::forget('sidebar-menu-' . $user->id);
+        User::updated(function ($user): void {
+            Cache::forget('sidebar-menu-'.$user->id);
         });
 
         // Listen for notification creation to invalidate count cache
-        if (class_exists(\App\Models\AppNotification::class)) {
-            \App\Models\AppNotification::created(function ($notification): void {
-                Cache::forget('notifications.unread.' . $notification->user_id);
+        if (class_exists(AppNotification::class)) {
+            AppNotification::created(function ($notification): void {
+                Cache::forget('notifications.unread.'.$notification->user_id);
             });
         }
     }

@@ -9,7 +9,7 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Lazy, Title('Driver Leaderboard')] class extends Component
+new #[Lazy, Title('Driver leaderboard')] class extends Component
 {
     use RequiresLogisticsAdmin;
 
@@ -39,17 +39,21 @@ new #[Lazy, Title('Driver Leaderboard')] class extends Component
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <div class="flex items-center justify-between">
-        <flux:heading size="xl">{{ __('Driver Leaderboard') }}</flux:heading>
-        <flux:input wire:model.live="selectedMonth" type="month" class="w-40" />
-    </div>
-
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
     @php
         $month = \Illuminate\Support\Carbon::parse($selectedMonth.'-01');
     @endphp
+    <x-admin.page-header
+        :heading="__('Driver leaderboard')"
+        :description="__('Monthly delivery scores and on-time performance by driver.')"
+    >
+        <x-slot name="actions">
+            <flux:input wire:model.live="selectedMonth" type="month" class="w-44" :label="__('Month')" />
+        </x-slot>
+    </x-admin.page-header>
+
     <p class="text-sm text-zinc-500 dark:text-zinc-400">
-        {{ __('Monthly performance scores for :month', ['month' => $month->format('F Y')]) }}
+        {{ __('Period: :month', ['month' => $month->translatedFormat('F Y')]) }}
     </p>
 
     {{-- Legend --}}

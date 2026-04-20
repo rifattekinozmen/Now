@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Lazy, Title('Material Codes')] class extends Component
+new #[Lazy, Title('Material codes')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithPagination;
@@ -179,8 +179,11 @@ new #[Lazy, Title('Material Codes')] class extends Component
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <flux:heading size="xl">{{ __('Material Codes') }}</flux:heading>
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
+    <x-admin.page-header
+        :heading="__('Material codes')"
+        :description="__('CEM, raw materials, packaging and ADR flags for pricing and operations.')"
+    />
 
     {{-- KPI Cards --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

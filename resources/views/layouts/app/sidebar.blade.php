@@ -115,8 +115,8 @@
                     <flux:sidebar.item icon="receipt-percent" :href="route('admin.trip-expenses.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Trip Expenses') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('admin.vehicle-finances.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Vehicle Finances') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="arrow-up-tray" :href="route('admin.delivery-imports.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Delivery Imports') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="tag" :href="route('admin.material-codes.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Material Codes') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="exclamation-triangle" :href="route('admin.vehicle-fines.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Traffic Fines') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="tag" :href="route('admin.material-codes.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Material codes') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="exclamation-triangle" :href="route('admin.vehicle-fines.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Traffic fines') }}</flux:sidebar.item>
                 </div>
 
                 {{-- Collapsed: Operations fly-out dropdown --}}
@@ -148,8 +148,8 @@
                             <flux:menu.item :href="route('admin.trip-expenses.index')" icon="receipt-percent" wire:navigate>{{ __('Trip Expenses') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.vehicle-finances.index')" icon="banknotes" wire:navigate>{{ __('Vehicle Finances') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.delivery-imports.index')" icon="arrow-up-tray" wire:navigate>{{ __('Delivery Imports') }}</flux:menu.item>
-                            <flux:menu.item :href="route('admin.material-codes.index')" icon="tag" wire:navigate>{{ __('Material Codes') }}</flux:menu.item>
-                            <flux:menu.item :href="route('admin.vehicle-fines.index')" icon="exclamation-triangle" wire:navigate>{{ __('Traffic Fines') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.material-codes.index')" icon="tag" wire:navigate>{{ __('Material codes') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.vehicle-fines.index')" icon="exclamation-triangle" wire:navigate>{{ __('Traffic fines') }}</flux:menu.item>
                         </flux:menu>
                     </flux:dropdown>
                 </div>
@@ -170,7 +170,7 @@
                 <div x-show="fin" class="in-data-flux-sidebar-collapsed-desktop:hidden">
                     <flux:sidebar.item icon="calculator" :href="route('admin.finance.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Finance Summary') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="chart-bar" :href="route('admin.finance.reports')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Finance Reports') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="arrows-right-left" :href="route('admin.finance.weekly-reconciliation')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('SAS Reconciliation') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="arrows-right-left" :href="route('admin.finance.weekly-reconciliation')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Weekly SAS reconciliation') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="receipt-percent" :href="route('admin.finance.invoices.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Invoices') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="globe-europe-africa" :href="route('admin.compliance.cbam-reports')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('CBAM Reports') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="document-magnifying-glass" :href="route('admin.finance.billing-preview')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Billing Preview') }}</flux:sidebar.item>
@@ -199,6 +199,7 @@
                             <flux:menu.heading>{{ __('Finance') }}</flux:menu.heading>
                             <flux:menu.item :href="route('admin.finance.index')" icon="calculator" wire:navigate>{{ __('Finance Summary') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.reports')" icon="chart-bar" wire:navigate>{{ __('Finance Reports') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.finance.weekly-reconciliation')" icon="arrows-right-left" wire:navigate>{{ __('Weekly SAS reconciliation') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.invoices.index')" icon="receipt-percent" wire:navigate>{{ __('Invoices') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.compliance.cbam-reports')" icon="globe-europe-africa" wire:navigate>{{ __('CBAM Reports') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.billing-preview')" icon="document-magnifying-glass" wire:navigate>{{ __('Billing Preview') }}</flux:menu.item>
@@ -236,7 +237,7 @@
                 {{-- Expanded: items --}}
                 <div x-show="hr" class="in-data-flux-sidebar-collapsed-desktop:hidden">
                     <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Employees') }}</flux:sidebar.item>
-                    <flux:sidebar.item icon="trophy" :href="route('admin.driver-leaderboard')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Driver Leaderboard') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="trophy" :href="route('admin.driver-leaderboard')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Driver leaderboard') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="calendar-days" :href="route('admin.hr.leaves.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Leave Requests') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('admin.hr.advances.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Advances') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="document-text" :href="route('admin.hr.payroll.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Payroll') }}</flux:sidebar.item>
@@ -251,7 +252,7 @@
                         <flux:menu>
                             <flux:menu.heading>{{ __('HR') }}</flux:menu.heading>
                             <flux:menu.item :href="route('admin.employees.index')" icon="user-group" wire:navigate>{{ __('Employees') }}</flux:menu.item>
-                            <flux:menu.item :href="route('admin.driver-leaderboard')" icon="trophy" wire:navigate>{{ __('Driver Leaderboard') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.driver-leaderboard')" icon="trophy" wire:navigate>{{ __('Driver leaderboard') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.hr.leaves.index')" icon="calendar-days" wire:navigate>{{ __('Leave Requests') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.hr.advances.index')" icon="banknotes" wire:navigate>{{ __('Advances') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.hr.payroll.index')" icon="document-text" wire:navigate>{{ __('Payroll') }}</flux:menu.item>

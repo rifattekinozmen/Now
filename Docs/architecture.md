@@ -1,15 +1,14 @@
 # Now — mimari notlar
 
-## Docker (hedef üretim / yerel)
+## Yerel geliştirme (Laragon / host PHP)
 
-Kökte **`docker-compose.yml`** (nginx → `8080`, `app` PHP 8.3-FPM `docker/app/Dockerfile`, `mysql:8.0`, `redis:7-alpine`) ve **`docker/nginx/default.conf`** mevcut. _(tamamlandı: 2026-03-28)_
+Bu depo **Docker Compose** dosyası içermez. Geliştirme tipik olarak **Laragon** (veya yerel PHP + MySQL + Redis) ile yapılır:
 
-Tipik **docker-compose**: `nginx`, `app` (PHP-FPM + Laravel + **pdo_mysql**), `mysql` (8.x), `redis` (7). Opsiyonel: `node` (Vite).
+- `composer install`, `.env` kopyala, `php artisan key:migrate`, `npm install`, `npm run build` veya `composer run dev`.
+- `.env.example`: `DB_HOST=127.0.0.1`, `REDIS_HOST=127.0.0.1`; Windows’ta Redis için genelde `REDIS_CLIENT=predis`.
+- `APP_URL` ile Vite tabanı uyumlu olmalı (örn. `http://127.0.0.1:8000`).
 
-- Ortak network; volume: `storage`, MySQL verisi.
-- `.env`: `DB_HOST=mysql`, `REDIS_HOST=redis`, `QUEUE_CONNECTION=redis`, `CACHE_STORE=redis`.
-
-**SQL Server:** İhtiyaç halinde ayrı compose profili veya servis; Laravel’de **tek primary** `DB_CONNECTION` seçimi net olmalı. Varsayılan hedef bu planda **MySQL**.
+**SQL Server:** İhtiyaç halinde harici servis; Laravel’de **tek primary** `DB_CONNECTION` seçimi net olmalı. Varsayılan hedef bu planda **MySQL**.
 
 **MCP / Cursor skill:** Geliştirme araçlarıdır; container servisi değildir. GitHub / Actions ayrı katman.
 

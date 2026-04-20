@@ -310,7 +310,7 @@ php artisan queue:restart
 
 1. **Redis Must Be Running**
    - All caching depends on Redis
-   - Monitor: `docker compose ps`
+   - Monitor: Redis’in ayakta olduğunu doğrulayın (`redis-cli ping` veya Laragon servisleri)
 
 2. **Lazy Loading Behavior**
    - Components load on viewport visibility
@@ -388,7 +388,7 @@ Component Data
 ### Issue: Pages still loading slow
 
 **Check:**
-1. Redis is running: `docker compose ps`
+1. Redis is running (e.g. Laragon Redis or `redis-cli ping`)
 2. Cache is working: `php artisan tinker > Cache::get('sidebar-menu-1')`
 3. Indexes are created: `php artisan migrate --pretend`
 4. APP_DEBUG is false: Check `.env`
@@ -426,5 +426,5 @@ Your application has been comprehensively optimized for performance. With these 
 ---
 
 **Last Updated:** April 3, 2026  
-**Optimized By:** Gordon (Docker AI Assistant)  
+**Optimized By:** Gordon (performance review)  
 **Backup Location:** `backup.sql` (157 KB)

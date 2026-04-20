@@ -28,7 +28,7 @@ Eski projede `prompt_optimizer` ve `commit` **`.agents/skills/`** altındaydı. 
 ## Docs ile ilişki
 
 - `project.md` — stack ve komutlar  
-- `architecture.md` — tenant, Excel, UI token, Docker notları  
+- `architecture.md` — tenant, Excel, UI token, yerel geliştirme notları  
 - `roadmap.md` — fazlar  
 - `design-tokens.md` — CSS token referansı  
 - `prompts.md` — kopyala-yapıştır istem şablonları  

@@ -312,7 +312,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
         <flux:tab name="tyres" icon="circle-stack">{{ __('Tyres') }}</flux:tab>
         <flux:tab name="expenses" icon="banknotes">{{ __('Expenses') }}</flux:tab>
         <flux:tab name="documents" icon="folder-open">{{ __('Documents') }}</flux:tab>
-        <flux:tab name="fines" icon="exclamation-triangle">{{ __('Traffic Fines') }}</flux:tab>
+        <flux:tab name="fines" icon="exclamation-triangle">{{ __('Traffic fines') }}</flux:tab>
         <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
 
@@ -768,7 +768,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
     {{-- TAB: Traffic Fines --}}
     @if ($tab === 'fines')
         <flux:card>
-            <flux:heading size="lg" class="mb-4">{{ __('Traffic Fines') }}</flux:heading>
+            <flux:heading size="lg" class="mb-4">{{ __('Traffic fines') }}</flux:heading>
 
             @if (session('fine_success'))
                 <flux:callout variant="success" icon="check-circle" class="mb-4">{{ session('fine_success') }}</flux:callout>

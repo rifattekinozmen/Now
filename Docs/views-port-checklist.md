@@ -10,6 +10,8 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 - `index_only` modüller: sadece liste; referanstaki create/edit/show genelde **YOK** veya **KISMI**.
 - Şirketler: özel sayfalar `pages::admin.companies.*`.
 
+**Standart admin sayfa kabuğu:** kök sarmalayıcı `mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8` + üstte `x-admin.page-header` (başlık, kısa açıklama, isteğe bağlı `actions` slotu).
+
 ---
 
 ## Faz 0 — Kabuk, layout, ortak bileşenler

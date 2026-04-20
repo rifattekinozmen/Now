@@ -13,7 +13,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Lazy, Title('Traffic Fines')] class extends Component
+new #[Lazy, Title('Traffic fines')] class extends Component
 {
     use RequiresLogisticsAdmin;
     use WithPagination;
@@ -95,8 +95,11 @@ new #[Lazy, Title('Traffic Fines')] class extends Component
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <flux:heading size="xl">{{ __('Traffic Fines') }}</flux:heading>
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
+    <x-admin.page-header
+        :heading="__('Traffic fines')"
+        :description="__('Penalties linked to fleet vehicles and payment status.')"
+    />
 
     {{-- KPI Cards --}}
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
