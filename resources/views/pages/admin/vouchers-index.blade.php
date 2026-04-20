@@ -483,7 +483,7 @@ new #[Lazy, Title('Vouchers')] class extends Component
                 </flux:select>
                 <flux:input wire:model="voucher_date" type="date" :label="__('Voucher date')" required />
                 <flux:input wire:model="reference_no" type="text" :label="__('Reference no')" placeholder="REF-001" />
-                <flux:textarea wire:model="description" :label="__('Description')" rows="2" class="lg:col-span-3" />
+                <x-voice-input target="description" :label="__('Description')" rows="2" class="lg:col-span-3" />
 
                 {{-- OCR Receipt Photo --}}
                 <div class="lg:col-span-3">

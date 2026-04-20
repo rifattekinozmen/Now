@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Voice Input (Web Speech API)
+    |--------------------------------------------------------------------------
+    |
+    | When enabled, textarea fields show a microphone button powered by the
+    | Web Speech API. Set VOICE_INPUT_ENABLED=false in .env to disable globally.
+    |
+    */
+
+    'voice_input_enabled' => (bool) env('VOICE_INPUT_ENABLED', true),
+
 ];

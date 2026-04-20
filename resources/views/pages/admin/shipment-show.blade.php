@@ -623,7 +623,7 @@ new #[Lazy, Title('Shipment detail')] class extends Component
                         x-init="bindCanvas()"
                     >
                         <flux:input wire:model="pod_received_by" :label="__('Received by (optional)')" />
-                        <flux:textarea wire:model="pod_note" :label="__('POD note (optional)')" rows="2" />
+                        <x-voice-input target="pod_note" :label="__('POD note (optional)')" rows="2" />
                         @if (config('logistics.ipod.strict'))
                             <div class="grid gap-3 sm:grid-cols-2">
                                 <flux:input wire:model="pod_latitude" type="text" :label="__('Delivery latitude')" required />

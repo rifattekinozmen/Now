@@ -391,7 +391,7 @@ new #[Lazy, Title('Trip Expenses')] class extends Component
                     <option value="EUR">EUR</option>
                 </flux:select>
                 <flux:input wire:model="odometer_km" type="number" step="0.1" min="0" :label="__('Odometer (km)')" />
-                <flux:textarea wire:model="description" :label="__('Description')" rows="2" class="sm:col-span-2" />
+                <x-voice-input target="description" :label="__('Description')" rows="2" class="sm:col-span-2" />
                 <div class="flex flex-wrap gap-2 sm:col-span-2">
                     <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                     <flux:button type="button" variant="ghost" wire:click="cancelForm">{{ __('Cancel') }}</flux:button>
