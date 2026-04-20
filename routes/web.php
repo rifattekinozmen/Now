@@ -149,6 +149,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // Finance reports
             Route::livewire('finance/billing-preview', 'pages::admin.billing-preview')->name('finance.billing-preview');
+            Route::livewire('finance/weekly-reconciliation', 'pages::admin.weekly-reconciliation')->name('finance.weekly-reconciliation');
 
             // Team management (admin-only)
             Route::livewire('team', 'pages::admin.team-users-index')->name('team.index');
