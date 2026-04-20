@@ -288,6 +288,14 @@
                                         wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
                                         {{ __('My Shipments') }}
                                     </flux:sidebar.item>
+                                    <flux:sidebar.item icon="folder-open" :href="route('customer.documents.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Documents') }}
+                                    </flux:sidebar.item>
+                                    <flux:sidebar.item icon="receipt-percent" :href="route('customer.invoices.index')" wire:navigate size="sm"
+                                        wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">
+                                        {{ __('My Invoices') }}
+                                    </flux:sidebar.item>
                                 </div>
                             </div>
                         </div>

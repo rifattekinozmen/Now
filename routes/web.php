@@ -180,6 +180,8 @@ Route::middleware(['auth', 'verified', 'customer.access'])
         Route::livewire('my-orders/create', 'pages::customer.order-create')->name('orders.create');
         Route::livewire('my-orders/{order}', 'pages::customer.order-show')->name('orders.show');
         Route::livewire('my-shipments', 'pages::customer.shipments-index')->name('shipments.index');
+        Route::livewire('my-documents', 'pages::customer.my-documents')->name('documents.index');
+        Route::livewire('my-invoices', 'pages::customer.my-invoices')->name('invoices.index');
     });
 
 require __DIR__.'/settings.php';

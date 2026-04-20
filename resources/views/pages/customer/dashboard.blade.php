@@ -115,6 +115,30 @@ new #[Lazy, Title('My Dashboard')] class extends Component
         <flux:text class="mt-1 text-zinc-500 dark:text-zinc-400">{{ __('Here\'s an overview of your orders and shipments.') }}</flux:text>
     </div>
 
+    {{-- Quick links --}}
+    <div class="grid gap-3 sm:grid-cols-4">
+        <a href="{{ route('customer.orders.index') }}" wire:navigate
+           class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+            <span class="text-2xl">📋</span>
+            <span class="font-medium">{{ __('My Orders') }}</span>
+        </a>
+        <a href="{{ route('customer.shipments.index') }}" wire:navigate
+           class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+            <span class="text-2xl">🚛</span>
+            <span class="font-medium">{{ __('My Shipments') }}</span>
+        </a>
+        <a href="{{ route('customer.documents.index') }}" wire:navigate
+           class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+            <span class="text-2xl">📁</span>
+            <span class="font-medium">{{ __('My Documents') }}</span>
+        </a>
+        <a href="{{ route('customer.invoices.index') }}" wire:navigate
+           class="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-4 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+            <span class="text-2xl">🧾</span>
+            <span class="font-medium">{{ __('My Invoices') }}</span>
+        </a>
+    </div>
+
     {{-- KPI --}}
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <flux:card class="p-4">
