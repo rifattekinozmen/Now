@@ -102,7 +102,7 @@ new #[Lazy, Title('My Shifts')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
     <div class="flex items-center justify-between">
         <div>

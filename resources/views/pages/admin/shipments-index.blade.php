@@ -398,6 +398,13 @@ new #[Lazy, Title('Shipments')] class extends Component
         <x-slot name="breadcrumb">
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Shipments') }}</span>
         </x-slot>
+        <x-slot name="actions">
+            <x-admin.index-actions>
+                <x-slot name="back">
+                    <flux:button :href="route('admin.orders.index')" variant="ghost" wire:navigate>{{ __('Orders') }}</flux:button>
+                </x-slot>
+            </x-admin.index-actions>
+        </x-slot>
     </x-admin.page-header>
 
     @if (session()->has('error'))

@@ -30,7 +30,7 @@ Karmaşık isteklerde ajanın üretmesi veya senin yapıştırman için şablon:
 | Etiket | Kullanım |
 |--------|-----------|
 | `Now-ui` | Flux, layout, Livewire 4 sayfaları |
-| `Now-design` | Yalnızca UI: [design-tokens.md](design-tokens.md) token sınıfları (`bg-card`, `border-border`); standart kabuk `max-w-7xl` + `x-admin.page-header`; gereksiz animasyon/shadow ekleme |
+| `Now-design` | Yalnızca UI: [design-tokens.md](design-tokens.md) token sınıfları; kabuk `max-w-7xl` + `x-admin.page-header`; liste aksiyonlarında `x-admin.index-actions` (sıra: back → extra → print → export → import → primary); gereksiz animasyon/shadow ekleme |
 | `Now-auth` | Fortify, oturum |
 | `Now-style` | Tailwind v4, `app.css` |
 | `Now-module` | ERP domain (Customer, Vehicle, …) |
@@ -74,4 +74,17 @@ _Tamamlanan çekirdek teslim (2026-03-28): yerel MySQL/Redis, `Tenant` + `tenant
 |-----|----------|
 | “Excel import ekle” | “Vehicle import: `ExcelImportService`, başlıklar = form label, `normalizeRow` ile muayene tarihi; `tenant_id` policy; route ve Livewire/Flux butonu şu sayfada: …” |
 | “Yerelde tüm stack” | “Faz A: Laragon/host’ta MySQL+Redis; tek DB MySQL; `.env` 127.0.0.1; SQL Server sonra.” |
-| “Admin sayfayı düzelt” | “`Now-design` + `pages::admin.X-index`: `max-w-7xl` kabuk, `x-admin.page-header`, 4 KPI; referans `vehicles-index`; animasyon ekleme.” |
+| “Admin sayfayı düzelt” | “`Now-design` + `pages::admin.X-index`: `max-w-7xl`, `x-admin.page-header`, üstte `x-admin.index-actions` (export/import/primary sırası); 4 KPI; referans `vehicles-index` / `customers-index`; animasyon ekleme.” |
+
+---
+
+## Kopyala-yapıştır: index aksiyon sırası
+
+```
+Now-design + Now-tenant. Hedef: pages::admin.{modül}-index (veya customer/personnel).
+Kabuk: max-w-7xl + x-admin.page-header.
+Üst aksiyonlar: x-admin.index-actions — back (Geri) → extra (ikincil linkler) → print → export (CSV/şablon) → import → primary (Yeni Ekle, en sağda).
+Form varsa: İptal solda, Kaydet sağda (ms-auto).
+Referans: resources/views/pages/admin/vehicles-index.blade.php.
+Pest: assertSuccessful; müşteri/personel verisinde iki kiracı veya müşteri izolasyonu.
+```

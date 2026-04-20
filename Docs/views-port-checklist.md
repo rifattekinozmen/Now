@@ -40,9 +40,9 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit` | `companies` Livewire | VAR |
-| `settings.blade.php` | — | YOK |
-| `select.blade.php` | — | YOK |
+| `index`, `create`, `edit` | Bu depoda ayrı `admin/companies` rotası yok; çok kiracı **Tenant** + `settings/company` şirket profili + **Müşteri / İş Ortağı** modülleri ile karşılanır | KISMI / eşdeğer |
+| `settings.blade.php` | `settings/company` (Flux) | VAR _(farklı isim)_ |
+| `select.blade.php` | — | YOK _(backlog)_ |
 
 ### admin/users
 
@@ -84,7 +84,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `show.blade.php` | — | YOK |
+| `show.blade.php` | — | YOK _(backlog: onay akışı / `documents` modülü ile genişletme)_ |
 
 ---
 
@@ -161,7 +161,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 | Referans | Now | Durum |
 |----------|------|--------|
 | `fleet`, `operations` | `pages::admin.fleet-analytics`, `pages::admin.operations-analytics` | VAR _(Sprint 17)_ |
-| `fleet-map` | — | YOK _(harita kütüphanesi gerektirir)_ |
+| `fleet-map` | — | YOK _(harita API/kütüphane + POC; 2026-04-20: `session.md` backlog — sprint dışı)_ |
 | `finance`, `_tabs` | `pages::admin.cost-center-pl` — tab nav: Fleet / Operations / Finance P&L | VAR _(Sprint 36 — 2026-04-19)_ |
 
 ---
@@ -184,7 +184,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `planning`, `templates` | `pages::admin.shifts-index` — liste + haftalık görünüm, CRUD | VAR _(Sprint 13; planning/templates: KISMI)_ |
+| `index`, `planning`, `templates` | `pages::admin.shifts-index` — liste + haftalık görünüm, CRUD; sayfada şablon/planlama backlog callout | VAR _(Sprint 13; planning/templates: KISMI — UI notu 2026-04-20)_ |
 
 ### admin/personnel-attendance
 
@@ -281,7 +281,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index`, `create`, `edit`, `show` | `pages::admin.fuel-prices-index` — liste + form (inline modal) + CSV/XLSX import + şablon | KISMI _(tam CRUD + import; ayrı show yok; 2026-03-30)_ |
+| `index`, `create`, `edit`, `show` | `pages::admin.fuel-prices-index` — liste + inline düzenleme + CSV/XLSX import; şablon üst barda; ayrı show rotası yok (bilinçli tek sayfa) | VAR _(2026-04-20)_ |
 
 ### admin/fuel-intakes
 
@@ -309,7 +309,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `index` | `pages::admin.bank-transactions-index` — liste, KPI, filtre | VAR _(Sprint 16)_ |
+| `index` | `pages::admin.bank-transactions-index` — liste, KPI, filtre, üst aksiyonda CSV import kısayolu + açıklama (banka belge arşivi MVP’de ayrı rota yok) | VAR _(Sprint 16; UX 2026-04-20)_ |
 
 ### admin/bank/documents
 
@@ -336,7 +336,7 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 | `orders/show` | `pages::customer.order-show` — durum badge, sipariş detay, sevkiyat listesi | VAR _(Sprint 27 — 2026-04-17)_ |
 | `orders/create` | `pages::customer.order-create` — form, CR-YYYYMMDD-XXXX numarası, Draft status | VAR _(Sprint 27 — 2026-04-17)_ |
 | `invoices/index` | `pages::customer.my-invoices` — KPI, filtre, kiracı+müşteri kapsamı (`Invoice` modeli) | VAR _(2026-04-20 checklist)_ |
-| `payments/index`, `documents/index` | `customer.documents.index` (my-documents) mevcut; ödemeler için ayrı portal sayfası yok | KISMI _(ödemeler: operasyonel olarak admin finans; müşteri salt okunur genişleme backlog)_ |
+| `payments/index`, `documents/index` | `customer.documents.index` + **`customer.payments.index`** (`pages::customer.my-payments` — fatura/siparişe bağlı ödemeler, salt okunur) | VAR _(ödemeler MVP: 2026-04-20)_ |
 | `notifications/index`, `notifications/show` | — (admin bildirim ayrı) | YOK |
 | `order-templates/index`, `favorite-addresses/index` | — | YOK |
 
@@ -348,8 +348,8 @@ Referans: `docs/views` (Bootstrap Blade). Hedef: Livewire 4 + Flux 2. **Not:** B
 
 | Referans | Now | Durum |
 |----------|------|--------|
-| `dashboard` | `pages::personnel.dashboard` — KPI, yaklaşan vardiyalar, izin bakiyesi | VAR _(Sprint 22)_ |
-| `profile` | `pages::personnel.my-profile` — kimlik, iletişim düzenle (phone/email), ehliyet bilgileri | VAR _(Sprint 28 — 2026-04-18)_ |
+| `dashboard` | `pages::personnel.dashboard` — KPI, yaklaşan vardiyalar, izin bakiyesi; **max-w-7xl** + `x-admin.page-header` | VAR _(Sprint 22; kabuk 2026-04-20)_ |
+| `profile` | `pages::personnel.my-profile` — kimlik, iletişim düzenle (phone/email), ehliyet bilgileri; geniş kabuk **max-w-7xl** | VAR _(Sprint 28 — 2026-04-18; kabuk 2026-04-20)_ |
 | `payroll` | `pages::personnel.my-payrolls` — bordro listesi, print | VAR _(Sprint 22)_ |
 | `leaves` | `pages::personnel.my-leaves` — izin talep + liste | VAR _(Sprint 22)_ |
 | `advances` | `pages::personnel.my-advances` — avans talep + liste | VAR _(Sprint 22)_ |
@@ -395,12 +395,14 @@ Her faz bitince: ilgili modül için **Pest** (`assertSuccessful`, mümkünse ç
 
 Hedef: `mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8` + `x-admin.page-header` ([design-tokens.md](design-tokens.md)).
 
-**Bu turda hizalanan sayfalar:** `invoices-index`, `dispatch-board`, `document-show`, `notification-show` (admin); müşteri `my-invoices`.
+**Üst aksiyon sırası:** Ortak bileşen `resources/views/components/admin/index-actions.blade.php` (`x-admin.index-actions`) — slot sırası: `back` → `extra` → `print` → `export` → `import` → `primary`. `page-header` aksiyon alanı mobilde tam genişlik (`sm:w-auto`).
+
+**Bu turda güncellenen örnekler:** `vehicles-index`, `customers-index`, `employees-index`, `vouchers-index`, `finance-index`, `payroll-index`, `orders-index`, `delivery-numbers-index`, `payments-index`, `fuel-intakes-index`, `fuel-prices-index`, `shipments-index`, `warehouse-show`, `shifts-index`, `bank-transactions-index`; personel portalı tüm ana sayfalar **max-w-7xl**; müşteri `my-payments` yeni.
 
 **Örnek tam uyumlu referans:** `pages::admin.vehicles-index`, `pages::admin.customers-index`.
 
 ---
 
-*Son güncelleme: 2026-04-20 — UI kabuk: invoices, dispatch-board, document-show, notification-show, customer my-invoices. Ürün notları: PIN MVP, vehicles VAR, bank documents açıklaması, müşteri faturaları VAR.*
+*Son güncelleme: 2026-04-20 — `x-admin.index-actions`, finans/operasyon üst bar sırası, PIN MVP callout, vardiya şablon backlog notu, bank işlemleri + CSV import UX, müşteri `my-payments`, personel `max-w-7xl`, companies/team eşlemesi netleştirildi, fleet-map session backlog.*
 
 *Dosya yolu: `Docs/views-port-checklist.md`.*

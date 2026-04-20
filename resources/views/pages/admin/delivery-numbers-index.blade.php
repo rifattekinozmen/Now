@@ -358,11 +358,22 @@ new #[Lazy, Title('PIN pool')] class extends Component
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('PIN pool') }}</span>
         </x-slot>
         <x-slot name="actions">
-            <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.delivery-numbers.template.xlsx')" />
-            </flux:tooltip>
+            <x-admin.index-actions>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
+                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.delivery-numbers.template.xlsx')" />
+                    </flux:tooltip>
+                </x-slot>
+            </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
+
+    <flux:callout variant="neutral" icon="information-circle">
+        <flux:callout.heading>{{ __('PIN pool (MVP)') }}</flux:callout.heading>
+        <flux:callout.text>
+            {{ __('Bulk import and manual assignment are supported. Driver push notifications / WhatsApp integration are backlog items (see session notes).') }}
+        </flux:callout.text>
+    </flux:callout>
 
     @if (session()->has('pin_import_result'))
         @php($r = session('pin_import_result'))

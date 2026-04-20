@@ -22,6 +22,19 @@ Ham isteği şu eksenlerde netleştirmek:
 | Livewire / Flux UI | `livewire-flux` |
 | Git mesajı, dal stratejisi | `commit` |
 | Uzun vadeli ürün / mimari | `Docs/architecture.md`, `Docs/roadmap.md` (varsa) |
+| Admin UI kabuğu, buton sırası | `Docs/views-port-checklist.md` (“Admin kabuk tutarlılığı”), `Docs/design-tokens.md`, bileşen `x-admin.index-actions` |
+
+## Now-design (UI istemlerinde zorunlu mini-checklist)
+
+Ajan veya kullanıcı şunu net yazmalı:
+
+- **Kabuk:** `mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8` (personel/müşteri portalları dahil).
+- **Başlık:** `x-admin.page-header` — başlık + açıklama solda, aksiyonlar `actions` slotunda.
+- **Liste sayfası aksiyon sırası:** `x-admin.index-actions` ile: `back` (Geri) → `extra` (isteğe bağlı ikincil) → `print` → `export` (Dışa Aktar / şablon) → `import` (İçe Aktar) → `primary` (Yeni Ekle / birincil CTA en sonda).
+- **Form alt çubuğu:** önce İptal, birincil Kaydet sağda (`ms-auto` ile).
+- **Kısıt:** Gereksiz animasyon/gölge ekleme; mümkünse `design-tokens` uyumu.
+
+Uzun ERP/Lojistik alan kuralları: `Docs/Logistics_Proje_Dokumantasyonu.md` §4 (standart sayfa şablonları).
 
 ## Çıktı formatı
 
@@ -37,4 +50,4 @@ Ham isteği şu eksenlerde netleştirmek:
 - ...
 ```
 
-Uzun ERP/Lojistik detayı gerekiyorsa `Docs/prompt-optimizer-logistics-erp.md` (varsa) ve proje kararlarını referans göster.
+Uzun ERP/Lojistik detayı gerekiyorsa `Docs/prompts.md` (faz şablonları) + `Docs/views-port-checklist.md` kullan; ayrı `prompt-optimizer-logistics-erp.md` dosyası yoksa bu yollar yeterli.

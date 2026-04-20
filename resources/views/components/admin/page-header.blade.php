@@ -9,7 +9,7 @@
             {{ $breadcrumb }}
         </nav>
     @endisset
-    <div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div class="min-w-0 flex-1">
             @if (is_string($heading) && $heading !== '')
                 <flux:heading size="xl">{{ $heading }}</flux:heading>
@@ -20,7 +20,7 @@
             {{ $slot }}
         </div>
         @isset($actions)
-            <div class="flex flex-shrink-0 flex-wrap gap-2">
+            <div class="flex w-full min-w-0 flex-shrink-0 flex-wrap items-center justify-stretch gap-2 sm:w-auto sm:justify-end">
                 {{ $actions }}
             </div>
         @endisset

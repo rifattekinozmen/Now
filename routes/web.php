@@ -193,6 +193,7 @@ Route::middleware(['auth', 'verified', 'customer.access'])
         Route::livewire('my-shipments', 'pages::customer.shipments-index')->name('shipments.index');
         Route::livewire('my-documents', 'pages::customer.my-documents')->name('documents.index');
         Route::livewire('my-invoices', 'pages::customer.my-invoices')->name('invoices.index');
+        Route::livewire('my-payments', 'pages::customer.my-payments')->name('payments.index');
     });
 
 require __DIR__.'/settings.php';

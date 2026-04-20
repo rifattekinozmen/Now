@@ -376,17 +376,25 @@ new #[Lazy, Title('Vouchers')] class extends Component
         :description="__('Expense, income and transfer vouchers with Maker-Checker approval workflow.')"
     >
         <x-slot name="actions">
-            <flux:button :href="route('admin.finance.cash-registers.index')" variant="ghost" wire:navigate>
-                {{ __('Cash registers') }}
-            </flux:button>
-            <flux:tooltip :content="__('Export CSV')" position="bottom">
-                <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.finance.vouchers.export.csv')" />
-            </flux:tooltip>
-            @if ($canWrite)
-                <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
-                    {{ __('New voucher') }}
-                </flux:button>
-            @endif
+            <x-admin.index-actions>
+                <x-slot name="back">
+                    <flux:button :href="route('admin.finance.cash-registers.index')" variant="ghost" wire:navigate>
+                        {{ __('Cash registers') }}
+                    </flux:button>
+                </x-slot>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Export CSV')" position="bottom">
+                        <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.finance.vouchers.export.csv')" />
+                    </flux:tooltip>
+                </x-slot>
+                @if ($canWrite)
+                    <x-slot name="primary">
+                        <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
+                            {{ __('New voucher') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
+            </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
 

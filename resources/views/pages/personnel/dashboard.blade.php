@@ -103,12 +103,12 @@ new #[Lazy, Title('My Dashboard')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
-    <div>
-        <flux:heading size="xl">{{ __('Welcome back') }}, {{ auth()->user()->name }}</flux:heading>
-        <flux:text class="mt-1 text-zinc-500">{{ __('Your self-service HR portal') }}</flux:text>
-    </div>
+    <x-admin.page-header
+        :heading="__('Welcome back').', '.auth()->user()->name"
+        :description="__('Your self-service HR portal')"
+    />
 
     {{-- KPI Cards --}}
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

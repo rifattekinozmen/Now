@@ -52,12 +52,18 @@ new #[Lazy, Title('Warehouse detail')] class extends Component
 
     <x-admin.page-header :heading="$this->warehouse->name">
         <x-slot name="actions">
-            <flux:button :href="route('admin.inventory.index')" variant="outline" wire:navigate>
-                {{ __('Inventory') }}
-            </flux:button>
-            <flux:button :href="route('admin.warehouse.index')" variant="ghost" wire:navigate>
-                {{ __('Back to warehouses') }}
-            </flux:button>
+            <x-admin.index-actions>
+                <x-slot name="back">
+                    <flux:button :href="route('admin.warehouse.index')" variant="ghost" wire:navigate>
+                        {{ __('Back to warehouses') }}
+                    </flux:button>
+                </x-slot>
+                <x-slot name="extra">
+                    <flux:button :href="route('admin.inventory.index')" variant="outline" wire:navigate>
+                        {{ __('Inventory') }}
+                    </flux:button>
+                </x-slot>
+            </x-admin.index-actions>
         </x-slot>
         <flux:text class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             @if ($this->warehouse->code)

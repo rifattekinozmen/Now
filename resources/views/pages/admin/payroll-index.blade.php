@@ -372,12 +372,18 @@ new #[Lazy, Title('Payroll')] class extends Component
     >
         <x-slot name="actions">
             @if ($canWrite)
-                <flux:button type="button" variant="outline" wire:click="$set('showBulkGenerate', true)" icon="squares-plus">
-                    {{ __('Bulk generate') }}
-                </flux:button>
-                <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
-                    {{ __('New payroll entry') }}
-                </flux:button>
+                <x-admin.index-actions>
+                    <x-slot name="extra">
+                        <flux:button type="button" variant="outline" wire:click="$set('showBulkGenerate', true)" icon="squares-plus">
+                            {{ __('Bulk generate') }}
+                        </flux:button>
+                    </x-slot>
+                    <x-slot name="primary">
+                        <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
+                            {{ __('New payroll entry') }}
+                        </flux:button>
+                    </x-slot>
+                </x-admin.index-actions>
             @endif
         </x-slot>
     </x-admin.page-header>

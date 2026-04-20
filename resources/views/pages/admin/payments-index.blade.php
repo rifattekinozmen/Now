@@ -306,14 +306,20 @@ new #[Lazy, Title('Payments')] class extends Component
         :description="__('Track and manage payments with Maker-Checker approval workflow.')"
     >
         <x-slot name="actions">
-            <flux:tooltip :content="__('Export CSV')" position="bottom">
-                <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.finance.payments.export.csv')" />
-            </flux:tooltip>
-            @if ($canWrite)
-                <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
-                    {{ __('New payment') }}
-                </flux:button>
-            @endif
+            <x-admin.index-actions>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Export CSV')" position="bottom">
+                        <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.finance.payments.export.csv')" />
+                    </flux:tooltip>
+                </x-slot>
+                @if ($canWrite)
+                    <x-slot name="primary">
+                        <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
+                            {{ __('New payment') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
+            </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
 

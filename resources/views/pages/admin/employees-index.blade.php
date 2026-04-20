@@ -431,9 +431,13 @@ new #[Lazy, Title('Employees')] class extends Component
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Employees') }}</span>
         </x-slot>
         <x-slot name="actions">
-            <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.employees.template.xlsx')" />
-            </flux:tooltip>
+            <x-admin.index-actions>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
+                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.employees.template.xlsx')" />
+                    </flux:tooltip>
+                </x-slot>
+            </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
 

@@ -14,8 +14,12 @@ Aşağıdakiler [roadmap.md](roadmap.md) “sonraki iterasyon” ile aynıdır; 
 | Finans | TFRS / yasal bilanço; operasyonel özet ve açılış birleştirmesi UI mevcut, denetim çıktısı değildir |
 | SMS/WhatsApp | Gerçek sağlayıcı adaptörü ([roadmap.md](roadmap.md) Faz D/E) |
 | BI / gelişmiş rapor | Harici BI veya derin finans raporları — ayrı epik |
+| Fleet map (`admin.analytics.fleet-map`) | Harita kütüphanesi + API maliyeti; POC ayrı onay — sprint planı dışı (2026-04-20) |
+| PIN push / WhatsApp | Havuz MVP mevcut; şoför anlık bildirim kanalı backlog ([Logistics_Proje_Dokumantasyonu.md](Logistics_Proje_Dokumantasyonu.md) §6) |
 
-## Current Focus (2026-04-17)
+## Current Focus (2026-04-20)
+
+**Son tur:** Admin/personel/müşteri kabuğu — `x-admin.index-actions` ile üst buton sırası; müşteri salt okunur **Ödemelerim** (`customer.payments.index`); dokümantasyon: `views-port-checklist.md`, `prompts.md`, prompt optimizer skill.
 
 **Sprint 22 tamamlandı — 534/534 test geçiyor.**
 

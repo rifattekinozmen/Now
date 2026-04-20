@@ -682,6 +682,18 @@ new #[Lazy, Title('Orders')] class extends Component
         <x-slot name="breadcrumb">
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Orders') }}</span>
         </x-slot>
+        <x-slot name="actions">
+            <x-admin.index-actions>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Export finance CSV')" position="bottom">
+                        <flux:button icon="arrow-down-tray" variant="outline" :href="route('admin.orders.export.finance.csv')" />
+                    </flux:tooltip>
+                    <flux:tooltip :content="__('Export Logo XML')" position="bottom">
+                        <flux:button icon="code-bracket" variant="outline" :href="route('admin.orders.export.logo.xml')" />
+                    </flux:tooltip>
+                </x-slot>
+            </x-admin.index-actions>
+        </x-slot>
     </x-admin.page-header>
 
     @if (session()->has('bulk_deleted'))

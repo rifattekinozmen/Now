@@ -330,7 +330,16 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
         :description="__('Fleet fuel records for audit and anomaly checks. Import CSV/XLSX or add rows manually.')"
     >
         <x-slot name="actions">
-            <flux:button :href="route('admin.vehicles.index')" variant="ghost" wire:navigate>{{ __('Vehicles') }}</flux:button>
+            <x-admin.index-actions>
+                <x-slot name="back">
+                    <flux:button :href="route('admin.vehicles.index')" variant="ghost" wire:navigate>{{ __('Vehicles') }}</flux:button>
+                </x-slot>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
+                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.fuel-intakes.template.xlsx')" />
+                    </flux:tooltip>
+                </x-slot>
+            </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
 
@@ -421,9 +430,6 @@ new #[Lazy, Title('Fuel intakes')] class extends Component
             <div class="flex flex-wrap items-end gap-4">
                 <flux:input wire:model="importFile" type="file" accept=".xlsx,.xls,.csv" />
                 <flux:button type="button" wire:click="importFuelIntakes" icon="arrow-up-tray" variant="primary">{{ __('Import') }}</flux:button>
-                <flux:tooltip :content="__('Download template')" position="bottom">
-                    <flux:button icon="document-arrow-down" :href="route('admin.fuel-intakes.template.xlsx')" variant="ghost" />
-                </flux:tooltip>
             </div>
         </flux:card>
     @endif

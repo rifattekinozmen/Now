@@ -318,13 +318,22 @@ new #[Lazy, Title('Bank Transactions')] class extends Component
 
     <x-admin.page-header
         :heading="__('Bank Transactions')"
-        :description="__('Record and reconcile bank movements.')"
+        :description="__('Record and reconcile bank movements. Use Finance → Bank statement CSV import for file-based intake; a separate bank document archive is not required for MVP.')"
     >
         <x-slot name="actions">
             @if ($canWrite)
-                <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
-                    {{ __('New transaction') }}
-                </flux:button>
+                <x-admin.index-actions>
+                    <x-slot name="extra">
+                        <flux:button :href="route('admin.finance.bank-statement-csv')" variant="outline" wire:navigate icon="arrow-up-tray">
+                            {{ __('CSV import') }}
+                        </flux:button>
+                    </x-slot>
+                    <x-slot name="primary">
+                        <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
+                            {{ __('New transaction') }}
+                        </flux:button>
+                    </x-slot>
+                </x-admin.index-actions>
             @endif
         </x-slot>
     </x-admin.page-header>

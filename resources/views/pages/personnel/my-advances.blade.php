@@ -173,7 +173,7 @@ new #[Lazy, Title('My Advances')] class extends Component
     }
 }; ?>
 
-<div class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 lg:p-8">
+<div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
     <div class="flex flex-wrap items-start justify-between gap-4">
         <div>

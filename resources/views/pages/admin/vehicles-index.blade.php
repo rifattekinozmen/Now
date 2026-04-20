@@ -307,9 +307,13 @@ new #[Lazy, Title('Vehicles')] class extends Component
             <span class="font-medium text-zinc-800 dark:text-zinc-100">{{ __('Vehicles') }}</span>
         </x-slot>
         <x-slot name="actions">
-            <flux:tooltip :content="__('Download XLSX template')" position="bottom">
-                <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.vehicles.template.xlsx')" />
-            </flux:tooltip>
+            <x-admin.index-actions>
+                <x-slot name="export">
+                    <flux:tooltip :content="__('Download XLSX template')" position="bottom">
+                        <flux:button icon="document-arrow-down" variant="outline" :href="route('admin.vehicles.template.xlsx')" />
+                    </flux:tooltip>
+                </x-slot>
+            </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
 
@@ -386,9 +390,9 @@ new #[Lazy, Title('Vehicles')] class extends Component
                         <flux:input wire:model="manufacture_year" type="number" :label="__('Year')" min="1900" :max="date('Y')" />
                         <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
                     </div>
-                    <div class="flex flex-wrap gap-2">
-                        <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
+                    <div class="flex w-full flex-wrap items-center gap-2">
                         <flux:button type="button" variant="ghost" wire:click="cancelVehicleEdit">{{ __('Cancel') }}</flux:button>
+                        <flux:button class="ms-auto" type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
                     </div>
                 </form>
             </flux:card>

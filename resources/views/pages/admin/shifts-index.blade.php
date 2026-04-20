@@ -333,12 +333,23 @@ new #[Lazy, Title('Shifts')] class extends Component
     >
         <x-slot name="actions">
             @if ($canWrite)
-                <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
-                    {{ __('New Shift') }}
-                </flux:button>
+                <x-admin.index-actions>
+                    <x-slot name="primary">
+                        <flux:button type="button" variant="primary" wire:click="startCreate" icon="plus">
+                            {{ __('New Shift') }}
+                        </flux:button>
+                    </x-slot>
+                </x-admin.index-actions>
             @endif
         </x-slot>
     </x-admin.page-header>
+
+    <flux:callout variant="neutral" icon="information-circle">
+        <flux:callout.heading>{{ __('Planning templates') }}</flux:callout.heading>
+        <flux:callout.text>
+            {{ __('Reusable shift templates and advanced planning views are backlog; this page covers list and weekly grid CRUD.') }}
+        </flux:callout.text>
+    </flux:callout>
 
     {{-- View mode toggle --}}
     <div class="flex items-center gap-2">
