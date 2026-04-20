@@ -7,6 +7,7 @@ use App\Models\CashRegister;
 use App\Models\Order;
 use App\Models\Voucher;
 use App\Services\Finance\VoucherApprovalService;
+use App\Services\Finance\VoucherOcrService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
@@ -41,6 +42,12 @@ new #[Lazy, Title('Vouchers')] class extends Component
     public string $description = '';
 
     public $documentFile = null;
+
+    /** Receipt photo for OCR suggestion */
+    public $ocrPhoto = null;
+
+    /** @var array{date: string|null, amount: string|null, vat_amount: string|null}|null */
+    public ?array $ocrSuggestions = null;
 
     // Filters
     public bool $filtersOpen = false;
@@ -302,6 +309,43 @@ new #[Lazy, Title('Vouchers')] class extends Component
         session()->flash('success', __('Voucher #:id rejected.', ['id' => $id]));
     }
 
+    public function ocrReceipt(VoucherOcrService $service): void
+    {
+        Gate::authorize('create', Voucher::class);
+
+        $this->validate(['ocrPhoto' => 'required|image|max:5120']);
+
+        $path        = $this->ocrPhoto->getRealPath();
+        $suggestions = $service->parseReceiptImage($path);
+
+        $this->ocrSuggestions = $suggestions;
+
+        // Auto-fill form fields if not already set
+        if (filled($suggestions['date']) && $this->voucher_date === now()->timezone(config('app.timezone'))->format('Y-m-d')) {
+            $this->voucher_date = $suggestions['date'];
+        }
+
+        if (filled($suggestions['amount']) && $this->amount === '') {
+            $this->amount = $suggestions['amount'];
+        }
+    }
+
+    public function applyOcrSuggestion(string $field, string $value): void
+    {
+        if (in_array($field, ['voucher_date', 'amount'], true)) {
+            $this->{$field} = $value;
+        }
+
+        unset($this->ocrSuggestions);
+        $this->ocrSuggestions = null;
+    }
+
+    public function dismissOcrSuggestions(): void
+    {
+        $this->ocrSuggestions = null;
+        $this->ocrPhoto       = null;
+    }
+
     private function resetForm(): void
     {
         $this->cash_register_id = '';
@@ -313,6 +357,8 @@ new #[Lazy, Title('Vouchers')] class extends Component
         $this->reference_no     = '';
         $this->description      = '';
         $this->documentFile     = null;
+        $this->ocrPhoto         = null;
+        $this->ocrSuggestions   = null;
     }
 }; ?>
 
@@ -438,6 +484,55 @@ new #[Lazy, Title('Vouchers')] class extends Component
                 <flux:input wire:model="voucher_date" type="date" :label="__('Voucher date')" required />
                 <flux:input wire:model="reference_no" type="text" :label="__('Reference no')" placeholder="REF-001" />
                 <flux:textarea wire:model="description" :label="__('Description')" rows="2" class="lg:col-span-3" />
+
+                {{-- OCR Receipt Photo --}}
+                <div class="lg:col-span-3">
+                    <div class="rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-3 dark:border-zinc-600 dark:bg-zinc-800">
+                        <flux:label>{{ __('OCR: Scan receipt photo') }}</flux:label>
+                        <div class="mt-1 flex flex-wrap items-center gap-3">
+                            <input type="file" wire:model="ocrPhoto" accept=".jpg,.jpeg,.png,.webp"
+                                   class="text-sm text-zinc-700 dark:text-zinc-300" />
+                            <flux:button size="sm" type="button" wire:click="ocrReceipt" wire:loading.attr="disabled" icon="camera">
+                                {{ __('Read receipt') }}
+                            </flux:button>
+                            <span wire:loading wire:target="ocrReceipt" class="text-xs text-zinc-500">{{ __('Scanning…') }}</span>
+                        </div>
+
+                        {{-- OCR Suggestions --}}
+                        @if ($ocrSuggestions !== null)
+                            <div class="mt-3 space-y-2">
+                                <p class="text-xs font-semibold text-zinc-600 dark:text-zinc-300">{{ __('OCR Suggestions — click to apply:') }}</p>
+                                @if (filled($ocrSuggestions['date']))
+                                    <div class="flex items-center gap-2">
+                                        <flux:badge color="blue" size="sm">{{ __('Date') }}: {{ $ocrSuggestions['date'] }}</flux:badge>
+                                        <flux:button size="sm" type="button" wire:click="applyOcrSuggestion('voucher_date', '{{ $ocrSuggestions['date'] }}')">
+                                            {{ __('Apply') }}
+                                        </flux:button>
+                                    </div>
+                                @endif
+                                @if (filled($ocrSuggestions['amount']))
+                                    <div class="flex items-center gap-2">
+                                        <flux:badge color="green" size="sm">{{ __('Amount') }}: {{ $ocrSuggestions['amount'] }}</flux:badge>
+                                        <flux:button size="sm" type="button" wire:click="applyOcrSuggestion('amount', '{{ $ocrSuggestions['amount'] }}')">
+                                            {{ __('Apply') }}
+                                        </flux:button>
+                                    </div>
+                                @endif
+                                @if (filled($ocrSuggestions['vat_amount']))
+                                    <div class="flex items-center gap-2">
+                                        <flux:badge color="yellow" size="sm">{{ __('VAT') }}: {{ $ocrSuggestions['vat_amount'] }}</flux:badge>
+                                    </div>
+                                @endif
+                                @if (! filled($ocrSuggestions['date']) && ! filled($ocrSuggestions['amount']) && ! filled($ocrSuggestions['vat_amount']))
+                                    <p class="text-xs text-zinc-400">{{ __('No data could be extracted. Please fill manually.') }}</p>
+                                @endif
+                                <flux:button size="sm" variant="ghost" type="button" wire:click="dismissOcrSuggestions">
+                                    {{ __('Dismiss') }}
+                                </flux:button>
+                            </div>
+                        @endif
+                    </div>
+                </div>
 
                 {{-- Document upload --}}
                 <div class="lg:col-span-3">
