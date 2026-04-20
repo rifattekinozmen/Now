@@ -4,6 +4,7 @@ namespace App\Services\Logistics;
 
 use App\Enums\ShipmentStatus;
 use App\Events\Logistics\ShipmentDispatched;
+use App\Jobs\GenerateEpodJob;
 use App\Jobs\SendUetdsNotificationJob;
 use App\Models\Shipment;
 use Illuminate\Support\Facades\Auth;
@@ -103,6 +104,9 @@ final class ShipmentStatusTransitionService
         }
 
         $shipment->update($attributes);
+
+        // Queue E-POD generation after delivery is confirmed
+        GenerateEpodJob::dispatch($shipment->id);
     }
 
     public function cancel(Shipment $shipment): void

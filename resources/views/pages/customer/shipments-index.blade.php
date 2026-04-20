@@ -142,6 +142,7 @@ new #[Lazy, Title('My Shipments')] class extends Component
                             <th class="px-4 py-3 font-medium">{{ __('Dispatched') }}</th>
                             <th class="px-4 py-3 font-medium">{{ __('Delivered') }}</th>
                             <th class="px-4 py-3 font-medium">{{ __('Track') }}</th>
+                            <th class="px-4 py-3 font-medium">{{ __('E-POD') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -174,6 +175,21 @@ new #[Lazy, Title('My Shipments')] class extends Component
                                             icon="arrow-top-right-on-square"
                                         >
                                             {{ __('Track') }}
+                                        </flux:button>
+                                    @else
+                                        <span class="text-zinc-400">—</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if (isset($shipment->meta['epod']['generated_at']))
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            :href="route('admin.shipments.pod.print', $shipment)"
+                                            target="_blank"
+                                            icon="document-arrow-down"
+                                        >
+                                            {{ __('E-POD') }}
                                         </flux:button>
                                     @else
                                         <span class="text-zinc-400">—</span>

@@ -776,6 +776,46 @@ new #[Lazy, Title('Shipment detail')] class extends Component
 
     {{-- TAB: Documents --}}
     @if ($activeTab === 'documents')
+        {{-- E-POD section --}}
+        @php
+            $epodMeta = $shipment->meta['epod'] ?? null;
+        @endphp
+        <flux:card class="mb-4 p-4">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <flux:heading size="sm">{{ __('Electronic Proof of Delivery (E-POD)') }}</flux:heading>
+                    @if ($epodMeta)
+                        <flux:text class="text-xs text-zinc-500">
+                            {{ __('Generated') }}: {{ \Carbon\Carbon::parse($epodMeta['generated_at'])->format('d M Y H:i') }}
+                            @if ($epodMeta['has_signature'] ?? false)
+                                · ✅ {{ __('Signed') }}
+                            @endif
+                            @if ($epodMeta['has_gps'] ?? false)
+                                · 📍 {{ __('GPS') }}
+                            @endif
+                        </flux:text>
+                    @else
+                        <flux:text class="text-xs text-zinc-400">
+                            {{ $shipment->status === \App\Enums\ShipmentStatus::Delivered->value
+                                ? __('E-POD is being generated…')
+                                : __('E-POD will be available after delivery.') }}
+                        </flux:text>
+                    @endif
+                </div>
+                @if ($shipment->status === \App\Enums\ShipmentStatus::Delivered->value)
+                    <flux:button
+                        :href="route('admin.shipments.pod.print', $shipment)"
+                        target="_blank"
+                        variant="outline"
+                        size="sm"
+                        icon="arrow-down-tray"
+                    >
+                        {{ __('Download E-POD') }}
+                    </flux:button>
+                @endif
+            </div>
+        </flux:card>
+
         <flux:card class="p-4">
             <div class="mb-4 flex items-center justify-between">
                 <flux:heading size="lg">{{ __('Documents') }}</flux:heading>
