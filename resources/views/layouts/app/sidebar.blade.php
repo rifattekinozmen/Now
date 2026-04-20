@@ -104,6 +104,7 @@
                     <flux:sidebar.item icon="squares-plus" :href="route('admin.inventory.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Inventory') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="wrench-screwdriver" :href="route('admin.maintenance.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Maintenance') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.work-orders.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Work Orders') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="view-columns" :href="route('admin.dispatch-board')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Dispatch Board') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="circle-stack" :href="route('admin.vehicle-tyres.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Vehicle Tyres') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="chart-bar-square" :href="route('admin.analytics.fleet')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Fleet Analytics') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="chart-bar" :href="route('admin.analytics.operations')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Ops Analytics') }}</flux:sidebar.item>
@@ -134,6 +135,7 @@
                             <flux:menu.item :href="route('admin.inventory.index')" icon="squares-plus" wire:navigate>{{ __('Inventory') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.maintenance.index')" icon="wrench-screwdriver" wire:navigate>{{ __('Maintenance') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.work-orders.index')" icon="clipboard-document-list" wire:navigate>{{ __('Work Orders') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.dispatch-board')" icon="view-columns" wire:navigate>{{ __('Dispatch Board') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.vehicle-tyres.index')" icon="circle-stack" wire:navigate>{{ __('Vehicle Tyres') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.analytics.fleet')" icon="chart-bar-square" wire:navigate>{{ __('Fleet Analytics') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.analytics.operations')" icon="chart-bar" wire:navigate>{{ __('Ops Analytics') }}</flux:menu.item>

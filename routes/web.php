@@ -127,6 +127,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             });
 
             // Operations
+            Route::livewire('dispatch-board', 'pages::admin.dispatch-board')->name('dispatch-board');
             Route::livewire('maintenance', 'pages::admin.maintenance-index')->name('maintenance.index');
             Route::livewire('work-orders', 'pages::admin.work-orders-index')->name('work-orders.index');
             Route::livewire('vehicle-tyres', 'pages::admin.vehicle-tyres-index')->name('vehicle-tyres.index');
