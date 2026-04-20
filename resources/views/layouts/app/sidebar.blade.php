@@ -230,6 +230,7 @@
                 {{-- Expanded: items --}}
                 <div x-show="hr" class="in-data-flux-sidebar-collapsed-desktop:hidden">
                     <flux:sidebar.item icon="user-group" :href="route('admin.employees.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Employees') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="trophy" :href="route('admin.driver-leaderboard')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Driver Leaderboard') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="calendar-days" :href="route('admin.hr.leaves.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Leave Requests') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('admin.hr.advances.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Advances') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="document-text" :href="route('admin.hr.payroll.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Payroll') }}</flux:sidebar.item>
@@ -244,6 +245,7 @@
                         <flux:menu>
                             <flux:menu.heading>{{ __('HR') }}</flux:menu.heading>
                             <flux:menu.item :href="route('admin.employees.index')" icon="user-group" wire:navigate>{{ __('Employees') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.driver-leaderboard')" icon="trophy" wire:navigate>{{ __('Driver Leaderboard') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.hr.leaves.index')" icon="calendar-days" wire:navigate>{{ __('Leave Requests') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.hr.advances.index')" icon="banknotes" wire:navigate>{{ __('Advances') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.hr.payroll.index')" icon="document-text" wire:navigate>{{ __('Payroll') }}</flux:menu.item>

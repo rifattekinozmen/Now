@@ -116,6 +116,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('material-codes', 'pages::admin.material-codes-index')->name('material-codes.index');
             Route::livewire('vehicle-fines', 'pages::admin.vehicle-fines-index')->name('vehicle-fines.index');
 
+            // Driver leaderboard
+            Route::livewire('driver-leaderboard', 'pages::admin.driver-leaderboard')->name('driver-leaderboard');
+
             // HR Module
             Route::prefix('hr')->name('hr.')->group(function (): void {
                 Route::livewire('leaves', 'pages::admin.leaves-index')->name('leaves.index');
