@@ -150,6 +150,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('analytics/fleet', 'pages::admin.fleet-analytics')->name('analytics.fleet');
             Route::livewire('analytics/operations', 'pages::admin.operations-analytics')->name('analytics.operations');
             Route::livewire('analytics/cost-centers', 'pages::admin.cost-center-pl')->name('analytics.cost-centers');
+            Route::livewire('analytics/geo', 'pages::admin.geo-analytics')->name('analytics.geo');
 
             // Finance reports
             Route::livewire('finance/billing-preview', 'pages::admin.billing-preview')->name('finance.billing-preview');

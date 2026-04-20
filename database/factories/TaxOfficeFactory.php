@@ -10,15 +10,21 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class TaxOfficeFactory extends Factory
 {
+    protected $model = TaxOffice::class;
+
     /**
-     * Define the model's default state.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
     {
+        static $cities = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Konya', 'Adana', 'Gaziantep'];
+
         return [
-            //
+            'code' => fake()->unique()->numerify('TAX-####'),
+            'name' => fake()->company().' Vergi Dairesi',
+            'city' => fake()->randomElement($cities),
+            'district' => fake()->city(),
+            'is_active' => true,
         ];
     }
 }
