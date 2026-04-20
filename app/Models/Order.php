@@ -35,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'loading_address_id',
     'delivery_address_id',
     'cargo_type',
+    'material_code_id',
     'pallet_count',
     'pallet_standard',
     'adr_class',
@@ -121,6 +122,14 @@ class Order extends Model
     /**
      * @return BelongsTo<CustomerAddress, $this>
      */
+    /**
+     * @return BelongsTo<MaterialCode, $this>
+     */
+    public function materialCode(): BelongsTo
+    {
+        return $this->belongsTo(MaterialCode::class);
+    }
+
     public function loadingAddress(): BelongsTo
     {
         return $this->belongsTo(CustomerAddress::class, 'loading_address_id');

@@ -3,6 +3,7 @@
 use App\Authorization\LogisticsPermission;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\Customer;
+use App\Models\TaxOffice;
 use App\Services\Logistics\ExcelImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -26,6 +27,10 @@ new #[Lazy, Title('Customers')] class extends Component
 
     public string $tax_id = '';
 
+    public string $tax_office_city = '';
+
+    public string $tax_office_id = '';
+
     public string $trade_name = '';
 
     public int $payment_term_days = 30;
@@ -48,6 +53,51 @@ new #[Lazy, Title('Customers')] class extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', Customer::class);
+    }
+
+    /** Şehir değişince vergi dairesi seçimini sıfırla */
+    public function updatedTaxOfficeCity(): void
+    {
+        $this->tax_office_id = '';
+    }
+
+    /**
+     * Seçili şehre göre vergi dairesi seçenekleri (cascading).
+     *
+     * @return array<int, array{id: int, label: string}>
+     */
+    #[Computed]
+    public function taxOfficeOptions(): array
+    {
+        if ($this->tax_office_city === '') {
+            return [];
+        }
+
+        return TaxOffice::active()
+            ->where('city', $this->tax_office_city)
+            ->orderBy('name')
+            ->get(['id', 'name', 'district'])
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'label' => $t->name . ($t->district ? ' (' . $t->district . ')' : ''),
+            ])
+            ->all();
+    }
+
+    /**
+     * Distinct cities with active tax offices.
+     *
+     * @return list<string>
+     */
+    #[Computed]
+    public function taxOfficeCities(): array
+    {
+        return TaxOffice::active()
+            ->select('city')
+            ->distinct()
+            ->orderBy('city')
+            ->pluck('city')
+            ->all();
     }
 
     public function updatedFilterSearch(): void
@@ -199,6 +249,7 @@ new #[Lazy, Title('Customers')] class extends Component
             'partner_number' => ['nullable', 'string', 'max:32'],
             'legal_name' => ['required', 'string', 'max:255'],
             'tax_id' => ['nullable', 'string', 'max:32'],
+            'tax_office_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tax_offices', 'id')],
             'trade_name' => ['nullable', 'string', 'max:255'],
             'payment_term_days' => ['required', 'integer', 'min:0', 'max:3650'],
         ]);
@@ -207,11 +258,12 @@ new #[Lazy, Title('Customers')] class extends Component
             'partner_number' => $validated['partner_number'] ?: null,
             'legal_name' => $validated['legal_name'],
             'tax_id' => $validated['tax_id'] ?: null,
+            'tax_office_id' => isset($validated['tax_office_id']) && $validated['tax_office_id'] !== '' ? (int) $validated['tax_office_id'] : null,
             'trade_name' => $validated['trade_name'] ?: null,
             'payment_term_days' => $validated['payment_term_days'],
         ]);
 
-        $this->reset('partner_number', 'legal_name', 'tax_id', 'trade_name', 'payment_term_days');
+        $this->reset('partner_number', 'legal_name', 'tax_id', 'tax_office_id', 'tax_office_city', 'trade_name', 'payment_term_days');
         $this->payment_term_days = 30;
     }
 
@@ -226,6 +278,9 @@ new #[Lazy, Title('Customers')] class extends Component
         $this->partner_number = $customer->partner_number ?? '';
         $this->legal_name = $customer->legal_name;
         $this->tax_id = $customer->tax_id ?? '';
+        $taxOffice = $customer->taxOffice;
+        $this->tax_office_city = $taxOffice?->city ?? '';
+        $this->tax_office_id = $customer->tax_office_id !== null ? (string) $customer->tax_office_id : '';
         $this->trade_name = $customer->trade_name ?? '';
         $this->payment_term_days = $customer->payment_term_days;
     }
@@ -233,7 +288,7 @@ new #[Lazy, Title('Customers')] class extends Component
     public function cancelCustomerEdit(): void
     {
         $this->editingCustomerId = null;
-        $this->reset('partner_number', 'legal_name', 'tax_id', 'trade_name', 'payment_term_days');
+        $this->reset('partner_number', 'legal_name', 'tax_id', 'tax_office_id', 'tax_office_city', 'trade_name', 'payment_term_days');
         $this->payment_term_days = 30;
     }
 
@@ -252,6 +307,7 @@ new #[Lazy, Title('Customers')] class extends Component
             'partner_number' => ['nullable', 'string', 'max:32'],
             'legal_name' => ['required', 'string', 'max:255'],
             'tax_id' => ['nullable', 'string', 'max:32'],
+            'tax_office_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tax_offices', 'id')],
             'trade_name' => ['nullable', 'string', 'max:255'],
             'payment_term_days' => ['required', 'integer', 'min:0', 'max:3650'],
         ]);
@@ -260,6 +316,7 @@ new #[Lazy, Title('Customers')] class extends Component
             'partner_number' => $validated['partner_number'] ?: null,
             'legal_name' => $validated['legal_name'],
             'tax_id' => $validated['tax_id'] ?: null,
+            'tax_office_id' => isset($validated['tax_office_id']) && $validated['tax_office_id'] !== '' ? (int) $validated['tax_office_id'] : null,
             'trade_name' => $validated['trade_name'] ?: null,
             'payment_term_days' => $validated['payment_term_days'],
         ]);
@@ -423,6 +480,20 @@ new #[Lazy, Title('Customers')] class extends Component
                         <flux:input wire:model="tax_id" :label="__('Tax ID')" />
                         <flux:input wire:model="trade_name" :label="__('Trade name')" />
                         <flux:input wire:model="payment_term_days" type="number" min="0" max="3650" :label="__('Payment term (days)')" />
+                        <flux:select wire:model.live="tax_office_city" :label="__('Tax Office City')">
+                            <flux:select.option value="">{{ __('-- Select city --') }}</flux:select.option>
+                            @foreach ($this->taxOfficeCities as $city)
+                                <flux:select.option :value="$city">{{ $city }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        @if ($tax_office_city)
+                            <flux:select wire:model="tax_office_id" :label="__('Tax Office')">
+                                <flux:select.option value="">{{ __('-- Select tax office --') }}</flux:select.option>
+                                @foreach ($this->taxOfficeOptions as $office)
+                                    <flux:select.option :value="$office->id">{{ $office->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        @endif
                         <div class="flex flex-wrap gap-2">
                             <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
                             <flux:button type="button" variant="ghost" wire:click="cancelCustomerEdit">{{ __('Cancel') }}</flux:button>
@@ -438,6 +509,20 @@ new #[Lazy, Title('Customers')] class extends Component
                         <flux:input wire:model="tax_id" :label="__('Tax ID')" />
                         <flux:input wire:model="trade_name" :label="__('Trade name')" />
                         <flux:input wire:model="payment_term_days" type="number" min="0" max="3650" :label="__('Payment term (days)')" />
+                        <flux:select wire:model.live="tax_office_city" :label="__('Tax Office City')">
+                            <flux:select.option value="">{{ __('-- Select city --') }}</flux:select.option>
+                            @foreach ($this->taxOfficeCities as $city)
+                                <flux:select.option :value="$city">{{ $city }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        @if ($tax_office_city)
+                            <flux:select wire:model="tax_office_id" :label="__('Tax Office')">
+                                <flux:select.option value="">{{ __('-- Select tax office --') }}</flux:select.option>
+                                @foreach ($this->taxOfficeOptions as $office)
+                                    <flux:select.option :value="$office->id">{{ $office->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        @endif
                         <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                     </form>
                 </flux:card>

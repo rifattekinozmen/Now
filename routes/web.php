@@ -112,6 +112,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('trip-expenses', 'pages::admin.trip-expenses-index')->name('trip-expenses.index');
             Route::livewire('vehicle-finances', 'pages::admin.vehicle-finances-index')->name('vehicle-finances.index');
 
+            // Lookup tables
+            Route::livewire('material-codes', 'pages::admin.material-codes-index')->name('material-codes.index');
+
             // HR Module
             Route::prefix('hr')->name('hr.')->group(function (): void {
                 Route::livewire('leaves', 'pages::admin.leaves-index')->name('leaves.index');

@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'tenant_id',
     'partner_number',
     'tax_id',
+    'tax_office_id',
     'legal_name',
     'trade_name',
     'payment_term_days',
@@ -59,6 +60,14 @@ class Customer extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    /**
+     * @return BelongsTo<TaxOffice, $this>
+     */
+    public function taxOffice(): BelongsTo
+    {
+        return $this->belongsTo(TaxOffice::class);
     }
 
     /**
