@@ -37,14 +37,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'logistics.access'  => EnsureLogisticsAccess::class,
-            'personnel.access'  => EnsurePersonnelAccess::class,
-            'customer.access'   => EnsureCustomerAccess::class,
+            'logistics.access' => EnsureLogisticsAccess::class,
+            'personnel.access' => EnsurePersonnelAccess::class,
+            'customer.access' => EnsureCustomerAccess::class,
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,
             'role_or_permission' => RoleOrPermissionMiddleware::class,
         ]);
     })
+    ->withEvents([
+        __DIR__.'/../app/Listeners',
+    ])
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
