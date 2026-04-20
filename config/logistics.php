@@ -43,4 +43,20 @@ return [
         'scanned_pdf_ocr_adapter' => env('BANK_STATEMENT_OCR_ADAPTER'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | U-ETDS — Ulusal Elektronik Tebligat Dağıtım Sistemi
+    |--------------------------------------------------------------------------
+    |
+    | Türkiye karayolu taşıma mevzuatı sefer bildirimi.
+    | enabled: false iken bildirim gönderilmez.
+    |
+    */
+
+    'uetds' => [
+        'enabled' => (bool) env('UETDS_ENABLED', false),
+        'api_url' => env('UETDS_API_URL', 'https://uetds.gov.tr/api/v1'),
+        'api_key' => env('UETDS_API_KEY'),
+    ],
+
 ];

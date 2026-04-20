@@ -4,6 +4,7 @@ namespace App\Services\Logistics;
 
 use App\Enums\ShipmentStatus;
 use App\Events\Logistics\ShipmentDispatched;
+use App\Jobs\SendUetdsNotificationJob;
 use App\Models\Shipment;
 use Illuminate\Support\Facades\Auth;
 
@@ -30,7 +31,12 @@ final class ShipmentStatusTransitionService
             'dispatched_at' => now(),
         ]);
 
-        ShipmentDispatched::dispatch($shipment->fresh());
+        $fresh = $shipment->fresh();
+        ShipmentDispatched::dispatch($fresh ?? $shipment);
+
+        if (config('logistics.uetds.enabled', false)) {
+            SendUetdsNotificationJob::dispatch($shipment->id);
+        }
     }
 
     /**

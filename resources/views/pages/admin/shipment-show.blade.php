@@ -7,8 +7,10 @@ use App\Models\Document;
 use App\Models\Employee;
 use App\Models\Shipment;
 use App\Models\Vehicle;
+use App\Jobs\SendUetdsNotificationJob;
 use App\Services\Logistics\PodDeliveryPhotoStorage;
 use App\Services\Logistics\ShipmentStatusTransitionService;
+use App\Services\Logistics\UetdsNotificationService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
@@ -264,10 +266,24 @@ new #[Lazy, Title('Shipment detail')] class extends Component
 
     public function setShipmentTab(string $tab): void
     {
-        $allowed = ['overview', 'tracking', 'timeline', 'operations', 'return', 'documents'];
+        $allowed = ['overview', 'tracking', 'timeline', 'operations', 'return', 'documents', 'legal'];
         if (in_array($tab, $allowed, true)) {
             $this->activeTab = $tab;
         }
+    }
+
+    public function submitUetds(UetdsNotificationService $service): void
+    {
+        Gate::authorize('update', $this->shipment);
+        $this->shipment->loadMissing(['order', 'vehicle', 'driver']);
+        $service->notify($this->shipment);
+        $this->shipment->refresh();
+    }
+
+    public function resubmitUetds(): void
+    {
+        Gate::authorize('update', $this->shipment);
+        SendUetdsNotificationJob::dispatch($this->shipment->id);
     }
 
     /**
@@ -345,6 +361,9 @@ new #[Lazy, Title('Shipment detail')] class extends Component
         </flux:button>
         <flux:button type="button" size="sm" :variant="$activeTab === 'documents' ? 'primary' : 'ghost'" wire:click="setShipmentTab('documents')">
             {{ __('Documents') }}
+        </flux:button>
+        <flux:button type="button" size="sm" :variant="$activeTab === 'legal' ? 'primary' : 'ghost'" wire:click="setShipmentTab('legal')">
+            {{ __('Legal') }}
         </flux:button>
     </div>
 
@@ -806,6 +825,54 @@ new #[Lazy, Title('Shipment detail')] class extends Component
                     </table>
                 </div>
             @endif
+        </flux:card>
+    @endif
+
+    {{-- Legal Notifications Tab --}}
+    @if ($activeTab === 'legal')
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Legal Notifications') }}</flux:heading>
+
+            @php
+                $uetdsEnabled = config('logistics.uetds.enabled', false);
+                $uetdsMeta    = $shipment->meta['uetds'] ?? null;
+            @endphp
+
+            <div class="space-y-4">
+                <div class="flex items-start justify-between gap-4 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div>
+                        <p class="font-semibold text-zinc-800 dark:text-zinc-100">U-ETDS</p>
+                        <p class="text-sm text-zinc-500">{{ __('Ulusal Elektronik Tebligat Dağıtım Sistemi — sefer bildirimi') }}</p>
+
+                        @if ($uetdsMeta)
+                            <div class="mt-2 space-y-1 text-sm">
+                                <p>{{ __('Reference') }}: <span class="font-mono">{{ $uetdsMeta['reference_no'] ?? '—' }}</span></p>
+                                <p>{{ __('Submitted') }}: {{ isset($uetdsMeta['submitted_at']) ? \Illuminate\Support\Carbon::parse($uetdsMeta['submitted_at'])->format('d M Y H:i') : '—' }}</p>
+                                <flux:badge color="green" size="sm">{{ $uetdsMeta['status'] ?? 'unknown' }}</flux:badge>
+                            </div>
+                        @else
+                            <p class="mt-2 text-sm text-zinc-400">{{ __('Not yet submitted.') }}</p>
+                        @endif
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        @if ($uetdsEnabled)
+                            @if (! $uetdsMeta)
+                                <flux:button size="sm" variant="primary" wire:click="submitUetds">
+                                    {{ __('Submit Now') }}
+                                </flux:button>
+                            @else
+                                <flux:button size="sm" wire:click="resubmitUetds">
+                                    {{ __('Resubmit') }}
+                                </flux:button>
+                            @endif
+                        @else
+                            <flux:badge color="zinc" size="sm">{{ __('U-ETDS Disabled') }}</flux:badge>
+                            <p class="text-xs text-zinc-400">{{ __('Enable via UETDS_ENABLED=true') }}</p>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </flux:card>
     @endif
 </div>
