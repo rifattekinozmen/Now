@@ -5,6 +5,7 @@ use App\Enums\OrderStatus;
 use App\Livewire\Concerns\RequiresLogisticsAdmin;
 use App\Models\AppNotification;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\Order;
 use App\Models\TenantSetting;
 use App\Models\User;
@@ -68,6 +69,34 @@ new #[Lazy, Title('Orders')] class extends Component
 
     public string $unloading_site = '';
 
+    public string $loading_address_id = '';
+
+    public string $delivery_address_id = '';
+
+    public string $cargo_type = '';
+
+    public string $pallet_count = '';
+
+    public string $pallet_standard = '';
+
+    public string $adr_class = '';
+
+    public bool $temperature_control = false;
+
+    public string $temperature_range = '';
+
+    public string $insurance_value = '';
+
+    public string $insurance_currency_code = 'TRY';
+
+    public string $gross_weight_kg = '';
+
+    public string $tara_weight_kg = '';
+
+    public string $net_weight_kg = '';
+
+    public string $moisture_percent = '';
+
     public string $sas_no = '';
 
     public string $filterSearch = '';
@@ -92,6 +121,38 @@ new #[Lazy, Title('Orders')] class extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', Order::class);
+    }
+
+    /** Müşteri değişince adres dropdown'larını sıfırla */
+    public function updatedCustomerId(): void
+    {
+        $this->loading_address_id = '';
+        $this->delivery_address_id = '';
+    }
+
+    /**
+     * Seçili müşteriye ait adres seçenekleri.
+     *
+     * @return array<int, array{id: int, label: string}>
+     */
+    #[Computed]
+    public function customerAddressOptions(): array
+    {
+        if ($this->customer_id === '' || $this->customer_id === '0') {
+            return [];
+        }
+
+        return CustomerAddress::query()
+            ->where('customer_id', (int) $this->customer_id)
+            ->where('tenant_id', auth()->user()?->tenant_id)
+            ->orderByDesc('is_default')
+            ->orderBy('label')
+            ->get(['id', 'label', 'city', 'district', 'is_default'])
+            ->map(fn ($a) => [
+                'id' => $a->id,
+                'label' => $a->label . ($a->city ? ' — ' . $a->city : '') . ($a->is_default ? ' ★' : ''),
+            ])
+            ->all();
     }
 
     public function updatedFilterSearch(): void
@@ -335,7 +396,21 @@ new #[Lazy, Title('Orders')] class extends Component
             'incoterms' => ['nullable', 'string', 'max:12'],
             'loading_site' => ['nullable', 'string', 'max:5000'],
             'unloading_site' => ['nullable', 'string', 'max:5000'],
+            'loading_address_id' => ['nullable', 'integer', Rule::exists('customer_addresses', 'id')->where('tenant_id', $tenantId)],
+            'delivery_address_id' => ['nullable', 'integer', Rule::exists('customer_addresses', 'id')->where('tenant_id', $tenantId)],
             'sas_no' => ['nullable', 'string', 'max:64'],
+            'cargo_type' => ['nullable', 'string', Rule::in(['bulk', 'bagged', 'bigbag', 'palletized', 'other'])],
+            'pallet_count' => ['nullable', 'integer', 'min:1', 'max:9999'],
+            'pallet_standard' => ['nullable', 'string', 'max:50'],
+            'adr_class' => ['nullable', 'string', 'max:20'],
+            'temperature_control' => ['boolean'],
+            'temperature_range' => ['nullable', 'string', 'max:30'],
+            'insurance_value' => ['nullable', 'numeric', 'min:0'],
+            'insurance_currency_code' => ['nullable', 'string', 'size:3'],
+            'gross_weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'tara_weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'net_weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'moisture_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
         $orderNumber = $this->uniqueOrderNumber();
@@ -373,7 +448,21 @@ new #[Lazy, Title('Orders')] class extends Component
             'incoterms' => $validated['incoterms'] ?: null,
             'loading_site' => $validated['loading_site'] ?: null,
             'unloading_site' => $validated['unloading_site'] ?: null,
+            'loading_address_id' => isset($validated['loading_address_id']) && $validated['loading_address_id'] !== '' ? (int) $validated['loading_address_id'] : null,
+            'delivery_address_id' => isset($validated['delivery_address_id']) && $validated['delivery_address_id'] !== '' ? (int) $validated['delivery_address_id'] : null,
             'sas_no' => $validated['sas_no'] ?: null,
+            'cargo_type' => $validated['cargo_type'] ?: null,
+            'pallet_count' => isset($validated['pallet_count']) && $validated['pallet_count'] !== '' ? (int) $validated['pallet_count'] : null,
+            'pallet_standard' => $validated['pallet_standard'] ?: null,
+            'adr_class' => $validated['adr_class'] ?: null,
+            'temperature_control' => (bool) $validated['temperature_control'],
+            'temperature_range' => $validated['temperature_range'] ?: null,
+            'insurance_value' => isset($validated['insurance_value']) && $validated['insurance_value'] !== '' ? $validated['insurance_value'] : null,
+            'insurance_currency_code' => $validated['insurance_currency_code'] ?: null,
+            'gross_weight_kg' => isset($validated['gross_weight_kg']) && $validated['gross_weight_kg'] !== '' ? $validated['gross_weight_kg'] : null,
+            'tara_weight_kg' => isset($validated['tara_weight_kg']) && $validated['tara_weight_kg'] !== '' ? $validated['tara_weight_kg'] : null,
+            'net_weight_kg' => isset($validated['net_weight_kg']) && $validated['net_weight_kg'] !== '' ? $validated['net_weight_kg'] : null,
+            'moisture_percent' => isset($validated['moisture_percent']) && $validated['moisture_percent'] !== '' ? $validated['moisture_percent'] : null,
         ]);
 
         // Navlun minimum altındaysa admin kullanıcılara bildirim gönder
@@ -402,10 +491,25 @@ new #[Lazy, Title('Orders')] class extends Component
             'incoterms',
             'loading_site',
             'unloading_site',
+            'loading_address_id',
+            'delivery_address_id',
             'sas_no',
+            'cargo_type',
+            'pallet_count',
+            'pallet_standard',
+            'adr_class',
+            'temperature_control',
+            'temperature_range',
+            'insurance_value',
+            'insurance_currency_code',
+            'gross_weight_kg',
+            'tara_weight_kg',
+            'net_weight_kg',
+            'moisture_percent',
         );
         $this->currency_code = 'TRY';
         $this->tonnage = '26';
+        $this->insurance_currency_code = 'TRY';
     }
 
     public function startEditOrder(int $orderId): void
@@ -664,7 +768,74 @@ new #[Lazy, Title('Orders')] class extends Component
                 <flux:input wire:model="sas_no" :label="__('SAS / PO reference')" />
 
                 <flux:textarea wire:model="loading_site" :label="__('Loading site')" rows="2" />
+                @if (count($this->customerAddressOptions) > 0)
+                    <flux:select wire:model="loading_address_id" :label="__('Loading address (from address book)')">
+                        <option value="">{{ __('— free text above —') }}</option>
+                        @foreach ($this->customerAddressOptions as $addr)
+                            <option value="{{ $addr['id'] }}">{{ $addr['label'] }}</option>
+                        @endforeach
+                    </flux:select>
+                @endif
+
                 <flux:textarea wire:model="unloading_site" :label="__('Unloading site')" rows="2" />
+                @if (count($this->customerAddressOptions) > 0)
+                    <flux:select wire:model="delivery_address_id" :label="__('Delivery address (from address book)')">
+                        <option value="">{{ __('— free text above —') }}</option>
+                        @foreach ($this->customerAddressOptions as $addr)
+                            <option value="{{ $addr['id'] }}">{{ $addr['label'] }}</option>
+                        @endforeach
+                    </flux:select>
+                @endif
+
+                {{-- Yük & Kantar --}}
+                <div class="col-span-full">
+                    <flux:separator text="{{ __('Cargo & Weight') }}" class="my-1" />
+                </div>
+
+                <flux:select wire:model="cargo_type" :label="__('Cargo type')">
+                    <option value="">{{ __('—') }}</option>
+                    <option value="bulk">{{ __('Bulk (Dökme)') }}</option>
+                    <option value="bagged">{{ __('Bagged (Torbalı)') }}</option>
+                    <option value="bigbag">{{ __('Big-Bag') }}</option>
+                    <option value="palletized">{{ __('Palletized (Paletli)') }}</option>
+                    <option value="other">{{ __('Other') }}</option>
+                </flux:select>
+
+                @if ($cargo_type === 'palletized')
+                    <flux:input wire:model="pallet_count" type="number" step="1" min="1" :label="__('Pallet count')" />
+                    <flux:select wire:model="pallet_standard" :label="__('Pallet standard')">
+                        <option value="">{{ __('—') }}</option>
+                        <option value="euro_80x120">{{ __('Euro 80×120') }}</option>
+                        <option value="industrial_100x120">{{ __('Industrial 100×120') }}</option>
+                        <option value="other">{{ __('Other') }}</option>
+                    </flux:select>
+                @endif
+
+                <flux:input wire:model="gross_weight_kg" type="number" step="0.001" :label="__('Gross weight (kg)')" />
+                <flux:input wire:model="tara_weight_kg" type="number" step="0.001" :label="__('Tara weight (kg)')" />
+                <flux:input wire:model="net_weight_kg" type="number" step="0.001" :label="__('Net weight (kg)')" />
+                <flux:input wire:model="moisture_percent" type="number" step="0.0001" min="0" max="100" :label="__('Moisture %')" />
+
+                {{-- ADR & Sigorta --}}
+                <div class="col-span-full">
+                    <flux:separator text="{{ __('ADR & Insurance') }}" class="my-1" />
+                </div>
+
+                <flux:input wire:model="adr_class" :label="__('ADR class (if hazardous)')" placeholder="3, 8, 9 …" />
+
+                <div class="flex items-center gap-3">
+                    <flux:checkbox wire:model="temperature_control" :label="__('Temperature control required')" />
+                </div>
+                @if ($temperature_control)
+                    <flux:input wire:model="temperature_range" :label="__('Temperature range')" placeholder="+2/+8 or -18" />
+                @endif
+
+                <flux:input wire:model="insurance_value" type="number" step="0.01" :label="__('Insurance value')" />
+                <flux:select wire:model="insurance_currency_code" :label="__('Insurance currency')">
+                    <option value="TRY">TRY</option>
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                </flux:select>
 
                 <flux:button type="submit" variant="primary">{{ __('Save order') }}</flux:button>
             </form>

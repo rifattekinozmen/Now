@@ -32,6 +32,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'incoterms',
     'loading_site',
     'unloading_site',
+    'loading_address_id',
+    'delivery_address_id',
+    'cargo_type',
+    'pallet_count',
+    'pallet_standard',
+    'adr_class',
+    'temperature_control',
+    'temperature_range',
+    'insurance_value',
+    'insurance_currency_code',
     'meta',
     'price_approved_by',
     'price_approved_at',
@@ -86,6 +96,9 @@ class Order extends Model
             'tara_weight_kg' => 'decimal:3',
             'net_weight_kg' => 'decimal:3',
             'moisture_percent' => 'decimal:4',
+            'insurance_value' => 'decimal:2',
+            'temperature_control' => 'boolean',
+            'pallet_count' => 'integer',
             'meta' => 'array',
             'price_approved_at' => 'datetime',
             'locked_at' => 'datetime',
@@ -103,6 +116,22 @@ class Order extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * @return BelongsTo<CustomerAddress, $this>
+     */
+    public function loadingAddress(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAddress::class, 'loading_address_id');
+    }
+
+    /**
+     * @return BelongsTo<CustomerAddress, $this>
+     */
+    public function deliveryAddress(): BelongsTo
+    {
+        return $this->belongsTo(CustomerAddress::class, 'delivery_address_id');
     }
 
     /**
