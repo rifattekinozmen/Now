@@ -11,6 +11,7 @@ use App\Models\TenantSetting;
 use App\Models\User;
 use App\Services\Logistics\ExcelImportService;
 use App\Services\Logistics\FreightCalculationService;
+use App\Services\Logistics\SmartDispatchService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -120,9 +121,35 @@ new #[Lazy, Title('Orders')] class extends Component
     /** @var list<int|string> */
     public array $selectedIds = [];
 
+    /** Smart Dispatch suggestion modal */
+    public bool $showSuggestModal = false;
+
+    public ?int $suggestOrderId = null;
+
+    /**
+     * @var list<array{vehicle_id: int, driver_id: int|null, plate: string, driver_name: string, score: int, reasons: list<string>}>
+     */
+    public array $suggestions = [];
+
     public function mount(): void
     {
         Gate::authorize('viewAny', Order::class);
+    }
+
+    public function openSuggestModal(int $orderId, \App\Services\Logistics\SmartDispatchService $service): void
+    {
+        Gate::authorize('viewAny', Order::class);
+        $order = Order::findOrFail($orderId);
+        $this->suggestOrderId   = $orderId;
+        $this->suggestions      = $service->suggest($order)->all();
+        $this->showSuggestModal = true;
+    }
+
+    public function closeSuggestModal(): void
+    {
+        $this->showSuggestModal = false;
+        $this->suggestOrderId   = null;
+        $this->suggestions      = [];
     }
 
     /**
@@ -1002,6 +1029,19 @@ new #[Lazy, Title('Orders')] class extends Component
                         <flux:table.cell>{{ $order->currency_code }}</flux:table.cell>
                         <flux:table.cell>{{ $order->freight_amount ?? '—' }}</flux:table.cell>
                         <flux:table.cell>{{ $order->ordered_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</flux:table.cell>
+                        <flux:table.cell>
+                            @if (in_array($order->status, [\App\Enums\OrderStatus::Draft->value, \App\Enums\OrderStatus::Confirmed->value]))
+                                <flux:button
+                                    size="sm"
+                                    variant="ghost"
+                                    wire:click="openSuggestModal({{ $order->id }})"
+                                    icon="sparkles"
+                                    title="{{ __('Smart Dispatch Suggestion') }}"
+                                >
+                                    {{ __('Suggest') }}
+                                </flux:button>
+                            @endif
+                        </flux:table.cell>
                     </flux:table.row>
                 @empty
                     <flux:table.row>
@@ -1014,4 +1054,57 @@ new #[Lazy, Title('Orders')] class extends Component
             {{ $this->paginatedOrders->links() }}
         </div>
     </flux:card>
+
+    {{-- Smart Dispatch Suggestion Modal --}}
+    @if ($showSuggestModal)
+        <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+            wire:click.self="closeSuggestModal"
+        >
+            <div class="mx-4 w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl dark:bg-zinc-800">
+                <div class="mb-4 flex items-center justify-between">
+                    <flux:heading size="lg">✨ {{ __('Smart Dispatch Suggestions') }}</flux:heading>
+                    <flux:button variant="ghost" size="sm" wire:click="closeSuggestModal" icon="x-mark" />
+                </div>
+
+                @if (empty($suggestions))
+                    <flux:text class="text-sm text-zinc-500">{{ __('No available vehicles or drivers found for this order.') }}</flux:text>
+                @else
+                    <div class="space-y-3">
+                        @foreach ($suggestions as $i => $s)
+                            <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-lg">{{ ['🥇', '🥈', '🥉'][$i] ?? '#'.($i+1) }}</span>
+                                            <span class="font-semibold text-zinc-800 dark:text-zinc-100">{{ $s['plate'] }}</span>
+                                            <span class="text-sm text-zinc-500">· {{ $s['driver_name'] }}</span>
+                                        </div>
+                                        <ul class="mt-1 list-inside list-disc space-y-0.5 text-xs text-zinc-500">
+                                            @foreach ($s['reasons'] as $reason)
+                                                <li>{{ $reason }}</li>
+                                            @endforeach
+                                        </ul>
+                                    </div>
+                                    <div class="shrink-0 text-right">
+                                        <div class="text-2xl font-bold {{ $s['score'] >= 80 ? 'text-green-600' : ($s['score'] >= 50 ? 'text-orange-500' : 'text-red-500') }}">
+                                            {{ $s['score'] }}
+                                        </div>
+                                        <div class="text-xs text-zinc-400">{{ __('score') }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    <flux:text class="mt-3 text-xs text-zinc-400">
+                        {{ __('Scores based on vehicle availability, driver hours, document validity, and GPS proximity.') }}
+                    </flux:text>
+                @endif
+
+                <div class="mt-4 flex justify-end">
+                    <flux:button variant="ghost" wire:click="closeSuggestModal">{{ __('Close') }}</flux:button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>
