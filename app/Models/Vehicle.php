@@ -88,4 +88,12 @@ class Vehicle extends Model
     {
         return $this->hasMany(VehicleFinance::class);
     }
+
+    /**
+     * @return HasMany<VehicleFine, $this>
+     */
+    public function vehicleFines(): HasMany
+    {
+        return $this->hasMany(VehicleFine::class);
+    }
 }

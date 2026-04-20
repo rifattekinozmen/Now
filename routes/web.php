@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
             // Lookup tables
             Route::livewire('material-codes', 'pages::admin.material-codes-index')->name('material-codes.index');
+            Route::livewire('vehicle-fines', 'pages::admin.vehicle-fines-index')->name('vehicle-fines.index');
 
             // HR Module
             Route::prefix('hr')->name('hr.')->group(function (): void {

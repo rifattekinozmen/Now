@@ -113,6 +113,7 @@
                     <flux:sidebar.item icon="banknotes" :href="route('admin.vehicle-finances.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Vehicle Finances') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="arrow-up-tray" :href="route('admin.delivery-imports.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Delivery Imports') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="tag" :href="route('admin.material-codes.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Material Codes') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="exclamation-triangle" :href="route('admin.vehicle-fines.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Traffic Fines') }}</flux:sidebar.item>
                 </div>
 
                 {{-- Collapsed: Operations fly-out dropdown --}}
@@ -142,6 +143,7 @@
                             <flux:menu.item :href="route('admin.vehicle-finances.index')" icon="banknotes" wire:navigate>{{ __('Vehicle Finances') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.delivery-imports.index')" icon="arrow-up-tray" wire:navigate>{{ __('Delivery Imports') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.material-codes.index')" icon="tag" wire:navigate>{{ __('Material Codes') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.vehicle-fines.index')" icon="exclamation-triangle" wire:navigate>{{ __('Traffic Fines') }}</flux:menu.item>
                         </flux:menu>
                     </flux:dropdown>
                 </div>

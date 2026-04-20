@@ -3,9 +3,12 @@
 use App\Enums\ExpenseType;
 use App\Enums\MaintenanceStatus;
 use App\Enums\TyreStatus;
+use App\Enums\VehicleFineStatus;
+use App\Enums\VehicleFineType;
 use App\Models\Document;
 use App\Models\TripExpense;
 use App\Models\Vehicle;
+use App\Models\VehicleFine;
 use App\Models\VehicleTyre;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
@@ -116,6 +119,142 @@ new #[Lazy, Title('Vehicle')] class extends Component
             'done'     => $schedules->filter(fn ($s) => $s->status->isDone())->count(),
         ];
     }
+
+    // ── Vehicle Fines ────────────────────────────────────────────
+    public ?int $editingFineId = null;
+
+    public string $fine_date = '';
+
+    public string $fine_amount = '';
+
+    public string $fine_currency_code = 'TRY';
+
+    public string $fine_type = 'other';
+
+    public string $fine_no = '';
+
+    public string $fine_location = '';
+
+    public string $fine_status = 'pending';
+
+    public string $fine_notes = '';
+
+    /** @return \Illuminate\Database\Eloquent\Collection<int, VehicleFine> */
+    #[Computed]
+    public function vehicleFines(): \Illuminate\Database\Eloquent\Collection
+    {
+        return VehicleFine::query()
+            ->where('vehicle_id', $this->vehicle->id)
+            ->orderByDesc('fine_date')
+            ->get();
+    }
+
+    public function saveFine(): void
+    {
+        Gate::authorize('create', VehicleFine::class);
+
+        $validated = $this->validate([
+            'fine_date'          => ['required', 'date'],
+            'fine_amount'        => ['required', 'numeric', 'min:0'],
+            'fine_currency_code' => ['required', 'string', 'max:3'],
+            'fine_type'          => ['required', 'string'],
+            'fine_no'            => ['nullable', 'string', 'max:100'],
+            'fine_location'      => ['nullable', 'string', 'max:255'],
+            'fine_status'        => ['required', 'string'],
+            'fine_notes'         => ['nullable', 'string'],
+        ]);
+
+        VehicleFine::create([
+            'tenant_id'     => $this->vehicle->tenant_id,
+            'vehicle_id'    => $this->vehicle->id,
+            'fine_date'     => $validated['fine_date'],
+            'amount'        => $validated['fine_amount'],
+            'currency_code' => $validated['fine_currency_code'],
+            'fine_type'     => $validated['fine_type'],
+            'fine_no'       => $validated['fine_no'] ?? null,
+            'location'      => $validated['fine_location'] ?? null,
+            'status'        => $validated['fine_status'],
+            'notes'         => $validated['fine_notes'] ?? null,
+        ]);
+
+        $this->resetFineForm();
+        unset($this->vehicleFines);
+        session()->flash('fine_success', __('Fine recorded.'));
+    }
+
+    public function startEditFine(int $id): void
+    {
+        $fine = VehicleFine::findOrFail($id);
+        Gate::authorize('update', $fine);
+
+        $this->editingFineId = $id;
+        $this->fine_date = $fine->fine_date->format('Y-m-d');
+        $this->fine_amount = (string) $fine->amount;
+        $this->fine_currency_code = $fine->currency_code;
+        $this->fine_type = $fine->fine_type->value;
+        $this->fine_no = $fine->fine_no ?? '';
+        $this->fine_location = $fine->location ?? '';
+        $this->fine_status = $fine->status->value;
+        $this->fine_notes = $fine->notes ?? '';
+    }
+
+    public function updateFine(): void
+    {
+        $fine = VehicleFine::findOrFail($this->editingFineId);
+        Gate::authorize('update', $fine);
+
+        $validated = $this->validate([
+            'fine_date'          => ['required', 'date'],
+            'fine_amount'        => ['required', 'numeric', 'min:0'],
+            'fine_currency_code' => ['required', 'string', 'max:3'],
+            'fine_type'          => ['required', 'string'],
+            'fine_no'            => ['nullable', 'string', 'max:100'],
+            'fine_location'      => ['nullable', 'string', 'max:255'],
+            'fine_status'        => ['required', 'string'],
+            'fine_notes'         => ['nullable', 'string'],
+        ]);
+
+        $fine->update([
+            'fine_date'     => $validated['fine_date'],
+            'amount'        => $validated['fine_amount'],
+            'currency_code' => $validated['fine_currency_code'],
+            'fine_type'     => $validated['fine_type'],
+            'fine_no'       => $validated['fine_no'] ?? null,
+            'location'      => $validated['fine_location'] ?? null,
+            'status'        => $validated['fine_status'],
+            'notes'         => $validated['fine_notes'] ?? null,
+        ]);
+
+        $this->resetFineForm();
+        unset($this->vehicleFines);
+        session()->flash('fine_success', __('Fine updated.'));
+    }
+
+    public function cancelFineEdit(): void
+    {
+        $this->resetFineForm();
+    }
+
+    public function deleteFine(int $id): void
+    {
+        $fine = VehicleFine::findOrFail($id);
+        Gate::authorize('delete', $fine);
+        $fine->delete();
+        unset($this->vehicleFines);
+    }
+
+    private function resetFineForm(): void
+    {
+        $this->editingFineId = null;
+        $this->fine_date = '';
+        $this->fine_amount = '';
+        $this->fine_currency_code = 'TRY';
+        $this->fine_type = 'other';
+        $this->fine_no = '';
+        $this->fine_location = '';
+        $this->fine_status = 'pending';
+        $this->fine_notes = '';
+    }
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
@@ -173,6 +312,7 @@ new #[Lazy, Title('Vehicle')] class extends Component
         <flux:tab name="tyres" icon="circle-stack">{{ __('Tyres') }}</flux:tab>
         <flux:tab name="expenses" icon="banknotes">{{ __('Expenses') }}</flux:tab>
         <flux:tab name="documents" icon="folder-open">{{ __('Documents') }}</flux:tab>
+        <flux:tab name="fines" icon="exclamation-triangle">{{ __('Traffic Fines') }}</flux:tab>
         <flux:tab name="activity" icon="clock">{{ __('Activity log') }}</flux:tab>
     </flux:tabs>
 
@@ -622,6 +762,94 @@ new #[Lazy, Title('Vehicle')] class extends Component
                     </table>
                 </div>
             @endif
+        </flux:card>
+    @endif
+
+    {{-- TAB: Traffic Fines --}}
+    @if ($tab === 'fines')
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('Traffic Fines') }}</flux:heading>
+
+            @if (session('fine_success'))
+                <flux:callout variant="success" icon="check-circle" class="mb-4">{{ session('fine_success') }}</flux:callout>
+            @endif
+
+            <form wire:submit="{{ $editingFineId ? 'updateFine' : 'saveFine' }}" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-6">
+                <flux:input wire:model="fine_date" type="date" :label="__('Fine Date')" required />
+                <flux:input wire:model="fine_amount" type="number" step="0.01" :label="__('Amount')" required />
+                <flux:input wire:model="fine_currency_code" :label="__('Currency')" />
+                <flux:select wire:model="fine_type" :label="__('Type')">
+                    <flux:select.option value="speeding">{{ __('Speeding') }}</flux:select.option>
+                    <flux:select.option value="overload">{{ __('Overload') }}</flux:select.option>
+                    <flux:select.option value="document">{{ __('Document / License') }}</flux:select.option>
+                    <flux:select.option value="parking">{{ __('Parking') }}</flux:select.option>
+                    <flux:select.option value="other">{{ __('Other') }}</flux:select.option>
+                </flux:select>
+                <flux:input wire:model="fine_no" :label="__('Fine No')" />
+                <flux:input wire:model="fine_location" :label="__('Location')" />
+                <flux:select wire:model="fine_status" :label="__('Status')">
+                    <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
+                    <flux:select.option value="paid">{{ __('Paid') }}</flux:select.option>
+                    <flux:select.option value="appealed">{{ __('Appealed') }}</flux:select.option>
+                </flux:select>
+                <flux:input wire:model="fine_notes" :label="__('Notes')" class="sm:col-span-2" />
+                <div class="flex gap-2 items-end">
+                    <flux:button type="submit" variant="primary">
+                        {{ $editingFineId ? __('Save changes') : __('Add fine') }}
+                    </flux:button>
+                    @if ($editingFineId)
+                        <flux:button type="button" variant="ghost" wire:click="cancelFineEdit">{{ __('Cancel') }}</flux:button>
+                    @endif
+                </div>
+            </form>
+
+            <flux:table>
+                <flux:table.columns>
+                    <flux:table.column>{{ __('Date') }}</flux:table.column>
+                    <flux:table.column>{{ __('Type') }}</flux:table.column>
+                    <flux:table.column>{{ __('Fine No') }}</flux:table.column>
+                    <flux:table.column>{{ __('Location') }}</flux:table.column>
+                    <flux:table.column>{{ __('Amount') }}</flux:table.column>
+                    <flux:table.column>{{ __('Status') }}</flux:table.column>
+                    <flux:table.column>{{ __('Actions') }}</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @forelse ($this->vehicleFines as $fine)
+                        <flux:table.row :key="$fine->id">
+                            <flux:table.cell>{{ $fine->fine_date->format('d M Y') }}</flux:table.cell>
+                            <flux:table.cell>{{ $fine->fine_type->label() }}</flux:table.cell>
+                            <flux:table.cell>{{ $fine->fine_no ?? '—' }}</flux:table.cell>
+                            <flux:table.cell>{{ $fine->location ?? '—' }}</flux:table.cell>
+                            <flux:table.cell>{{ number_format((float) $fine->amount, 2) }} {{ $fine->currency_code }}</flux:table.cell>
+                            <flux:table.cell>
+                                @php $statusColor = match($fine->status) {
+                                    \App\Enums\VehicleFineStatus::Paid => 'green',
+                                    \App\Enums\VehicleFineStatus::Appealed => 'yellow',
+                                    default => 'red',
+                                }; @endphp
+                                <flux:badge :color="$statusColor" size="sm">{{ $fine->status->label() }}</flux:badge>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <div class="flex gap-2">
+                                    <flux:button size="sm" wire:click="startEditFine({{ $fine->id }})">{{ __('Edit') }}</flux:button>
+                                    <flux:button
+                                        size="sm"
+                                        variant="danger"
+                                        wire:click="deleteFine({{ $fine->id }})"
+                                        wire:confirm="{{ __('Delete this fine record?') }}"
+                                    >{{ __('Delete') }}</flux:button>
+                                </div>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @empty
+                        <flux:table.row>
+                            <flux:table.cell colspan="7" class="text-center text-zinc-500">
+                                {{ __('No fines recorded.') }}
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforelse
+                </flux:table.rows>
+            </flux:table>
         </flux:card>
     @endif
 </div>

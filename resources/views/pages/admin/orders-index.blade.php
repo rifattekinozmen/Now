@@ -75,6 +75,8 @@ new #[Lazy, Title('Orders')] class extends Component
 
     public string $cargo_type = '';
 
+    public string $material_code_id = '';
+
     public string $pallet_count = '';
 
     public string $pallet_standard = '';
@@ -121,6 +123,26 @@ new #[Lazy, Title('Orders')] class extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', Order::class);
+    }
+
+    /**
+     * Active material codes for dropdown.
+     *
+     * @return array<int, array{id: int, label: string, category: string}>
+     */
+    #[Computed]
+    public function materialCodeOptions(): array
+    {
+        return \App\Models\MaterialCode::active()
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'category'])
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'label' => "[{$m->code}] {$m->name}",
+                'category' => $m->categoryLabel(),
+            ])
+            ->all();
     }
 
     /** Müşteri değişince adres dropdown'larını sıfırla */
@@ -400,6 +422,7 @@ new #[Lazy, Title('Orders')] class extends Component
             'delivery_address_id' => ['nullable', 'integer', Rule::exists('customer_addresses', 'id')->where('tenant_id', $tenantId)],
             'sas_no' => ['nullable', 'string', 'max:64'],
             'cargo_type' => ['nullable', 'string', Rule::in(['bulk', 'bagged', 'bigbag', 'palletized', 'other'])],
+            'material_code_id' => ['nullable', 'integer', Rule::exists('material_codes', 'id')],
             'pallet_count' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'pallet_standard' => ['nullable', 'string', 'max:50'],
             'adr_class' => ['nullable', 'string', 'max:20'],
@@ -452,6 +475,7 @@ new #[Lazy, Title('Orders')] class extends Component
             'delivery_address_id' => isset($validated['delivery_address_id']) && $validated['delivery_address_id'] !== '' ? (int) $validated['delivery_address_id'] : null,
             'sas_no' => $validated['sas_no'] ?: null,
             'cargo_type' => $validated['cargo_type'] ?: null,
+            'material_code_id' => isset($validated['material_code_id']) && $validated['material_code_id'] !== '' ? (int) $validated['material_code_id'] : null,
             'pallet_count' => isset($validated['pallet_count']) && $validated['pallet_count'] !== '' ? (int) $validated['pallet_count'] : null,
             'pallet_standard' => $validated['pallet_standard'] ?: null,
             'adr_class' => $validated['adr_class'] ?: null,
@@ -495,6 +519,7 @@ new #[Lazy, Title('Orders')] class extends Component
             'delivery_address_id',
             'sas_no',
             'cargo_type',
+            'material_code_id',
             'pallet_count',
             'pallet_standard',
             'adr_class',
@@ -799,6 +824,13 @@ new #[Lazy, Title('Orders')] class extends Component
                     <option value="bigbag">{{ __('Big-Bag') }}</option>
                     <option value="palletized">{{ __('Palletized (Paletli)') }}</option>
                     <option value="other">{{ __('Other') }}</option>
+                </flux:select>
+
+                <flux:select wire:model="material_code_id" :label="__('Material code')">
+                    <option value="">{{ __('— select —') }}</option>
+                    @foreach ($this->materialCodeOptions as $mat)
+                        <option value="{{ $mat['id'] }}">{{ $mat['label'] }}</option>
+                    @endforeach
                 </flux:select>
 
                 @if ($cargo_type === 'palletized')
