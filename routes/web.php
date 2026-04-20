@@ -153,6 +153,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('analytics/cost-centers', 'pages::admin.cost-center-pl')->name('analytics.cost-centers');
             Route::livewire('analytics/geo', 'pages::admin.geo-analytics')->name('analytics.geo');
 
+            // Compliance
+            Route::livewire('compliance/cbam-reports', 'pages::admin.cbam-reports')->name('compliance.cbam-reports');
+
             // Finance reports
             Route::livewire('finance/billing-preview', 'pages::admin.billing-preview')->name('finance.billing-preview');
             Route::livewire('finance/weekly-reconciliation', 'pages::admin.weekly-reconciliation')->name('finance.weekly-reconciliation');

@@ -172,6 +172,7 @@
                     <flux:sidebar.item icon="chart-bar" :href="route('admin.finance.reports')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Finance Reports') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="arrows-right-left" :href="route('admin.finance.weekly-reconciliation')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('SAS Reconciliation') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="receipt-percent" :href="route('admin.finance.invoices.index')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Invoices') }}</flux:sidebar.item>
+                    <flux:sidebar.item icon="globe-europe-africa" :href="route('admin.compliance.cbam-reports')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('CBAM Reports') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="document-magnifying-glass" :href="route('admin.finance.billing-preview')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Billing Preview') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="calendar-days" :href="route('admin.finance.payment-due-calendar')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Payment Calendar') }}</flux:sidebar.item>
                     <flux:sidebar.item icon="document-text" :href="route('admin.finance.bank-statement-csv')" wire:navigate wire:current.exact="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Bank Import') }}</flux:sidebar.item>
@@ -199,6 +200,7 @@
                             <flux:menu.item :href="route('admin.finance.index')" icon="calculator" wire:navigate>{{ __('Finance Summary') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.reports')" icon="chart-bar" wire:navigate>{{ __('Finance Reports') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.invoices.index')" icon="receipt-percent" wire:navigate>{{ __('Invoices') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.compliance.cbam-reports')" icon="globe-europe-africa" wire:navigate>{{ __('CBAM Reports') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.billing-preview')" icon="document-magnifying-glass" wire:navigate>{{ __('Billing Preview') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.payment-due-calendar')" icon="calendar-days" wire:navigate>{{ __('Payment Calendar') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.finance.bank-statement-csv')" icon="document-text" wire:navigate>{{ __('Bank Import') }}</flux:menu.item>
