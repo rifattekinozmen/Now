@@ -52,3 +52,5 @@ async function initDashboardShipmentCharts() {
 
 document.addEventListener('DOMContentLoaded', initDashboardShipmentCharts);
 document.addEventListener('livewire:navigated', initDashboardShipmentCharts);
+
+import './pwa.js';

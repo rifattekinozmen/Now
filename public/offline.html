@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bağlantı Yok — Now ERP</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: #f4f4f5;
+            color: #18181b;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            max-width: 380px;
+            box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        }
+        .icon { font-size: 48px; margin-bottom: 16px; }
+        h1 { font-size: 22px; font-weight: 700; margin: 0 0 8px; }
+        p  { color: #71717a; margin: 0 0 24px; font-size: 15px; }
+        button {
+            background: #18181b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 24px;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        button:hover { background: #3f3f46; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">📡</div>
+        <h1>İnternet bağlantısı yok</h1>
+        <p>Şu anda çevrimdışısınız. Bağlantı sağlandığında sayfa otomatik güncellenir.</p>
+        <button onclick="location.reload()">Tekrar dene</button>
+    </div>
+</body>
+</html>

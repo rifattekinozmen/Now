@@ -1,0 +1,31 @@
+{
+    "name": "Now Logistics ERP",
+    "short_name": "Now ERP",
+    "description": "Logistics and fleet management platform",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#18181b",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["logistics", "business", "productivity"],
+    "shortcuts": [
+        {
+            "name": "Shipments",
+            "url": "/shipments",
+            "description": "View all shipments"
+        },
+        {
+            "name": "Orders",
+            "url": "/orders",
+            "description": "View all orders"
+        }
+    ]
+}
