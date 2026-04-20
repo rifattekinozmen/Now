@@ -18,6 +18,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'legal_name',
     'trade_name',
     'payment_term_days',
+    'mersis_no',
+    'kep_address',
+    'credit_limit',
+    'credit_currency_code',
+    'is_blacklisted',
     'meta',
 ])]
 class Customer extends Model
@@ -33,6 +38,8 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
+            'credit_limit' => 'decimal:2',
+            'is_blacklisted' => 'boolean',
             'meta' => 'array',
         ];
     }

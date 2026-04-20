@@ -16,6 +16,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'first_name',
     'last_name',
     'national_id',
+    'sgk_sicil_no',
+    'military_status',
+    'marital_status',
+    'passport_no',
+    'passport_expiry_date',
+    'emergency_contact_name',
+    'emergency_contact_relation',
+    'emergency_contact_phone',
     'blood_group',
     'is_driver',
     'license_class',
@@ -43,6 +51,7 @@ class Employee extends Model
             'license_valid_until' => 'date',
             'src_valid_until' => 'date',
             'psychotechnical_valid_until' => 'date',
+            'passport_expiry_date' => 'date',
             'meta' => 'array',
         ];
     }

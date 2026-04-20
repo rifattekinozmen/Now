@@ -31,6 +31,22 @@ new #[Lazy, Title('Employees')] class extends Component
 
     public string $national_id = '';
 
+    public string $sgk_sicil_no = '';
+
+    public string $military_status = '';
+
+    public string $marital_status = '';
+
+    public string $passport_no = '';
+
+    public ?string $passport_expiry_date = null;
+
+    public string $emergency_contact_name = '';
+
+    public string $emergency_contact_relation = '';
+
+    public string $emergency_contact_phone = '';
+
     public string $blood_group = '';
 
     public bool $is_driver = false;
@@ -213,47 +229,56 @@ new #[Lazy, Title('Employees')] class extends Component
         Gate::authorize('create', Employee::class);
 
         $validated = $this->validate([
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'national_id' => ['nullable', 'string', 'size:11', 'regex:/^[0-9]+$/'],
-            'blood_group' => ['nullable', 'string', 'max:8'],
-            'is_driver' => ['boolean'],
-            'license_class' => ['nullable', 'string', 'max:16'],
-            'license_valid_until' => ['nullable', 'date'],
-            'src_valid_until' => ['nullable', 'date'],
+            'first_name'                 => ['required', 'string', 'max:100'],
+            'last_name'                  => ['required', 'string', 'max:100'],
+            'national_id'                => ['nullable', 'string', 'size:11', 'regex:/^[0-9]+$/'],
+            'sgk_sicil_no'               => ['nullable', 'string', 'max:50'],
+            'military_status'            => ['nullable', 'string', 'max:30'],
+            'marital_status'             => ['nullable', 'string', 'max:30'],
+            'passport_no'                => ['nullable', 'string', 'max:50'],
+            'passport_expiry_date'       => ['nullable', 'date'],
+            'emergency_contact_name'     => ['nullable', 'string', 'max:100'],
+            'emergency_contact_relation' => ['nullable', 'string', 'max:50'],
+            'emergency_contact_phone'    => ['nullable', 'string', 'max:32'],
+            'blood_group'                => ['nullable', 'string', 'max:8'],
+            'is_driver'                  => ['boolean'],
+            'license_class'              => ['nullable', 'string', 'max:16'],
+            'license_valid_until'        => ['nullable', 'date'],
+            'src_valid_until'            => ['nullable', 'date'],
             'psychotechnical_valid_until' => ['nullable', 'date'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'phone'                      => ['nullable', 'string', 'max:32'],
+            'email'                      => ['nullable', 'email', 'max:255'],
         ]);
 
         $nid = $validated['national_id'] !== '' ? $validated['national_id'] : null;
 
         Employee::query()->create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'national_id' => $nid,
-            'blood_group' => $validated['blood_group'] ?: null,
-            'is_driver' => $validated['is_driver'],
-            'license_class' => $validated['license_class'] ?: null,
-            'license_valid_until' => $validated['license_valid_until'],
-            'src_valid_until' => $validated['src_valid_until'],
+            'first_name'                 => $validated['first_name'],
+            'last_name'                  => $validated['last_name'],
+            'national_id'                => $nid,
+            'sgk_sicil_no'               => $validated['sgk_sicil_no'] ?: null,
+            'military_status'            => $validated['military_status'] ?: null,
+            'marital_status'             => $validated['marital_status'] ?: null,
+            'passport_no'                => $validated['passport_no'] ?: null,
+            'passport_expiry_date'       => $validated['passport_expiry_date'],
+            'emergency_contact_name'     => $validated['emergency_contact_name'] ?: null,
+            'emergency_contact_relation' => $validated['emergency_contact_relation'] ?: null,
+            'emergency_contact_phone'    => $validated['emergency_contact_phone'] ?: null,
+            'blood_group'                => $validated['blood_group'] ?: null,
+            'is_driver'                  => $validated['is_driver'],
+            'license_class'              => $validated['license_class'] ?: null,
+            'license_valid_until'        => $validated['license_valid_until'],
+            'src_valid_until'            => $validated['src_valid_until'],
             'psychotechnical_valid_until' => $validated['psychotechnical_valid_until'],
-            'phone' => $validated['phone'] ?: null,
-            'email' => $validated['email'] ?: null,
+            'phone'                      => $validated['phone'] ?: null,
+            'email'                      => $validated['email'] ?: null,
         ]);
 
         $this->reset(
-            'first_name',
-            'last_name',
-            'national_id',
-            'blood_group',
-            'is_driver',
-            'license_class',
-            'license_valid_until',
-            'src_valid_until',
-            'psychotechnical_valid_until',
-            'phone',
-            'email',
+            'first_name', 'last_name', 'national_id', 'sgk_sicil_no', 'military_status', 'marital_status',
+            'passport_no', 'passport_expiry_date', 'emergency_contact_name', 'emergency_contact_relation',
+            'emergency_contact_phone', 'blood_group', 'is_driver', 'license_class', 'license_valid_until',
+            'src_valid_until', 'psychotechnical_valid_until', 'phone', 'email',
         );
     }
 
@@ -268,6 +293,14 @@ new #[Lazy, Title('Employees')] class extends Component
         $this->first_name = $employee->first_name;
         $this->last_name = $employee->last_name;
         $this->national_id = $employee->national_id ?? '';
+        $this->sgk_sicil_no = $employee->sgk_sicil_no ?? '';
+        $this->military_status = $employee->military_status ?? '';
+        $this->marital_status = $employee->marital_status ?? '';
+        $this->passport_no = $employee->passport_no ?? '';
+        $this->passport_expiry_date = $employee->passport_expiry_date?->format('Y-m-d');
+        $this->emergency_contact_name = $employee->emergency_contact_name ?? '';
+        $this->emergency_contact_relation = $employee->emergency_contact_relation ?? '';
+        $this->emergency_contact_phone = $employee->emergency_contact_phone ?? '';
         $this->blood_group = $employee->blood_group ?? '';
         $this->is_driver = $employee->is_driver;
         $this->license_class = $employee->license_class ?? '';
@@ -282,17 +315,10 @@ new #[Lazy, Title('Employees')] class extends Component
     {
         $this->editingEmployeeId = null;
         $this->reset(
-            'first_name',
-            'last_name',
-            'national_id',
-            'blood_group',
-            'is_driver',
-            'license_class',
-            'license_valid_until',
-            'src_valid_until',
-            'psychotechnical_valid_until',
-            'phone',
-            'email',
+            'first_name', 'last_name', 'national_id', 'sgk_sicil_no', 'military_status', 'marital_status',
+            'passport_no', 'passport_expiry_date', 'emergency_contact_name', 'emergency_contact_relation',
+            'emergency_contact_phone', 'blood_group', 'is_driver', 'license_class', 'license_valid_until',
+            'src_valid_until', 'psychotechnical_valid_until', 'phone', 'email',
         );
     }
 
@@ -320,33 +346,49 @@ new #[Lazy, Title('Employees')] class extends Component
         }
 
         $validated = $this->validate([
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'national_id' => $nationalRules,
-            'blood_group' => ['nullable', 'string', 'max:8'],
-            'is_driver' => ['boolean'],
-            'license_class' => ['nullable', 'string', 'max:16'],
-            'license_valid_until' => ['nullable', 'date'],
-            'src_valid_until' => ['nullable', 'date'],
+            'first_name'                 => ['required', 'string', 'max:100'],
+            'last_name'                  => ['required', 'string', 'max:100'],
+            'national_id'                => $nationalRules,
+            'sgk_sicil_no'               => ['nullable', 'string', 'max:50'],
+            'military_status'            => ['nullable', 'string', 'max:30'],
+            'marital_status'             => ['nullable', 'string', 'max:30'],
+            'passport_no'                => ['nullable', 'string', 'max:50'],
+            'passport_expiry_date'       => ['nullable', 'date'],
+            'emergency_contact_name'     => ['nullable', 'string', 'max:100'],
+            'emergency_contact_relation' => ['nullable', 'string', 'max:50'],
+            'emergency_contact_phone'    => ['nullable', 'string', 'max:32'],
+            'blood_group'                => ['nullable', 'string', 'max:8'],
+            'is_driver'                  => ['boolean'],
+            'license_class'              => ['nullable', 'string', 'max:16'],
+            'license_valid_until'        => ['nullable', 'date'],
+            'src_valid_until'            => ['nullable', 'date'],
             'psychotechnical_valid_until' => ['nullable', 'date'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'email' => ['nullable', 'email', 'max:255'],
+            'phone'                      => ['nullable', 'string', 'max:32'],
+            'email'                      => ['nullable', 'email', 'max:255'],
         ]);
 
         $nid = $validated['national_id'] !== '' ? $validated['national_id'] : null;
 
         $employee->update([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'national_id' => $nid,
-            'blood_group' => $validated['blood_group'] ?: null,
-            'is_driver' => $validated['is_driver'],
-            'license_class' => $validated['license_class'] ?: null,
-            'license_valid_until' => $validated['license_valid_until'],
-            'src_valid_until' => $validated['src_valid_until'],
+            'first_name'                 => $validated['first_name'],
+            'last_name'                  => $validated['last_name'],
+            'national_id'                => $nid,
+            'sgk_sicil_no'               => $validated['sgk_sicil_no'] ?: null,
+            'military_status'            => $validated['military_status'] ?: null,
+            'marital_status'             => $validated['marital_status'] ?: null,
+            'passport_no'                => $validated['passport_no'] ?: null,
+            'passport_expiry_date'       => $validated['passport_expiry_date'],
+            'emergency_contact_name'     => $validated['emergency_contact_name'] ?: null,
+            'emergency_contact_relation' => $validated['emergency_contact_relation'] ?: null,
+            'emergency_contact_phone'    => $validated['emergency_contact_phone'] ?: null,
+            'blood_group'                => $validated['blood_group'] ?: null,
+            'is_driver'                  => $validated['is_driver'],
+            'license_class'              => $validated['license_class'] ?: null,
+            'license_valid_until'        => $validated['license_valid_until'],
+            'src_valid_until'            => $validated['src_valid_until'],
             'psychotechnical_valid_until' => $validated['psychotechnical_valid_until'],
-            'phone' => $validated['phone'] ?: null,
-            'email' => $validated['email'] ?: null,
+            'phone'                      => $validated['phone'] ?: null,
+            'email'                      => $validated['email'] ?: null,
         ]);
 
         $this->cancelEmployeeEdit();
@@ -487,6 +529,34 @@ new #[Lazy, Title('Employees')] class extends Component
                         <flux:input wire:model="phone" :label="__('Phone')" />
                         <flux:input wire:model="email" type="email" :label="__('Email')" />
                     </div>
+                    <flux:separator />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="sgk_sicil_no" :label="__('SGK Sicil No')" />
+                        <flux:select wire:model="military_status" :label="__('Military Status')">
+                            <flux:select.option value="">{{ __('—') }}</flux:select.option>
+                            <flux:select.option value="completed">{{ __('Completed') }}</flux:select.option>
+                            <flux:select.option value="exempt">{{ __('Exempt') }}</flux:select.option>
+                            <flux:select.option value="deferred">{{ __('Deferred') }}</flux:select.option>
+                            <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
+                        </flux:select>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:select wire:model="marital_status" :label="__('Marital Status')">
+                            <flux:select.option value="">{{ __('—') }}</flux:select.option>
+                            <flux:select.option value="single">{{ __('Single') }}</flux:select.option>
+                            <flux:select.option value="married">{{ __('Married') }}</flux:select.option>
+                            <flux:select.option value="divorced">{{ __('Divorced') }}</flux:select.option>
+                            <flux:select.option value="widowed">{{ __('Widowed') }}</flux:select.option>
+                        </flux:select>
+                        <flux:input wire:model="passport_no" :label="__('Passport No')" />
+                    </div>
+                    <flux:input wire:model="passport_expiry_date" type="date" :label="__('Passport Expiry Date')" />
+                    <flux:separator />
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <flux:input wire:model="emergency_contact_name" :label="__('Emergency Contact Name')" />
+                        <flux:input wire:model="emergency_contact_relation" :label="__('Relation')" />
+                        <flux:input wire:model="emergency_contact_phone" :label="__('Emergency Phone')" />
+                    </div>
                     <div class="flex flex-wrap gap-2">
                         <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
                         <flux:button type="button" variant="ghost" wire:click="cancelEmployeeEdit">{{ __('Cancel') }}</flux:button>
@@ -527,6 +597,34 @@ new #[Lazy, Title('Employees')] class extends Component
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="phone" :label="__('Phone')" />
                         <flux:input wire:model="email" type="email" :label="__('Email')" />
+                    </div>
+                    <flux:separator />
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:input wire:model="sgk_sicil_no" :label="__('SGK Sicil No')" />
+                        <flux:select wire:model="military_status" :label="__('Military Status')">
+                            <flux:select.option value="">{{ __('—') }}</flux:select.option>
+                            <flux:select.option value="completed">{{ __('Completed') }}</flux:select.option>
+                            <flux:select.option value="exempt">{{ __('Exempt') }}</flux:select.option>
+                            <flux:select.option value="deferred">{{ __('Deferred') }}</flux:select.option>
+                            <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
+                        </flux:select>
+                    </div>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:select wire:model="marital_status" :label="__('Marital Status')">
+                            <flux:select.option value="">{{ __('—') }}</flux:select.option>
+                            <flux:select.option value="single">{{ __('Single') }}</flux:select.option>
+                            <flux:select.option value="married">{{ __('Married') }}</flux:select.option>
+                            <flux:select.option value="divorced">{{ __('Divorced') }}</flux:select.option>
+                            <flux:select.option value="widowed">{{ __('Widowed') }}</flux:select.option>
+                        </flux:select>
+                        <flux:input wire:model="passport_no" :label="__('Passport No')" />
+                    </div>
+                    <flux:input wire:model="passport_expiry_date" type="date" :label="__('Passport Expiry Date')" />
+                    <flux:separator />
+                    <div class="grid gap-4 sm:grid-cols-3">
+                        <flux:input wire:model="emergency_contact_name" :label="__('Emergency Contact Name')" />
+                        <flux:input wire:model="emergency_contact_relation" :label="__('Relation')" />
+                        <flux:input wire:model="emergency_contact_phone" :label="__('Emergency Phone')" />
                     </div>
                     <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                 </form>

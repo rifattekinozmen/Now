@@ -35,6 +35,16 @@ new #[Lazy, Title('Customers')] class extends Component
 
     public int $payment_term_days = 30;
 
+    public string $mersis_no = '';
+
+    public string $kep_address = '';
+
+    public string $credit_limit = '';
+
+    public string $credit_currency_code = 'TRY';
+
+    public bool $is_blacklisted = false;
+
     public ?int $editingCustomerId = null;
 
     public $importFile = null;
@@ -246,25 +256,37 @@ new #[Lazy, Title('Customers')] class extends Component
         Gate::authorize('create', Customer::class);
 
         $validated = $this->validate([
-            'partner_number' => ['nullable', 'string', 'max:32'],
-            'legal_name' => ['required', 'string', 'max:255'],
-            'tax_id' => ['nullable', 'string', 'max:32'],
-            'tax_office_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tax_offices', 'id')],
-            'trade_name' => ['nullable', 'string', 'max:255'],
-            'payment_term_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'partner_number'      => ['nullable', 'string', 'max:32'],
+            'legal_name'          => ['required', 'string', 'max:255'],
+            'tax_id'              => ['nullable', 'string', 'max:32'],
+            'tax_office_id'       => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tax_offices', 'id')],
+            'trade_name'          => ['nullable', 'string', 'max:255'],
+            'payment_term_days'   => ['required', 'integer', 'min:0', 'max:3650'],
+            'mersis_no'           => ['nullable', 'string', 'max:32'],
+            'kep_address'         => ['nullable', 'string', 'max:255'],
+            'credit_limit'        => ['nullable', 'numeric', 'min:0'],
+            'credit_currency_code' => ['nullable', 'string', 'max:3'],
+            'is_blacklisted'      => ['boolean'],
         ]);
 
         Customer::query()->create([
-            'partner_number' => $validated['partner_number'] ?: null,
-            'legal_name' => $validated['legal_name'],
-            'tax_id' => $validated['tax_id'] ?: null,
-            'tax_office_id' => isset($validated['tax_office_id']) && $validated['tax_office_id'] !== '' ? (int) $validated['tax_office_id'] : null,
-            'trade_name' => $validated['trade_name'] ?: null,
-            'payment_term_days' => $validated['payment_term_days'],
+            'partner_number'      => $validated['partner_number'] ?: null,
+            'legal_name'          => $validated['legal_name'],
+            'tax_id'              => $validated['tax_id'] ?: null,
+            'tax_office_id'       => isset($validated['tax_office_id']) && $validated['tax_office_id'] !== '' ? (int) $validated['tax_office_id'] : null,
+            'trade_name'          => $validated['trade_name'] ?: null,
+            'payment_term_days'   => $validated['payment_term_days'],
+            'mersis_no'           => $validated['mersis_no'] ?: null,
+            'kep_address'         => $validated['kep_address'] ?: null,
+            'credit_limit'        => $validated['credit_limit'] ?: null,
+            'credit_currency_code' => $validated['credit_currency_code'] ?: null,
+            'is_blacklisted'      => (bool) $validated['is_blacklisted'],
         ]);
 
-        $this->reset('partner_number', 'legal_name', 'tax_id', 'tax_office_id', 'tax_office_city', 'trade_name', 'payment_term_days');
+        $this->reset('partner_number', 'legal_name', 'tax_id', 'tax_office_id', 'tax_office_city', 'trade_name', 'payment_term_days', 'mersis_no', 'kep_address', 'credit_limit', 'credit_currency_code');
         $this->payment_term_days = 30;
+        $this->is_blacklisted = false;
+        $this->credit_currency_code = 'TRY';
     }
 
     public function startEditCustomer(int $customerId): void
@@ -283,13 +305,20 @@ new #[Lazy, Title('Customers')] class extends Component
         $this->tax_office_id = $customer->tax_office_id !== null ? (string) $customer->tax_office_id : '';
         $this->trade_name = $customer->trade_name ?? '';
         $this->payment_term_days = $customer->payment_term_days;
+        $this->mersis_no = $customer->mersis_no ?? '';
+        $this->kep_address = $customer->kep_address ?? '';
+        $this->credit_limit = $customer->credit_limit !== null ? (string) $customer->credit_limit : '';
+        $this->credit_currency_code = $customer->credit_currency_code ?? 'TRY';
+        $this->is_blacklisted = (bool) $customer->is_blacklisted;
     }
 
     public function cancelCustomerEdit(): void
     {
         $this->editingCustomerId = null;
-        $this->reset('partner_number', 'legal_name', 'tax_id', 'tax_office_id', 'tax_office_city', 'trade_name', 'payment_term_days');
+        $this->reset('partner_number', 'legal_name', 'tax_id', 'tax_office_id', 'tax_office_city', 'trade_name', 'payment_term_days', 'mersis_no', 'kep_address', 'credit_limit');
         $this->payment_term_days = 30;
+        $this->is_blacklisted = false;
+        $this->credit_currency_code = 'TRY';
     }
 
     public function updateCustomer(): void
@@ -304,21 +333,31 @@ new #[Lazy, Title('Customers')] class extends Component
         Gate::authorize('update', $customer);
 
         $validated = $this->validate([
-            'partner_number' => ['nullable', 'string', 'max:32'],
-            'legal_name' => ['required', 'string', 'max:255'],
-            'tax_id' => ['nullable', 'string', 'max:32'],
-            'tax_office_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tax_offices', 'id')],
-            'trade_name' => ['nullable', 'string', 'max:255'],
-            'payment_term_days' => ['required', 'integer', 'min:0', 'max:3650'],
+            'partner_number'      => ['nullable', 'string', 'max:32'],
+            'legal_name'          => ['required', 'string', 'max:255'],
+            'tax_id'              => ['nullable', 'string', 'max:32'],
+            'tax_office_id'       => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('tax_offices', 'id')],
+            'trade_name'          => ['nullable', 'string', 'max:255'],
+            'payment_term_days'   => ['required', 'integer', 'min:0', 'max:3650'],
+            'mersis_no'           => ['nullable', 'string', 'max:32'],
+            'kep_address'         => ['nullable', 'string', 'max:255'],
+            'credit_limit'        => ['nullable', 'numeric', 'min:0'],
+            'credit_currency_code' => ['nullable', 'string', 'max:3'],
+            'is_blacklisted'      => ['boolean'],
         ]);
 
         $customer->update([
-            'partner_number' => $validated['partner_number'] ?: null,
-            'legal_name' => $validated['legal_name'],
-            'tax_id' => $validated['tax_id'] ?: null,
-            'tax_office_id' => isset($validated['tax_office_id']) && $validated['tax_office_id'] !== '' ? (int) $validated['tax_office_id'] : null,
-            'trade_name' => $validated['trade_name'] ?: null,
-            'payment_term_days' => $validated['payment_term_days'],
+            'partner_number'      => $validated['partner_number'] ?: null,
+            'legal_name'          => $validated['legal_name'],
+            'tax_id'              => $validated['tax_id'] ?: null,
+            'tax_office_id'       => isset($validated['tax_office_id']) && $validated['tax_office_id'] !== '' ? (int) $validated['tax_office_id'] : null,
+            'trade_name'          => $validated['trade_name'] ?: null,
+            'payment_term_days'   => $validated['payment_term_days'],
+            'mersis_no'           => $validated['mersis_no'] ?: null,
+            'kep_address'         => $validated['kep_address'] ?: null,
+            'credit_limit'        => $validated['credit_limit'] ?: null,
+            'credit_currency_code' => $validated['credit_currency_code'] ?: null,
+            'is_blacklisted'      => (bool) $validated['is_blacklisted'],
         ]);
 
         $this->cancelCustomerEdit();
@@ -494,6 +533,14 @@ new #[Lazy, Title('Customers')] class extends Component
                                 @endforeach
                             </flux:select>
                         @endif
+                        <flux:separator />
+                        <flux:input wire:model="mersis_no" :label="__('MERSİS No')" />
+                        <flux:input wire:model="kep_address" :label="__('KEP Address')" />
+                        <div class="grid grid-cols-2 gap-4">
+                            <flux:input wire:model="credit_limit" type="number" step="0.01" :label="__('Credit Limit')" />
+                            <flux:input wire:model="credit_currency_code" :label="__('Credit Currency')" />
+                        </div>
+                        <flux:checkbox wire:model="is_blacklisted" :label="__('Blacklisted')" />
                         <div class="flex flex-wrap gap-2">
                             <flux:button type="submit" variant="primary">{{ __('Save changes') }}</flux:button>
                             <flux:button type="button" variant="ghost" wire:click="cancelCustomerEdit">{{ __('Cancel') }}</flux:button>
@@ -523,6 +570,14 @@ new #[Lazy, Title('Customers')] class extends Component
                                 @endforeach
                             </flux:select>
                         @endif
+                        <flux:separator />
+                        <flux:input wire:model="mersis_no" :label="__('MERSİS No')" />
+                        <flux:input wire:model="kep_address" :label="__('KEP Address')" />
+                        <div class="grid grid-cols-2 gap-4">
+                            <flux:input wire:model="credit_limit" type="number" step="0.01" :label="__('Credit Limit')" />
+                            <flux:input wire:model="credit_currency_code" :label="__('Credit Currency')" />
+                        </div>
+                        <flux:checkbox wire:model="is_blacklisted" :label="__('Blacklisted')" />
                         <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                     </form>
                 </flux:card>
