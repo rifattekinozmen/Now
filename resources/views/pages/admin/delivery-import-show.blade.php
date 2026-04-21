@@ -288,11 +288,38 @@ new #[Title('Delivery import detail')] class extends Component
                 $pivotColBosDolu       = 'bg-[#cfe2ff] text-blue-700 dark:bg-blue-900 dark:text-blue-100';
                 $pivotColDoluDolu      = 'bg-[#d1e7dd] text-[#0f5132] dark:bg-green-900 dark:text-green-100';
                 $pivotColMalzemeKisa      = 'bg-[#f8f9fa] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200';
+                /** Sütun genişlikleri (%): malzeme sütunlarına kalan pay eşit bölünür */
+                $pivotMatCount = count($materials);
+                $pivotColDatePct = 6;
+                $pivotColGrandPct = 16;
+                $pivotColBosPct = 7;
+                $pivotColDoluPct = 7;
+                $pivotColKisaPct = 10;
+                $pivotTailPct = $pivotColGrandPct + $pivotColBosPct + $pivotColDoluPct + $pivotColKisaPct;
+                $pivotMatBucket = max(0, 100 - $pivotColDatePct - $pivotTailPct);
+                if ($pivotMatCount === 0) {
+                    $pivotColKisaPct += $pivotMatBucket;
+                    $pivotEachMatPct = 0;
+                    $pivotMatExtraOne = 0;
+                } else {
+                    $pivotEachMatPct = intdiv($pivotMatBucket, $pivotMatCount);
+                    $pivotMatExtraOne = $pivotMatBucket % $pivotMatCount;
+                }
             @endphp
             <div class="not-prose w-full overflow-hidden rounded-xl border border-[#e0e0e0] bg-white text-slate-900 shadow-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100">
                 <style>
                     /* Renkleri derleme/cache'den bağımsız zorla uygula */
-                    .veri-analiz-pivot { font-size: 12px !important; }
+                    .veri-analiz-pivot {
+                        font-size: 12px !important;
+                        table-layout: fixed !important;
+                        width: 100% !important;
+                    }
+                    .veri-analiz-pivot th.mat-col .mat-col-head,
+                    .veri-analiz-pivot td.mat-col {
+                        min-width: 0 !important;
+                        overflow-wrap: anywhere;
+                        word-break: break-word;
+                    }
                     .veri-analiz-pivot,
                     .veri-analiz-pivot * {
                         font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif !important;
@@ -373,6 +400,9 @@ new #[Title('Delivery import detail')] class extends Component
                     .veri-analiz-pivot tbody tr:not(:last-child) td.pivot-col-total span {
                         font-weight: 700 !important;
                     }
+                    .veri-analiz-pivot .pivot-col-total .pivot-total-metric {
+                        white-space: nowrap !important;
+                    }
                     .dark .veri-analiz-pivot tbody tr:not(:last-child) td.mat-col { color: #cbd5e1 !important; }
                     .dark .veri-analiz-pivot thead th.mat-col .mat-col-code { color: #e2e8f0 !important; }
                     .veri-analiz-pivot thead th { background-color: #e7f1ff !important; }
@@ -446,11 +476,24 @@ new #[Title('Delivery import detail')] class extends Component
                     }
                 </style>
                 <div class="overflow-x-auto rounded-[inherit]">
-                <table class="veri-analiz-pivot w-full min-w-[40rem] border-collapse text-[0.58rem] leading-tight [&_td]:box-border [&_th]:box-border [&_td]:border [&_th]:border [&_td]:border-solid [&_th]:border-solid {{ $pivotBorderCell }}">
+                <table class="veri-analiz-pivot w-full min-w-full border-collapse text-[0.58rem] leading-tight [&_td]:box-border [&_th]:box-border [&_td]:border [&_th]:border [&_td]:border-solid [&_th]:border-solid {{ $pivotBorderCell }}">
                     <caption class="sr-only">{{ __('Tarih ve malzeme bazında teslimat özeti') }}</caption>
+                    <colgroup>
+                        <col style="width: {{ $pivotColDatePct }}%;" />
+                        @foreach ($materials as $_m)
+                            @php
+                                $pivotMatColPct = $pivotEachMatPct + ($loop->index < $pivotMatExtraOne ? 1 : 0);
+                            @endphp
+                            <col style="width: {{ $pivotMatColPct }}%;" />
+                        @endforeach
+                        <col style="width: {{ $pivotColGrandPct }}%;" />
+                        <col style="width: {{ $pivotColBosPct }}%;" />
+                        <col style="width: {{ $pivotColDoluPct }}%;" />
+                        <col style="width: {{ $pivotColKisaPct }}%;" />
+                    </colgroup>
                     <thead>
                         <tr>
-                            <th scope="col" class="min-w-[3.8rem] bg-[#e7f1ff] dark:bg-zinc-800 px-0.5 py-0.5 text-center text-[0.50rem] font-bold uppercase tracking-wide text-zinc-900 dark:text-zinc-100" title="{{ __('gg.aa.yyyy') }}">{{ __('TARİH') }}</th>
+                            <th scope="col" class="bg-[#e7f1ff] dark:bg-zinc-800 px-0.5 py-0.5 text-center text-[0.50rem] font-bold uppercase tracking-wide text-zinc-900 dark:text-zinc-100" title="{{ __('gg.aa.yyyy') }}">{{ __('TARİH') }}</th>
                             @foreach ($materials as $m)
                                 @php
                                     $labelRaw = $m['label'];
@@ -463,8 +506,8 @@ new #[Title('Delivery import detail')] class extends Component
                                     $code = $parts[0] ?? $labelRaw;
                                     $text = $parts[1] ?? '';
                                 @endphp
-                                <th scope="col" class="mat-col bg-[#e7f1ff] dark:bg-zinc-800 min-w-[4.4rem] max-w-[6.2rem] px-0.5 py-0.5 text-center align-bottom text-zinc-900 dark:text-zinc-100" title="{{ $m['label'] }}">
-                                    <div class="flex flex-col items-center gap-0.5 text-center">
+                                <th scope="col" class="mat-col bg-[#e7f1ff] dark:bg-zinc-800 px-0.5 py-0.5 text-center align-bottom text-zinc-900 dark:text-zinc-100" title="{{ $m['label'] }}">
+                                    <div class="mat-col-head flex min-w-0 w-full flex-col items-center gap-0.5 text-center">
                                         <span class="mat-col-code text-[0.50rem] uppercase leading-tight">{{ $code }}</span>
                                         @if ($text !== '')
                                             <span class="text-[0.46rem] font-medium leading-snug text-zinc-500 dark:text-zinc-400">{{ $text }}</span>
@@ -475,16 +518,16 @@ new #[Title('Delivery import detail')] class extends Component
                                     </div>
                                 </th>
                             @endforeach
-                            <th scope="col" class="pivot-col-total min-w-[4.2rem] border-l border-l-[#e0e0e0] bg-[#f0f4f8] dark:bg-zinc-800 px-0.5 py-0.5 text-center text-[0.50rem] font-bold uppercase text-zinc-800 dark:border-l-zinc-600 dark:text-zinc-100">{{ __('TOPLAM') }}</th>
-                            <th scope="col" class="min-w-[3.4rem] bg-[#cfe2ff] text-blue-700 dark:bg-blue-900 dark:text-blue-100 px-0.5 py-0.5 text-center text-[0.48rem] font-bold uppercase leading-tight">
+                            <th scope="col" class="pivot-col-total border-l border-l-[#e0e0e0] bg-[#f0f4f8] dark:bg-zinc-800 px-0.5 py-0.5 text-center text-[0.50rem] font-bold uppercase text-zinc-800 dark:border-l-zinc-600 dark:text-zinc-100">{{ __('TOPLAM') }}</th>
+                            <th scope="col" class="bg-[#cfe2ff] text-blue-700 dark:bg-blue-900 dark:text-blue-100 px-0.5 py-0.5 text-center text-[0.48rem] font-bold uppercase leading-tight">
                                 <span class="block">{{ __('BOŞ-DOLU TAŞINAN') }}</span>
                                 <span class="block font-semibold normal-case">{{ __('GEÇERLİ MİKTAR') }}</span>
                             </th>
-                            <th scope="col" class="min-w-[3.4rem] bg-[#d1e7dd] text-[#0f5132] dark:bg-green-900 dark:text-green-100 px-0.5 py-0.5 text-center text-[0.48rem] font-bold uppercase leading-tight">
+                            <th scope="col" class="bg-[#d1e7dd] text-[#0f5132] dark:bg-green-900 dark:text-green-100 px-0.5 py-0.5 text-center text-[0.48rem] font-bold uppercase leading-tight">
                                 <span class="block">{{ __('DOLU-DOLU TAŞINAN') }}</span>
                                 <span class="block font-semibold normal-case">{{ __('GEÇERLİ MİKTAR') }}</span>
                             </th>
-                            <th scope="col" class="min-w-[5.6rem] bg-[#f8f9fa] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 px-0.5 py-0.5 text-center text-[0.48rem] font-bold leading-tight">
+                            <th scope="col" class="bg-[#f8f9fa] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 px-0.5 py-0.5 text-center text-[0.48rem] font-bold leading-tight">
                                 <span class="block uppercase">{{ __('BOŞ-DOLU TAŞINAN') }}</span>
                                 <span class="block normal-case font-semibold">{{ __('MALZEME KISA METNİ') }}</span>
                             </th>
@@ -509,9 +552,9 @@ new #[Title('Delivery import detail')] class extends Component
                                     $rowTotalQty = $row['row_total'] ?? 0;
                                     $rowTotalAdet = $row['row_total_count'] ?? 0;
                                 @endphp
-                                <td class="pivot-col-total border-l border-l-[#e0e0e0] bg-[#f0f4f8] dark:bg-zinc-800 px-0.5 py-0.5 text-center text-[0.52rem] font-semibold tabular-nums text-zinc-800 dark:border-l-zinc-600 dark:text-zinc-100">
-                                    <span class="block leading-tight">
-                                        <span class="inline-block whitespace-nowrap">{{ number_format((float) $rowTotalQty, 2, ',', '.') }} {{ __('Ton') }}</span><span class="tabular-nums"> / </span><span class="inline-block whitespace-nowrap">{{ $rowTotalAdet }} {{ __('Adet') }}</span>
+                                <td class="pivot-col-total min-w-0 border-l border-l-[#e0e0e0] bg-[#f0f4f8] dark:bg-zinc-800 px-0.5 py-0.5 text-center text-[0.52rem] font-semibold tabular-nums text-zinc-800 dark:border-l-zinc-600 dark:text-zinc-100">
+                                    <span class="pivot-total-metric block leading-tight tabular-nums">
+                                        {{ number_format((float) $rowTotalQty, 2, ',', '.') }} {{ __('Ton') }} / {{ $rowTotalAdet }} {{ __('Adet') }}
                                     </span>
                                 </td>
                                 <td class="bg-[#cfe2ff] text-blue-700 dark:bg-blue-900 dark:text-blue-100 px-0.5 py-0.5 text-center text-[0.52rem] font-bold tabular-nums">
@@ -520,7 +563,7 @@ new #[Title('Delivery import detail')] class extends Component
                                 <td class="bg-[#d1e7dd] text-[#0f5132] dark:bg-green-900 dark:text-green-100 px-0.5 py-0.5 text-center text-[0.52rem] font-bold tabular-nums">
                                     {{ number_format((float) ($row['dolu_dolu'] ?? 0), 2, ',', '.') }}
                                 </td>
-                                <td class="max-w-[9rem] whitespace-normal break-words bg-[#f8f9fa] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 px-0.5 py-0.5 text-center text-[0.52rem] font-medium">
+                                <td class="min-w-0 whitespace-normal break-words bg-[#f8f9fa] text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 px-0.5 py-0.5 text-center text-[0.52rem] font-medium">
                                     {{ $row['malzeme_kisa_metni'] ?? '—' }}
                                 </td>
                             </tr>
@@ -543,9 +586,9 @@ new #[Title('Delivery import detail')] class extends Component
                                     $grandTotalQty = $totalsRow['row_total'] ?? 0;
                                     $grandTotalAdet = $totalsRow['row_total_count'] ?? 0;
                                 @endphp
-                                <td class="pivot-col-total border-l border-l-[#e0e0e0] dark:border-l-zinc-600 bg-[#cfe2ff] text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100 px-0.5 py-0.5 text-center text-[0.52rem] font-bold tabular-nums">
-                                    <span class="block leading-tight">
-                                        <span class="inline-block whitespace-nowrap">{{ number_format((float) $grandTotalQty, 2, ',', '.') }} {{ __('Ton') }}</span><span class="tabular-nums"> / </span><span class="inline-block whitespace-nowrap">{{ $grandTotalAdet }} {{ __('Adet') }}</span>
+                                <td class="pivot-col-total min-w-0 border-l border-l-[#e0e0e0] dark:border-l-zinc-600 bg-[#cfe2ff] text-zinc-900 dark:bg-zinc-700 dark:text-zinc-100 px-0.5 py-0.5 text-center text-[0.52rem] font-bold tabular-nums">
+                                    <span class="pivot-total-metric block leading-tight tabular-nums">
+                                        {{ number_format((float) $grandTotalQty, 2, ',', '.') }} {{ __('Ton') }} / {{ $grandTotalAdet }} {{ __('Adet') }}
                                     </span>
                                 </td>
                                 <td class="bg-[#cfe2ff] text-blue-700 dark:bg-blue-900 dark:text-blue-100 px-0.5 py-0.5 text-center text-[0.52rem] font-bold tabular-nums">
