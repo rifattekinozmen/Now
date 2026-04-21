@@ -1,13 +1,17 @@
 <?php
 
 use App\Models\DeliveryImport;
+use App\Models\DeliveryImportRow;
 use App\Services\Delivery\DeliveryReportImportService;
 use App\Services\Delivery\DeliveryReportPivotService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -22,6 +26,20 @@ new #[Title('Delivery import detail')] class extends Component
 
     public string $pivotSortMetric = 'Teslimat miktarı';
 
+    /** Satır tablosu sıralama: `row_index` veya `data:{json dizi indeksi}` */
+    #[Url(history: true)]
+    public string $rowSort = 'row_index';
+
+    #[Url(history: true)]
+    public string $rowSortDir = 'asc';
+
+    public ?int $rowDetailExcelRowIndex = null;
+
+    /**
+     * @var array<int, array{label: string, value: string}>
+     */
+    public array $rowDetailItems = [];
+
     public function mount(DeliveryImport $deliveryImport): void
     {
         Gate::authorize('view', $deliveryImport);
@@ -34,6 +52,62 @@ new #[Title('Delivery import detail')] class extends Component
                 $this->pivotSortMetric = $labels[0];
             }
         }
+    }
+
+    public function updatedRowTableMode(): void
+    {
+        $this->rowSort = 'row_index';
+        $this->rowSortDir = 'asc';
+        $this->resetPage('diRows');
+    }
+
+    public function toggleRowSort(string $key): void
+    {
+        if ($this->rowSort === $key) {
+            $this->rowSortDir = $this->rowSortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->rowSort = $key;
+            $this->rowSortDir = 'asc';
+        }
+        $this->resetPage('diRows');
+    }
+
+    public function openRowDetail(int $rowId): void
+    {
+        /** @var DeliveryImportRow $row */
+        $row = DeliveryImportRow::query()
+            ->where('delivery_import_id', $this->deliveryImport->id)
+            ->findOrFail($rowId);
+
+        $display = $this->formatRowForDisplay($row->row_data ?? []);
+        $items = [];
+
+        if ($this->useExcelColumnOrder) {
+            foreach ($this->excelColumnLayout as $col) {
+                $label = (string) ($col['header'] ?? '');
+                $label = $label !== '' ? $label : '—';
+                $excelNo = ((int) ($col['excel_col'] ?? 0)) + 1;
+                $expectedIndex = $col['expected_index'] ?? null;
+                $value = ($expectedIndex !== null) ? ((string) ($display[$expectedIndex] ?? '')) : '';
+                $items[] = [
+                    'label' => $excelNo.'.'.$label,
+                    'value' => $value,
+                ];
+            }
+        } else {
+            foreach ($this->expectedHeaders as $idx => $label) {
+                $n = $idx + 1;
+                $items[] = [
+                    'label' => $n.'.'.(string) $label,
+                    'value' => (string) ($display[$idx] ?? ''),
+                ];
+            }
+        }
+
+        $this->rowDetailExcelRowIndex = (int) $row->row_index;
+        $this->rowDetailItems = $items;
+
+        $this->dispatch('modal-show', name: 'row-detail', scope: $this->getId());
     }
 
     /**
@@ -146,9 +220,48 @@ new #[Title('Delivery import detail')] class extends Component
     #[Computed]
     public function rowsPaginator(): LengthAwarePaginator
     {
-        return $this->deliveryImport->reportRows()
-            ->orderBy('row_index')
-            ->paginate(25, pageName: 'diRows');
+        $q = DeliveryImportRow::query()
+            ->where('delivery_import_id', $this->deliveryImport->id);
+
+        $this->applyImportedRowSort($q);
+
+        return $q->paginate(25, pageName: 'diRows');
+    }
+
+    private function applyImportedRowSort(Builder $query): void
+    {
+        $sort = $this->rowSort;
+        $dir = strtolower($this->rowSortDir) === 'desc' ? 'desc' : 'asc';
+
+        if ($sort === '' || $sort === 'row_index') {
+            $query->orderBy('row_index', $dir);
+
+            return;
+        }
+
+        if (! str_starts_with($sort, 'data:')) {
+            $query->orderBy('row_index', 'asc');
+
+            return;
+        }
+
+        $idx = (int) substr($sort, 5);
+        if ($idx < 0 || $idx > 2048) {
+            $query->orderBy('row_index', 'asc');
+
+            return;
+        }
+
+        $path = '$['.$idx.']';
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            $query->orderByRaw('json_extract(row_data, ?) COLLATE NOCASE '.$dir.', row_index asc', [$path]);
+        } elseif ($driver === 'mysql') {
+            $query->orderByRaw('JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)) '.$dir.', row_index asc', [$path]);
+        } else {
+            $query->orderBy('row_index', 'asc');
+        }
     }
 
     /**
@@ -403,7 +516,6 @@ new #[Title('Delivery import detail')] class extends Component
                     .veri-analiz-pivot .pivot-col-total .pivot-total-metric {
                         white-space: nowrap !important;
                     }
-                    .dark .veri-analiz-pivot tbody tr:not(:last-child) td.mat-col { color: #cbd5e1 !important; }
                     .dark .veri-analiz-pivot thead th.mat-col .mat-col-code { color: #e2e8f0 !important; }
                     .veri-analiz-pivot thead th { background-color: #e7f1ff !important; }
                     .veri-analiz-pivot thead th:nth-last-child(4),
@@ -422,6 +534,88 @@ new #[Title('Delivery import detail')] class extends Component
                     .veri-analiz-pivot tbody tr:last-child td:last-child { background-color: #f8f9fa !important; color: #374151 !important; }
                     .veri-analiz-pivot tbody tr:last-child td.mat-col { color: #1e293b !important; }
                     .dark .veri-analiz-pivot tbody tr:last-child td.mat-col { color: #f1f5f9 !important; }
+                    /* Dark mod: açık zemin !important kurallarını koyu paletle eşle (TARİH vb. kontrast) */
+                    .dark .veri-analiz-pivot thead th {
+                        background-color: #3f3f46 !important;
+                        color: #fafafa !important;
+                    }
+                    .dark .veri-analiz-pivot thead th:nth-last-child(4) {
+                        background-color: #52525b !important;
+                        color: #fafafa !important;
+                    }
+                    .dark .veri-analiz-pivot thead th:nth-last-child(3) {
+                        background-color: #1e3a8a !important;
+                        color: #bfdbfe !important;
+                    }
+                    .dark .veri-analiz-pivot thead th:nth-last-child(2) {
+                        background-color: #166534 !important;
+                        color: #bbf7d0 !important;
+                    }
+                    .dark .veri-analiz-pivot thead th:last-child {
+                        background-color: #3f3f46 !important;
+                        color: #e4e4e7 !important;
+                    }
+                    .dark .veri-analiz-pivot thead th.mat-col span:not(.mat-col-code):not(.mat-col-firma) {
+                        color: #a1a1aa !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:not(:last-child) > th:first-child {
+                        background-color: #18181b !important;
+                        color: #e4e4e7 !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:not(:last-child) td.mat-col {
+                        background-color: #18181b !important;
+                        color: #cbd5e1 !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:not(:last-child) td:nth-last-child(4) {
+                        background-color: #3f3f46 !important;
+                        color: #fafafa !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:not(:last-child) td:nth-last-child(3) {
+                        background-color: #1e3a8a !important;
+                        color: #93c5fd !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:not(:last-child) td:nth-last-child(2) {
+                        background-color: #14532d !important;
+                        color: #86efac !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:not(:last-child) td:last-child {
+                        background-color: #27272a !important;
+                        color: #d4d4d8 !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child th {
+                        background-color: #52525b !important;
+                        color: #fafafa !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child td {
+                        background-color: #3f3f46 !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child td.mat-col {
+                        background-color: #3f3f46 !important;
+                        color: #f1f5f9 !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child td:nth-last-child(4) {
+                        background-color: #52525b !important;
+                        color: #fafafa !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child td:nth-last-child(3) {
+                        background-color: #1e40af !important;
+                        color: #dbeafe !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child td:nth-last-child(2) {
+                        background-color: #166534 !important;
+                        color: #dcfce7 !important;
+                    }
+                    .dark .veri-analiz-pivot tbody tr:last-child td:last-child {
+                        background-color: #3f3f46 !important;
+                        color: #e4e4e7 !important;
+                    }
+                    .dark .veri-analiz-pivot th,
+                    .dark .veri-analiz-pivot td {
+                        border-color: #64748b !important;
+                    }
+                    .dark .veri-analiz-pivot {
+                        border-color: #64748b !important;
+                    }
                     /*
                      * Satır hover: nth-child zeminleri !important olduğu için Tailwind group-hover eziliyordu.
                      * Veri satırlarında tüm hücrelerde hover tonu + hafif “pencere” çerçevesi.
@@ -669,34 +863,73 @@ new #[Title('Delivery import detail')] class extends Component
             @endif
         @else
             <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                <table class="min-w-[1200px] divide-y divide-zinc-200 text-xs dark:divide-zinc-700">
-                    <thead class="bg-zinc-50 dark:bg-zinc-900/50">
-                        <tr class="text-start text-zinc-600 dark:text-zinc-300">
-                            <th class="sticky left-0 z-10 bg-zinc-50 py-2 pe-2 ps-2 font-medium dark:bg-zinc-900/80">{{ __('Excel satır no') }}</th>
+                <table class="min-w-[1200px] border-collapse border border-zinc-300 text-xs dark:border-zinc-600">
+                    <thead>
+                        <tr class="text-start">
+                            <th scope="col" class="sticky left-0 z-10 w-28 min-w-[7rem] border border-zinc-300 bg-zinc-200 px-2 py-2.5 text-left font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white">
+                                <button type="button" wire:click="toggleRowSort('row_index')" class="m-0 inline-flex w-full cursor-pointer items-center justify-start gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white">
+                                    <span class="text-zinc-900 dark:text-white">{{ __('Excel satır no') }}</span>
+                                    @if ($this->rowSort === 'row_index')
+                                        <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
+                                    @else
+                                        <flux:icon name="chevrons-up-down" variant="micro" class="shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
+                                    @endif
+                                </button>
+                            </th>
                             @if ($this->useExcelColumnOrder)
                                 @foreach ($this->excelColumnLayout as $col)
-                                    <th class="min-w-[7rem] max-w-[14rem] py-2 pe-2 font-medium" title="{{ __('Excel column :n', ['n' => $col['excel_col'] + 1]) }}">
-                                        <span class="line-clamp-3 text-left">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
+                                    @php
+                                        $sortKey = $col['expected_index'] !== null ? 'data:'.$col['expected_index'] : null;
+                                    @endphp
+                                    <th scope="col" class="min-w-[7rem] max-w-[14rem] border border-zinc-300 bg-zinc-200 px-2 py-2.5 font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white" title="{{ __('Excel column :n', ['n' => $col['excel_col'] + 1]) }}">
+                                        @if ($sortKey !== null)
+                                            <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 inline-flex w-full cursor-pointer items-start justify-start gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white">
+                                                <span class="line-clamp-3 text-zinc-900 dark:text-white">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
+                                                @if ($this->rowSort === $sortKey)
+                                                    <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="mt-0.5 shrink-0 text-zinc-700 dark:text-white" />
+                                                @else
+                                                    <flux:icon name="chevrons-up-down" variant="micro" class="mt-0.5 shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
+                                                @endif
+                                            </button>
+                                        @else
+                                            <span class="line-clamp-3 text-left font-semibold text-zinc-900 dark:text-white">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
+                                        @endif
                                     </th>
                                 @endforeach
                             @else
-                                @foreach ($this->expectedHeaders as $label)
-                                    <th class="min-w-[8rem] py-2 pe-2 font-medium">{{ $label }}</th>
+                                @foreach ($this->expectedHeaders as $idx => $label)
+                                    @php $sortKey = 'data:'.$idx; @endphp
+                                    <th scope="col" class="min-w-[8rem] border border-zinc-300 bg-zinc-200 px-2 py-2.5 font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white">
+                                        <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 inline-flex w-full cursor-pointer items-center justify-start gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white">
+                                            <span class="line-clamp-3 text-zinc-900 dark:text-white">{{ $label }}</span>
+                                            @if ($this->rowSort === $sortKey)
+                                                <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
+                                            @else
+                                                <flux:icon name="chevrons-up-down" variant="micro" class="shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
+                                            @endif
+                                        </button>
+                                    </th>
                                 @endforeach
                             @endif
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    <tbody>
                         @foreach ($this->rowsPaginator as $row)
                             @php $display = $this->formatRowForDisplay($row->row_data ?? []); @endphp
-                            <tr wire:key="dir-{{ $row->id }}" class="align-top">
-                                <td class="sticky left-0 z-10 bg-white py-2 pe-2 ps-2 font-mono text-zinc-500 dark:bg-zinc-900">{{ $row->row_index }}</td>
+                            <tr
+                                wire:key="dir-{{ $row->id }}"
+                                class="cursor-pointer align-top odd:bg-white even:bg-zinc-50/80 transition-colors hover:bg-sky-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900/70 dark:hover:bg-zinc-800/60"
+                                wire:click="openRowDetail({{ $row->id }})"
+                                role="button"
+                                tabindex="0"
+                            >
+                                <td class="sticky left-0 z-10 border border-zinc-200 bg-inherit py-2 pe-2 ps-2 font-mono text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">{{ $row->row_index }}</td>
                                 @if ($this->useExcelColumnOrder)
                                     @foreach ($this->excelColumnLayout as $col)
                                         @php
                                             $cell = ($col['expected_index'] !== null) ? ($display[$col['expected_index']] ?? '') : '';
                                         @endphp
-                                        <td class="max-w-[16rem] whitespace-pre-wrap break-words py-2 pe-2 font-mono text-[11px] leading-snug text-zinc-800 dark:text-zinc-200" title="{{ e(is_scalar($cell) ? (string) $cell : '') }}">
+                                        <td class="max-w-[16rem] border border-zinc-200 bg-inherit whitespace-pre-wrap break-words py-2 pe-2 font-mono text-[11px] leading-snug text-zinc-800 dark:border-zinc-700 dark:text-zinc-200" title="{{ e(is_scalar($cell) ? (string) $cell : '') }}">
                                             @if ($col['expected_index'] !== null)
                                                 {{ $cell }}
                                             @endif
@@ -705,7 +938,7 @@ new #[Title('Delivery import detail')] class extends Component
                                 @else
                                     @foreach ($this->expectedHeaders as $idx => $_label)
                                         @php $cell = $display[$idx] ?? ''; @endphp
-                                        <td class="max-w-[16rem] whitespace-pre-wrap break-words py-2 pe-2 font-mono text-[11px] leading-snug text-zinc-800 dark:text-zinc-200" title="{{ e(is_scalar($cell) ? (string) $cell : '') }}">{{ $cell }}</td>
+                                        <td class="max-w-[16rem] border border-zinc-200 bg-inherit whitespace-pre-wrap break-words py-2 pe-2 font-mono text-[11px] leading-snug text-zinc-800 dark:border-zinc-700 dark:text-zinc-200" title="{{ e(is_scalar($cell) ? (string) $cell : '') }}">{{ $cell }}</td>
                                     @endforeach
                                 @endif
                             </tr>
@@ -716,5 +949,75 @@ new #[Title('Delivery import detail')] class extends Component
             <div class="mt-4">{{ $this->rowsPaginator->links() }}</div>
         @endif
     </flux:card>
+
+    {{-- Row detail modal: çerçeve Tailwind arbitrary ile modal içinde güvenilir değil; !important ile zorla --}}
+    <flux:modal name="row-detail" class="w-full max-w-4xl">
+        <style>
+            .row-detail-sheet table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+            .row-detail-sheet th,
+            .row-detail-sheet td {
+                border: 1px solid #94a3b8 !important;
+                padding: 0.5rem 0.75rem !important;
+                vertical-align: top;
+            }
+            .dark .row-detail-sheet th,
+            .dark .row-detail-sheet td {
+                border-color: #64748b !important;
+            }
+            .row-detail-sheet th {
+                width: 38%;
+                font-weight: 600;
+                text-align: left;
+                background-color: #f4f4f5;
+            }
+            .dark .row-detail-sheet th {
+                background-color: #27272a;
+            }
+            .row-detail-sheet td {
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                background-color: #ffffff;
+            }
+            .dark .row-detail-sheet td {
+                background-color: #18181b;
+            }
+            .row-detail-sheet td.row-detail-empty {
+                font-family: inherit;
+                text-align: center;
+                padding-top: 1.5rem !important;
+                padding-bottom: 1.5rem !important;
+            }
+            .row-detail-sheet tr:nth-child(even) td { background-color: #fafafa; }
+            .row-detail-sheet tr:nth-child(even) th { background-color: #e4e4e7; }
+            .dark .row-detail-sheet tr:nth-child(even) td { background-color: #09090b; }
+            .dark .row-detail-sheet tr:nth-child(even) th { background-color: #3f3f46; }
+        </style>
+        <div class="space-y-4 text-zinc-900 dark:text-zinc-100">
+            <div class="min-w-0 pe-2">
+                <h2 class="text-lg font-semibold tracking-tight text-zinc-950 dark:text-white">{{ __('Satır detayı') }}</h2>
+                <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                    {{ __('Excel satır: :n', ['n' => $rowDetailExcelRowIndex ?? '—']) }}
+                </p>
+            </div>
+
+            <div class="row-detail-sheet max-h-[70vh] overflow-auto rounded-lg border-2 border-zinc-400 bg-white dark:border-zinc-500 dark:bg-zinc-950">
+                <table>
+                    <tbody>
+                        @forelse ($rowDetailItems as $it)
+                            <tr>
+                                <th scope="row">{{ $it['label'] }}</th>
+                                <td>
+                                    <div class="whitespace-pre-wrap break-words">{{ $it['value'] }}</div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td class="row-detail-empty text-center text-sm text-zinc-600 dark:text-zinc-400" colspan="2">{{ __('Detay bulunamadı.') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </flux:modal>
 
 </div>
