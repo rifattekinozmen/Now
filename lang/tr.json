@@ -111,6 +111,7 @@
     "Export CSV": "CSV dışa aktar",
     "Export finance CSV": "Finans CSV",
     "Imported rows: :count": "İçe aktarılan satır: :count",
+    "Row No": "No",
     "Import errors": "İçe aktarma hataları",
     "Row :row: :message": "Satır :row: :message",
     "Row :row: :msg": "Satır :row: :msg",

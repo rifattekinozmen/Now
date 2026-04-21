@@ -863,12 +863,12 @@ new #[Title('Delivery import detail')] class extends Component
             @endif
         @else
             <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                <table class="min-w-[1200px] border-collapse border border-zinc-300 text-xs dark:border-zinc-600">
+                <table class="min-w-[1200px] border-collapse border border-zinc-300 text-xs dark:border-zinc-600 [&_td]:align-middle [&_th]:align-middle">
                     <thead>
                         <tr class="text-start">
-                            <th scope="col" class="sticky left-0 z-10 w-28 min-w-[7rem] border border-zinc-300 bg-zinc-200 px-2 py-2.5 text-left font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white">
-                                <button type="button" wire:click="toggleRowSort('row_index')" class="m-0 inline-flex w-full cursor-pointer items-center justify-start gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white">
-                                    <span class="text-zinc-900 dark:text-white">{{ __('Excel satır no') }}</span>
+                            <th scope="col" class="sticky left-0 z-30 w-24 min-w-[5.5rem] border border-zinc-300 border-e-2 border-e-zinc-400 bg-zinc-200 px-3 py-2 text-left text-[11px] font-semibold leading-tight text-zinc-900 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.08)] dark:border-zinc-600 dark:border-e-zinc-500 dark:bg-zinc-800 dark:text-white dark:shadow-[4px_0_14px_-2px_rgba(0,0,0,0.55)]">
+                                <button type="button" wire:click="toggleRowSort('row_index')" class="m-0 flex w-full min-w-0 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white" title="{{ __('Row No') }}">
+                                    <span class="min-w-0 flex-1 truncate text-zinc-900 dark:text-white">{{ __('Row No') }}</span>
                                     @if ($this->rowSort === 'row_index')
                                         <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
                                     @else
@@ -881,27 +881,27 @@ new #[Title('Delivery import detail')] class extends Component
                                     @php
                                         $sortKey = $col['expected_index'] !== null ? 'data:'.$col['expected_index'] : null;
                                     @endphp
-                                    <th scope="col" class="min-w-[7rem] max-w-[14rem] border border-zinc-300 bg-zinc-200 px-2 py-2.5 font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white" title="{{ __('Excel column :n', ['n' => $col['excel_col'] + 1]) }}">
+                                    <th scope="col" class="min-w-[8rem] max-w-[11rem] border border-zinc-300 bg-zinc-200 px-3 py-2 text-left text-[11px] font-semibold leading-tight text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white" title="{{ ($col['header'] !== '' ? $col['header'] : '—').' · '.__('Excel column :n', ['n' => $col['excel_col'] + 1]) }}">
                                         @if ($sortKey !== null)
-                                            <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 inline-flex w-full cursor-pointer items-start justify-start gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white">
-                                                <span class="line-clamp-3 text-zinc-900 dark:text-white">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
+                                            <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 flex w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white" title="{{ $col['header'] !== '' ? $col['header'] : '—' }}">
+                                                <span class="min-w-0 flex-1 truncate text-zinc-900 dark:text-white">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
                                                 @if ($this->rowSort === $sortKey)
-                                                    <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="mt-0.5 shrink-0 text-zinc-700 dark:text-white" />
+                                                    <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
                                                 @else
-                                                    <flux:icon name="chevrons-up-down" variant="micro" class="mt-0.5 shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
+                                                    <flux:icon name="chevrons-up-down" variant="micro" class="shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
                                                 @endif
                                             </button>
                                         @else
-                                            <span class="line-clamp-3 text-left font-semibold text-zinc-900 dark:text-white">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
+                                            <span class="block truncate text-left font-semibold text-zinc-900 dark:text-white" title="{{ $col['header'] !== '' ? $col['header'] : '—' }}">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
                                         @endif
                                     </th>
                                 @endforeach
                             @else
                                 @foreach ($this->expectedHeaders as $idx => $label)
                                     @php $sortKey = 'data:'.$idx; @endphp
-                                    <th scope="col" class="min-w-[8rem] border border-zinc-300 bg-zinc-200 px-2 py-2.5 font-semibold text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white">
-                                        <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 inline-flex w-full cursor-pointer items-center justify-start gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white">
-                                            <span class="line-clamp-3 text-zinc-900 dark:text-white">{{ $label }}</span>
+                                    <th scope="col" class="min-w-[7rem] max-w-[11rem] border border-zinc-300 bg-zinc-200 px-3 py-2 text-left text-[11px] font-semibold leading-tight text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white" title="{{ $label }}">
+                                        <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 flex w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white" title="{{ $label }}">
+                                            <span class="min-w-0 flex-1 truncate text-zinc-900 dark:text-white">{{ $label }}</span>
                                             @if ($this->rowSort === $sortKey)
                                                 <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
                                             @else
@@ -918,27 +918,38 @@ new #[Title('Delivery import detail')] class extends Component
                             @php $display = $this->formatRowForDisplay($row->row_data ?? []); @endphp
                             <tr
                                 wire:key="dir-{{ $row->id }}"
-                                class="cursor-pointer align-top odd:bg-white even:bg-zinc-50/80 transition-colors hover:bg-sky-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900/70 dark:hover:bg-zinc-800/60"
+                                class="group cursor-pointer odd:bg-white even:bg-zinc-50 transition-colors hover:bg-sky-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900 dark:hover:bg-zinc-800"
                                 wire:click="openRowDetail({{ $row->id }})"
                                 role="button"
                                 tabindex="0"
                             >
-                                <td class="sticky left-0 z-10 border border-zinc-200 bg-inherit py-2 pe-2 ps-2 font-mono text-zinc-700 dark:border-zinc-700 dark:text-zinc-200">{{ $row->row_index }}</td>
+                                <td
+                                    @class([
+                                        'sticky left-0 z-20 w-24 min-w-[5.5rem] border border-zinc-200 border-e-2 border-e-zinc-300 px-3 py-2 text-left font-mono text-xs tabular-nums text-zinc-700 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.07)] dark:border-zinc-700 dark:border-e-zinc-600 dark:text-zinc-200 dark:shadow-[4px_0_14px_-2px_rgba(0,0,0,0.5)]',
+                                        'bg-white dark:bg-zinc-950' => $loop->odd,
+                                        'bg-zinc-50 dark:bg-zinc-900' => $loop->even,
+                                        'group-hover:bg-sky-50 dark:group-hover:bg-zinc-800' => true,
+                                    ])
+                                >{{ $row->row_index }}</td>
                                 @if ($this->useExcelColumnOrder)
                                     @foreach ($this->excelColumnLayout as $col)
                                         @php
                                             $cell = ($col['expected_index'] !== null) ? ($display[$col['expected_index']] ?? '') : '';
+                                            $cellStr = is_scalar($cell) ? (string) $cell : '';
                                         @endphp
-                                        <td class="max-w-[16rem] border border-zinc-200 bg-inherit whitespace-pre-wrap break-words py-2 pe-2 font-mono text-[11px] leading-snug text-zinc-800 dark:border-zinc-700 dark:text-zinc-200" title="{{ e(is_scalar($cell) ? (string) $cell : '') }}">
+                                        <td class="max-w-[11rem] border border-zinc-200 bg-inherit px-3 py-2 font-mono text-xs tabular-nums leading-normal text-zinc-800 whitespace-nowrap dark:border-zinc-700 dark:text-zinc-200" title="{{ e($cellStr) }}">
                                             @if ($col['expected_index'] !== null)
-                                                {{ $cell }}
+                                                <span class="block truncate">{{ $cell }}</span>
                                             @endif
                                         </td>
                                     @endforeach
                                 @else
                                     @foreach ($this->expectedHeaders as $idx => $_label)
-                                        @php $cell = $display[$idx] ?? ''; @endphp
-                                        <td class="max-w-[16rem] border border-zinc-200 bg-inherit whitespace-pre-wrap break-words py-2 pe-2 font-mono text-[11px] leading-snug text-zinc-800 dark:border-zinc-700 dark:text-zinc-200" title="{{ e(is_scalar($cell) ? (string) $cell : '') }}">{{ $cell }}</td>
+                                        @php
+                                            $cell = $display[$idx] ?? '';
+                                            $cellStr = is_scalar($cell) ? (string) $cell : '';
+                                        @endphp
+                                        <td class="max-w-[11rem] border border-zinc-200 bg-inherit px-3 py-2 font-mono text-xs tabular-nums leading-normal text-zinc-800 whitespace-nowrap dark:border-zinc-700 dark:text-zinc-200" title="{{ e($cellStr) }}"><span class="block truncate">{{ $cell }}</span></td>
                                     @endforeach
                                 @endif
                             </tr>

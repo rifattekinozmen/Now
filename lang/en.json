@@ -59,6 +59,7 @@
     "Export CSV": "Export CSV",
     "Export finance CSV": "Finance CSV",
     "Imported rows: :count": "Imported rows: :count",
+    "Row No": "No",
     "Import errors": "Import errors",
     "Row :row: :message": "Row :row: :message",
     "Row :row: :msg": "Row :row: :msg",
