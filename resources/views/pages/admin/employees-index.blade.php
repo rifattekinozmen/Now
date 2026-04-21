@@ -223,6 +223,22 @@ new #[Lazy, Title('Employees')] class extends Component
         session()->flash('bulk_deleted', $deleted);
     }
 
+    public function toggleEmployeeForm(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::EMPLOYEES_WRITE);
+
+        Gate::authorize('create', Employee::class);
+
+        if ($this->employeeFormOpen) {
+            $this->employeeFormOpen = false;
+
+            return;
+        }
+
+        $this->cancelEmployeeEdit();
+        $this->employeeFormOpen = true;
+    }
+
     public function saveEmployee(): void
     {
         $this->ensureLogisticsWrite(LogisticsPermission::EMPLOYEES_WRITE);
@@ -482,6 +498,13 @@ new #[Lazy, Title('Employees')] class extends Component
                         </div>
                     </x-slot>
                 @endif
+                @if ($canWriteEmployees)
+                    <x-slot name="primary">
+                        <flux:button size="sm" icon="plus" variant="primary" wire:click="toggleEmployeeForm">
+                            {{ __('New employee') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -609,14 +632,10 @@ new #[Lazy, Title('Employees')] class extends Component
                 </form>
             </flux:card>
         @else
-            <x-admin.filter-bar :label="__('New employee')">
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('employeeFormOpen')">
-                        {{ $employeeFormOpen ? __('Hide') : __('Show') }}
-                    </flux:button>
-                </div>
-                @if ($employeeFormOpen)
-                <form wire:submit="saveEmployee" class="mt-2 flex w-full flex-col gap-4">
+            @if ($employeeFormOpen)
+                <flux:card>
+                    <flux:heading size="lg" class="mb-4">{{ __('New employee') }}</flux:heading>
+                <form wire:submit="saveEmployee" class="flex w-full flex-col gap-4">
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:input wire:model="first_name" :label="__('First name')" required />
                         <flux:input wire:model="last_name" :label="__('Last name')" required />
@@ -676,12 +695,13 @@ new #[Lazy, Title('Employees')] class extends Component
                         <flux:input wire:model="emergency_contact_relation" :label="__('Relation')" />
                         <flux:input wire:model="emergency_contact_phone" :label="__('Emergency Phone')" />
                     </div>
-                    <div class="flex justify-end">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                        <flux:button type="button" variant="ghost" wire:click="$set('employeeFormOpen', false)">{{ __('Cancel') }}</flux:button>
                         <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                     </div>
                 </form>
-                @endif
-            </x-admin.filter-bar>
+                </flux:card>
+            @endif
         @endif
     @endif
 

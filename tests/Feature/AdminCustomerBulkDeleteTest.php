@@ -59,6 +59,19 @@ test('user can update customer from index livewire form', function () {
     expect($customer->fresh()->payment_term_days)->toBe(45);
 });
 
+test('customer index clearCustomerAdvancedFilters resets advanced filter state', function () {
+    /** @var User $user */
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('pages::admin.customers-index')
+        ->set('filterBlacklisted', '1')
+        ->set('filterTaxOfficeCity', 'Ankara')
+        ->call('clearCustomerAdvancedFilters')
+        ->assertSet('filterBlacklisted', '')
+        ->assertSet('filterTaxOfficeCity', '');
+});
+
 test('user can delete single customer from index', function () {
     /** @var User $user */
     $user = User::factory()->create();

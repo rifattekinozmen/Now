@@ -52,6 +52,12 @@ new #[Lazy, Title('Customers')] class extends Component
 
     public string $filterSearch = '';
 
+    public bool $filtersOpen = false;
+
+    public string $filterBlacklisted = '';
+
+    public string $filterTaxOfficeCity = '';
+
     public string $sortColumn = 'id';
 
     public string $sortDirection = 'desc';
@@ -151,12 +157,74 @@ new #[Lazy, Title('Customers')] class extends Component
         ];
     }
 
+    #[Computed]
+    public function activeCustomerAdvancedFilterCount(): int
+    {
+        $n = 0;
+        if ($this->filterBlacklisted !== '') {
+            $n++;
+        }
+        if ($this->filterTaxOfficeCity !== '') {
+            $n++;
+        }
+
+        return $n;
+    }
+
+    public function clearCustomerAdvancedFilters(): void
+    {
+        $this->filterBlacklisted = '';
+        $this->filterTaxOfficeCity = '';
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function toggleNewCustomerForm(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::CUSTOMERS_WRITE);
+
+        Gate::authorize('create', Customer::class);
+
+        if ($this->customerFormOpen) {
+            $this->customerFormOpen = false;
+
+            return;
+        }
+
+        $this->cancelCustomerEdit();
+        $this->customerFormOpen = true;
+    }
+
+    public function updatedFilterBlacklisted(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function updatedFilterTaxOfficeCity(): void
+    {
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
     /**
      * @return Builder<Customer>
      */
     private function customersQuery(): Builder
     {
         $q = Customer::query();
+
+        if ($this->filterBlacklisted === '1') {
+            $q->where('is_blacklisted', true);
+        } elseif ($this->filterBlacklisted === '0') {
+            $q->where('is_blacklisted', false);
+        }
+
+        if ($this->filterTaxOfficeCity !== '') {
+            $q->whereHas('taxOffice', function (Builder $tq): void {
+                $tq->where('city', $this->filterTaxOfficeCity);
+            });
+        }
 
         if ($this->filterSearch !== '') {
             $term = '%'.addcslashes($this->filterSearch, '%_\\').'%';
@@ -486,6 +554,13 @@ new #[Lazy, Title('Customers')] class extends Component
                         </div>
                     </x-slot>
                 @endif
+                @if ($canWriteCustomers)
+                    <x-slot name="primary">
+                        <flux:button size="sm" icon="plus" variant="primary" wire:click="toggleNewCustomerForm">
+                            {{ __('New customer') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -547,13 +622,42 @@ new #[Lazy, Title('Customers')] class extends Component
     </div>
 
     <flux:card class="p-4">
-        <flux:input
-            wire:model.live.debounce.400ms="filterSearch"
-            :label="__('Quick search')"
-            :placeholder="__('Search (name, tax ID, trade name)')"
-            icon="magnifying-glass"
-            class="max-w-full sm:max-w-md"
-        />
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <flux:input
+                wire:model.live.debounce.400ms="filterSearch"
+                :placeholder="__('Search (name, tax ID, trade name)')"
+                icon="magnifying-glass"
+                class="max-w-full min-w-0 flex-1 sm:max-w-md"
+            />
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                @if ($this->activeCustomerAdvancedFilterCount > 0)
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="clearCustomerAdvancedFilters">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                @endif
+                <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}" class="inline-flex items-center gap-2">
+                    {{ __('Filters') }}
+                    @if ($this->activeCustomerAdvancedFilterCount > 0)
+                        <flux:badge color="zinc" size="sm">{{ $this->activeCustomerAdvancedFilterCount }}</flux:badge>
+                    @endif
+                </flux:button>
+            </div>
+        </div>
+        @if ($filtersOpen)
+            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <flux:select wire:model.live="filterBlacklisted" :label="__('Blacklisted')">
+                    <flux:select.option value="">{{ __('All') }}</flux:select.option>
+                    <flux:select.option value="1">{{ __('Yes') }}</flux:select.option>
+                    <flux:select.option value="0">{{ __('No') }}</flux:select.option>
+                </flux:select>
+                <flux:select wire:model.live="filterTaxOfficeCity" :label="__('Tax Office City')">
+                    <flux:select.option value="">{{ __('All cities') }}</flux:select.option>
+                    @foreach ($this->taxOfficeCities as $city)
+                        <flux:select.option :value="$city">{{ $city }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
+        @endif
     </flux:card>
 
     @if ($canWriteCustomers)
@@ -603,14 +707,10 @@ new #[Lazy, Title('Customers')] class extends Component
                 </form>
             </flux:card>
         @else
-            <x-admin.filter-bar :label="__('New customer')">
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('customerFormOpen')">
-                        {{ $customerFormOpen ? __('Hide') : __('Show') }}
-                    </flux:button>
-                </div>
-                @if ($customerFormOpen)
-                    <form wire:submit="saveCustomer" class="mt-2 flex flex-col gap-4">
+            @if ($customerFormOpen)
+                <flux:card>
+                    <flux:heading size="lg" class="mb-4">{{ __('New customer') }}</flux:heading>
+                    <form wire:submit="saveCustomer" class="flex flex-col gap-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <flux:input wire:model="partner_number" :label="__('Partner No')" />
                             <flux:input wire:model="legal_name" :label="__('Legal name')" required />
@@ -646,12 +746,13 @@ new #[Lazy, Title('Customers')] class extends Component
                             <flux:input wire:model="credit_currency_code" :label="__('Credit Currency')" />
                         </div>
                         <flux:checkbox wire:model="is_blacklisted" :label="__('Blacklisted')" />
-                        <div class="flex justify-end">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <flux:button type="button" variant="ghost" wire:click="$set('customerFormOpen', false)">{{ __('Cancel') }}</flux:button>
                             <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                         </div>
                     </form>
-                @endif
-            </x-admin.filter-bar>
+                </flux:card>
+            @endif
         @endif
     @endif
 

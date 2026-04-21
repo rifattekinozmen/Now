@@ -123,6 +123,47 @@ new #[Lazy, Title('Business Partners')] class extends Component
         ];
     }
 
+    #[Computed]
+    public function activePartnerAdvancedFilterCount(): int
+    {
+        $n = 0;
+        if ($this->filterType !== '') {
+            $n++;
+        }
+        if ($this->filterStatus !== '') {
+            $n++;
+        }
+
+        return $n;
+    }
+
+    public function clearPartnerAdvancedFilters(): void
+    {
+        $this->filterType = '';
+        $this->filterStatus = '';
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function togglePartnerForm(): void
+    {
+        $user = auth()->user();
+        if (! $user instanceof \App\Models\User || ! $user->hasPermissionTo(\App\Authorization\LogisticsPermission::ADMIN)) {
+            abort(403);
+        }
+
+        Gate::authorize('create', BusinessPartner::class);
+
+        if ($this->partnerFormOpen) {
+            $this->partnerFormOpen = false;
+
+            return;
+        }
+
+        $this->cancelEdit();
+        $this->partnerFormOpen = true;
+    }
+
     /**
      * @return Builder<BusinessPartner>
      */
@@ -453,6 +494,11 @@ Gate::authorize('create', BusinessPartner::class);
                             </flux:button>
                         </div>
                     </x-slot>
+                    <x-slot name="primary">
+                        <flux:button size="sm" icon="plus" variant="primary" wire:click="togglePartnerForm">
+                            {{ __('New partner') }}
+                        </flux:button>
+                    </x-slot>
                 </x-admin.index-actions>
             @endif
         </x-slot>
@@ -518,12 +564,22 @@ Gate::authorize('create', BusinessPartner::class);
                 icon="magnifying-glass"
                 class="max-w-full min-w-0 flex-1 sm:max-w-md"
             />
-            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
-                {{ __('Filters') }}
-            </flux:button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                @if ($this->activePartnerAdvancedFilterCount > 0)
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="clearPartnerAdvancedFilters">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                @endif
+                <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}" class="inline-flex items-center gap-2">
+                    {{ __('Filters') }}
+                    @if ($this->activePartnerAdvancedFilterCount > 0)
+                        <flux:badge color="zinc" size="sm">{{ $this->activePartnerAdvancedFilterCount }}</flux:badge>
+                    @endif
+                </flux:button>
+            </div>
         </div>
         @if ($filtersOpen)
-            <div class="mt-3 grid gap-4 sm:grid-cols-2">
+            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <flux:select wire:model.live="filterType" :label="__('Type')">
                     <flux:select.option value="">{{ __('All types') }}</flux:select.option>
                     @foreach ($types as $t)
@@ -577,14 +633,10 @@ Gate::authorize('create', BusinessPartner::class);
                 </form>
             </flux:card>
         @else
-            <x-admin.filter-bar :label="__('New partner')">
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('partnerFormOpen')">
-                        {{ $partnerFormOpen ? __('Hide') : __('Show') }}
-                    </flux:button>
-                </div>
-                @if ($partnerFormOpen)
-                    <form wire:submit="savePartner" class="mt-2 flex flex-col gap-4">
+            @if ($partnerFormOpen)
+                <flux:card>
+                    <flux:heading size="lg" class="mb-4">{{ __('New partner') }}</flux:heading>
+                    <form wire:submit="savePartner" class="flex flex-col gap-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <flux:input wire:model="name" :label="__('Name')" required />
                             <flux:select wire:model="type" :label="__('Type')">
@@ -611,12 +663,13 @@ Gate::authorize('create', BusinessPartner::class);
                         </div>
                         <flux:checkbox wire:model="is_active" :label="__('Active')" />
                         <flux:textarea wire:model="notes" :label="__('Notes')" rows="3" />
-                        <div class="flex justify-end">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <flux:button type="button" variant="ghost" wire:click="$set('partnerFormOpen', false)">{{ __('Cancel') }}</flux:button>
                             <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                         </div>
                     </form>
-                @endif
-            </x-admin.filter-bar>
+                </flux:card>
+            @endif
         @endif
     @endif
 

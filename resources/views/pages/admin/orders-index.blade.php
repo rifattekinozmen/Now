@@ -119,6 +119,8 @@ new #[Lazy, Title('Orders')] class extends Component
 
     public bool $filtersOpen = false;
 
+    public bool $newOrderFormOpen = false;
+
     /** @var list<int|string> */
     public array $selectedIds = [];
 
@@ -256,6 +258,52 @@ new #[Lazy, Title('Orders')] class extends Component
             'with_freight' => (int) ($row->with_freight ?? 0),
             'currencies' => (int) ($row->currencies ?? 0),
         ];
+    }
+
+    #[Computed]
+    public function activeOrderAdvancedFilterCount(): int
+    {
+        $n = 0;
+        if ($this->filterStatus !== '') {
+            $n++;
+        }
+        if ($this->filterCustomer !== '') {
+            $n++;
+        }
+        if ($this->filterDateFrom !== '') {
+            $n++;
+        }
+        if ($this->filterDateTo !== '') {
+            $n++;
+        }
+
+        return $n;
+    }
+
+    public function clearOrderAdvancedFilters(): void
+    {
+        $this->filterStatus = '';
+        $this->filterCustomer = '';
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function toggleNewOrderForm(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::ORDERS_WRITE);
+
+        Gate::authorize('create', Order::class);
+
+        if ($this->newOrderFormOpen) {
+            $this->newOrderFormOpen = false;
+
+            return;
+        }
+
+        $this->cancelOrderEdit();
+        $this->newOrderFormOpen = true;
     }
 
     public function orderStatusLabel(OrderStatus $status): string
@@ -563,6 +611,7 @@ new #[Lazy, Title('Orders')] class extends Component
         $this->currency_code = 'TRY';
         $this->tonnage = '26';
         $this->insurance_currency_code = 'TRY';
+        $this->newOrderFormOpen = false;
     }
 
     public function startEditOrder(int $orderId): void
@@ -572,6 +621,7 @@ new #[Lazy, Title('Orders')] class extends Component
         $order = Order::query()->findOrFail($orderId);
         Gate::authorize('update', $order);
 
+        $this->newOrderFormOpen = false;
         $this->editingOrderId = $order->id;
         $this->edit_sas_no = $order->sas_no ?? '';
         $this->edit_loading_site = $order->loading_site ?? '';
@@ -738,6 +788,13 @@ new #[Lazy, Title('Orders')] class extends Component
                         </div>
                     </x-slot>
                 @endif
+                @if ($canWriteOrders)
+                    <x-slot name="primary">
+                        <flux:button size="sm" icon="plus" variant="primary" wire:click="toggleNewOrderForm">
+                            {{ __('New order') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -794,28 +851,36 @@ new #[Lazy, Title('Orders')] class extends Component
                 icon="magnifying-glass"
                 class="max-w-full min-w-0 flex-1 sm:max-w-md"
             />
-            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
-                {{ __('Filters') }}
-            </flux:button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                @if ($this->activeOrderAdvancedFilterCount > 0)
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="clearOrderAdvancedFilters">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                @endif
+                <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}" class="inline-flex items-center gap-2">
+                    {{ __('Filters') }}
+                    @if ($this->activeOrderAdvancedFilterCount > 0)
+                        <flux:badge color="zinc" size="sm">{{ $this->activeOrderAdvancedFilterCount }}</flux:badge>
+                    @endif
+                </flux:button>
+            </div>
         </div>
         @if ($filtersOpen)
-            <div class="mt-3 flex flex-col gap-4">
-                <flux:select wire:model.live="filterStatus" :label="__('Filter by status')" class="max-w-md">
+            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <flux:select wire:model.live="filterStatus" :label="__('Filter by status')">
                     <option value="">{{ __('All statuses') }}</option>
                     @foreach (\App\Enums\OrderStatus::cases() as $case)
                         <option value="{{ $case->value }}">{{ $this->orderStatusLabel($case) }}</option>
                     @endforeach
                 </flux:select>
-                <flux:select wire:model.live="filterCustomer" :label="__('Filter by customer')" class="max-w-md">
+                <flux:select wire:model.live="filterCustomer" :label="__('Filter by customer')">
                     <option value="">{{ __('All customers') }}</option>
                     @foreach ($this->customerOptions as $c)
                         <option value="{{ $c['id'] }}">{{ $c['legal_name'] }}</option>
                     @endforeach
                 </flux:select>
-                <div class="flex flex-wrap gap-3">
-                    <flux:input wire:model.live.debounce.400ms="filterDateFrom" type="date" :label="__('Order date from')" />
-                    <flux:input wire:model.live.debounce.400ms="filterDateTo" type="date" :label="__('Order date to')" />
-                </div>
+                <flux:input wire:model.live.debounce.400ms="filterDateFrom" type="date" :label="__('Order date from')" />
+                <flux:input wire:model.live.debounce.400ms="filterDateTo" type="date" :label="__('Order date to')" />
             </div>
         @endif
     </flux:card>
@@ -846,7 +911,7 @@ new #[Lazy, Title('Orders')] class extends Component
                 </div>
             </form>
         </flux:card>
-    @elseif ($canWriteOrders)
+    @elseif ($canWriteOrders && $newOrderFormOpen)
         <flux:card>
             <flux:heading size="lg" class="mb-4">{{ __('New order') }}</flux:heading>
             <form wire:submit="saveOrder" class="flex flex-col gap-4">

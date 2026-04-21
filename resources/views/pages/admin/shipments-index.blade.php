@@ -111,6 +111,47 @@ new #[Lazy, Title('Shipments')] class extends Component
         ];
     }
 
+    #[Computed]
+    public function activeShipmentAdvancedFilterCount(): int
+    {
+        $n = 0;
+        if ($this->filterStatus !== '') {
+            $n++;
+        }
+        if ($this->filterVehicle !== '') {
+            $n++;
+        }
+        if ($this->filterDriver !== '') {
+            $n++;
+        }
+
+        return $n;
+    }
+
+    public function clearShipmentAdvancedFilters(): void
+    {
+        $this->filterStatus = '';
+        $this->filterVehicle = '';
+        $this->filterDriver = '';
+        $this->resetPage();
+        $this->selectedIds = [];
+    }
+
+    public function toggleShipmentForm(): void
+    {
+        $this->ensureLogisticsAdmin();
+
+        Gate::authorize('create', Shipment::class);
+
+        if ($this->shipmentFormOpen) {
+            $this->shipmentFormOpen = false;
+
+            return;
+        }
+
+        $this->shipmentFormOpen = true;
+    }
+
     public function shipmentStatusLabel(ShipmentStatus $status): string
     {
         return match ($status) {
@@ -403,6 +444,13 @@ new #[Lazy, Title('Shipments')] class extends Component
                 <x-slot name="back">
                     <flux:button :href="route('admin.orders.index')" variant="ghost" wire:navigate>{{ __('Orders') }}</flux:button>
                 </x-slot>
+                @if ($canWriteShipments)
+                    <x-slot name="primary">
+                        <flux:button size="sm" icon="plus" variant="primary" wire:click="toggleShipmentForm">
+                            {{ __('New shipment') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -444,25 +492,35 @@ new #[Lazy, Title('Shipments')] class extends Component
                 icon="magnifying-glass"
                 class="max-w-full min-w-0 flex-1 sm:max-w-md"
             />
-            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
-                {{ __('Filters') }}
-            </flux:button>
+            <div class="flex flex-wrap items-center justify-end gap-2">
+                @if ($this->activeShipmentAdvancedFilterCount > 0)
+                    <flux:button type="button" variant="ghost" size="sm" wire:click="clearShipmentAdvancedFilters">
+                        {{ __('Clear filters') }}
+                    </flux:button>
+                @endif
+                <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}" class="inline-flex items-center gap-2">
+                    {{ __('Filters') }}
+                    @if ($this->activeShipmentAdvancedFilterCount > 0)
+                        <flux:badge color="zinc" size="sm">{{ $this->activeShipmentAdvancedFilterCount }}</flux:badge>
+                    @endif
+                </flux:button>
+            </div>
         </div>
         @if ($filtersOpen)
-            <div class="mt-3 flex flex-col gap-4">
-                <flux:select wire:model.live="filterStatus" :label="__('Filter by shipment status')" class="max-w-md">
+            <div class="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <flux:select wire:model.live="filterStatus" :label="__('Filter by shipment status')">
                     <option value="">{{ __('All statuses') }}</option>
                     @foreach (\App\Enums\ShipmentStatus::cases() as $case)
                         <option value="{{ $case->value }}">{{ $this->shipmentStatusLabel($case) }}</option>
                     @endforeach
                 </flux:select>
-                <flux:select wire:model.live="filterVehicle" :label="__('Filter by vehicle')" class="max-w-md">
+                <flux:select wire:model.live="filterVehicle" :label="__('Filter by vehicle')">
                     <option value="">{{ __('All vehicles') }}</option>
                     @foreach ($this->vehicleOptions() as $v)
                         <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
                     @endforeach
                 </flux:select>
-                <flux:select wire:model.live="filterDriver" :label="__('Filter by driver')" class="max-w-md">
+                <flux:select wire:model.live="filterDriver" :label="__('Filter by driver')">
                     <option value="">{{ __('All drivers') }}</option>
                     @foreach ($this->driverOptions() as $d)
                         <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
@@ -472,40 +530,37 @@ new #[Lazy, Title('Shipments')] class extends Component
         @endif
     </flux:card>
 
-    @if ($canWriteShipments)
-        <x-admin.filter-bar :label="__('New shipment')">
-            <div class="flex flex-wrap items-center justify-end gap-2">
-                <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('shipmentFormOpen')">
-                    {{ $shipmentFormOpen ? __('Hide') : __('Show') }}
-                </flux:button>
-            </div>
-            @if ($shipmentFormOpen)
-                <form wire:submit="saveShipment" class="mt-2 flex max-w-xl flex-col gap-4">
-                    <flux:select wire:model="order_id" :label="__('Order')" required>
-                        <option value="">{{ __('Select…') }}</option>
-                        @foreach ($this->orderOptions() as $o)
-                            <option value="{{ $o['id'] }}">{{ $o['order_number'] }} — {{ $o['legal_name'] }}</option>
-                        @endforeach
-                    </flux:select>
+    @if ($canWriteShipments && $shipmentFormOpen)
+        <flux:card>
+            <flux:heading size="lg" class="mb-4">{{ __('New shipment') }}</flux:heading>
+            <form wire:submit="saveShipment" class="flex max-w-xl flex-col gap-4">
+                <flux:select wire:model="order_id" :label="__('Order')" required>
+                    <option value="">{{ __('Select…') }}</option>
+                    @foreach ($this->orderOptions() as $o)
+                        <option value="{{ $o['id'] }}">{{ $o['order_number'] }} — {{ $o['legal_name'] }}</option>
+                    @endforeach
+                </flux:select>
 
-                    <flux:select wire:model="vehicle_id" :label="__('Vehicle (optional)')">
-                        <option value="">{{ __('—') }}</option>
-                        @foreach ($this->vehicleOptions() as $v)
-                            <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
-                        @endforeach
-                    </flux:select>
+                <flux:select wire:model="vehicle_id" :label="__('Vehicle (optional)')">
+                    <option value="">{{ __('—') }}</option>
+                    @foreach ($this->vehicleOptions() as $v)
+                        <option value="{{ $v['id'] }}">{{ $v['plate'] }}</option>
+                    @endforeach
+                </flux:select>
 
-                    <flux:select wire:model="driver_employee_id" :label="__('Driver (optional)')">
-                        <option value="">{{ __('—') }}</option>
-                        @foreach ($this->driverOptions() as $d)
-                            <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
-                        @endforeach
-                    </flux:select>
+                <flux:select wire:model="driver_employee_id" :label="__('Driver (optional)')">
+                    <option value="">{{ __('—') }}</option>
+                    @foreach ($this->driverOptions() as $d)
+                        <option value="{{ $d['id'] }}">{{ $d['name'] }}</option>
+                    @endforeach
+                </flux:select>
 
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <flux:button type="button" variant="ghost" wire:click="$set('shipmentFormOpen', false)">{{ __('Cancel') }}</flux:button>
                     <flux:button type="submit" variant="primary">{{ __('Save shipment') }}</flux:button>
-                </form>
-            @endif
-        </x-admin.filter-bar>
+                </div>
+            </form>
+        </flux:card>
     @endif
 
     @if ($canWriteShipments)

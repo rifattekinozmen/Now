@@ -56,6 +56,21 @@ it('business partners index is tenant scoped', function (): void {
         ->assertDontSee('Partner Beta');
 });
 
+it('business partners index clearPartnerAdvancedFilters resets type and status filters', function (): void {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->create(['tenant_id' => $tenant->id]);
+    $user->givePermissionTo('logistics.admin');
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::admin.business-partners-index')
+        ->set('filterType', BusinessPartnerType::Carrier->value)
+        ->set('filterStatus', 'active')
+        ->call('clearPartnerAdvancedFilters')
+        ->assertSet('filterType', '')
+        ->assertSet('filterStatus', '');
+});
+
 it('admin can create a business partner', function (): void {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->create(['tenant_id' => $tenant->id]);

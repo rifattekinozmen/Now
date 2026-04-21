@@ -190,6 +190,22 @@ new #[Lazy, Title('Vehicles')] class extends Component
         session()->flash('bulk_deleted', $deleted);
     }
 
+    public function toggleVehicleForm(): void
+    {
+        $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
+
+        Gate::authorize('create', Vehicle::class);
+
+        if ($this->vehicleFormOpen) {
+            $this->vehicleFormOpen = false;
+
+            return;
+        }
+
+        $this->cancelVehicleEdit();
+        $this->vehicleFormOpen = true;
+    }
+
     public function saveVehicle(): void
     {
         $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
@@ -361,6 +377,13 @@ new #[Lazy, Title('Vehicles')] class extends Component
                         </div>
                     </x-slot>
                 @endif
+                @if ($canWriteVehicles)
+                    <x-slot name="primary">
+                        <flux:button size="sm" icon="plus" variant="primary" wire:click="toggleVehicleForm">
+                            {{ __('New vehicle') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
@@ -441,14 +464,10 @@ new #[Lazy, Title('Vehicles')] class extends Component
                 </form>
             </flux:card>
         @else
-            <x-admin.filter-bar :label="__('New vehicle')">
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <flux:button type="button" variant="ghost" size="sm" wire:click="$toggle('vehicleFormOpen')">
-                        {{ $vehicleFormOpen ? __('Hide') : __('Show') }}
-                    </flux:button>
-                </div>
-                @if ($vehicleFormOpen)
-                    <form wire:submit="saveVehicle" class="mt-2 flex w-full flex-col gap-4">
+            @if ($vehicleFormOpen)
+                <flux:card>
+                    <flux:heading size="lg" class="mb-4">{{ __('New vehicle') }}</flux:heading>
+                    <form wire:submit="saveVehicle" class="flex w-full flex-col gap-4">
                         <div class="grid gap-4 sm:grid-cols-2">
                             <flux:input wire:model="plate" :label="__('Plate')" required />
                             <flux:input wire:model="vin" :label="__('VIN / Chassis')" />
@@ -461,12 +480,13 @@ new #[Lazy, Title('Vehicles')] class extends Component
                             <flux:input wire:model="manufacture_year" type="number" :label="__('Year')" min="1900" :max="date('Y')" />
                             <flux:input wire:model="inspection_valid_until" type="date" :label="__('Inspection valid until')" />
                         </div>
-                        <div class="flex justify-end">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <flux:button type="button" variant="ghost" wire:click="$set('vehicleFormOpen', false)">{{ __('Cancel') }}</flux:button>
                             <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
                         </div>
                     </form>
-                @endif
-            </x-admin.filter-bar>
+                </flux:card>
+            @endif
         @endif
 
     @endif
