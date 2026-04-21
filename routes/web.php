@@ -44,7 +44,7 @@ Route::get('/locale/{locale}', function (string $locale) {
 
     if ($user = auth()->user()) {
         foreach (['tr', 'en'] as $lang) {
-            cache()->forget('sidebar-menu-v4-'.$user->id.'-'.$lang);
+            cache()->forget('sidebar-menu-v5-'.$user->id.'-'.$lang);
             cache()->forget('orders-stats-'.$user->tenant_id.'-'.$lang);
         }
     }

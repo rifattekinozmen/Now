@@ -22,7 +22,7 @@ class SwitchTenantController extends Controller
 
         // Clear sidebar + stats caches for all locales
         foreach (['tr', 'en'] as $lang) {
-            cache()->forget('sidebar-menu-v4-'.$user->id.'-'.$lang);
+            cache()->forget('sidebar-menu-v5-'.$user->id.'-'.$lang);
             cache()->forget('orders-stats-'.$user->active_tenant_id.'-'.$lang);
         }
 

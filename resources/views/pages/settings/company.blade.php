@@ -95,7 +95,7 @@ new #[Title('Company profile')] class extends Component
 
         // Şirket adı değişince sidebar önbelleğini temizle
         foreach (['tr', 'en'] as $lang) {
-            cache()->forget('sidebar-menu-v4-'.Auth::id().'-'.$lang);
+            cache()->forget('sidebar-menu-v5-'.Auth::id().'-'.$lang);
         }
 
         TenantSetting::set($tid, 'company_tax_id',   filled($this->companyTaxId)   ? $this->companyTaxId   : null);
