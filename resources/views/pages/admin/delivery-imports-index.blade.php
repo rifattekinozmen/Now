@@ -2,11 +2,12 @@
 
 use App\Enums\DeliveryImportStatus;
 use App\Models\DeliveryImport;
+use App\Services\Delivery\DeliveryReportImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -38,6 +39,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     public string $reference_no   = '';
     public string $import_date    = '';
     public string $source         = 'excel';
+    public string $report_type    = 'endustriyel_hammadde';
     public string $notes          = '';
     public $uploadFile = null;
 
@@ -54,6 +56,11 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     public function updatedFilterSource(): void { $this->resetPage(); }
     public function updatedFilterFrom(): void { $this->resetPage(); }
     public function updatedFilterTo(): void { $this->resetPage(); }
+
+    public function updatedSelectedIds(): void
+    {
+        $this->selectedIds = array_values(array_unique(array_filter(array_map(intval(...), $this->selectedIds))));
+    }
 
     public function sortBy(string $column): void
     {
@@ -90,7 +97,11 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     public function bulkDeleteSelected(): void
     {
         Gate::authorize('create', DeliveryImport::class);
-        $count             = DeliveryImport::query()->whereIn('id', $this->selectedIds)->delete();
+        $ids = array_values(array_unique(array_filter(array_map(intval(...), $this->selectedIds))));
+        if ($ids === []) {
+            return;
+        }
+        $count             = DeliveryImport::query()->whereIn('id', $ids)->delete();
         $this->selectedIds = [];
         session()->flash('bulk_deleted', __('Deleted :count records.', ['count' => $count]));
         $this->resetPage();
@@ -170,12 +181,20 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     {
         Gate::authorize('create', DeliveryImport::class);
 
+        $reportTypes = array_keys(config('delivery_report.report_types', []));
+
         $validated = $this->validate([
             'reference_no' => ['nullable', 'string', 'max:100'],
             'import_date'  => ['required', 'date'],
             'source'       => ['required', 'in:excel,csv,api'],
+            'report_type'  => ['required', 'string', 'in:' . implode(',', $reportTypes)],
             'notes'        => ['nullable', 'string', 'max:2000'],
-            'uploadFile'   => ['nullable', 'file', 'max:20480', 'mimes:xlsx,xls,csv'],
+            'uploadFile'   => [
+                $this->source === 'excel' ? 'required' : 'nullable',
+                'file',
+                'max:20480',
+                'mimes:xlsx,xlsm,xls,csv',
+            ],
         ]);
 
         $filePath = null;
@@ -183,10 +202,12 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
             $filePath = $this->uploadFile->store('delivery-imports', 'local');
         }
 
-        DeliveryImport::query()->create([
+        /** @var DeliveryImport $import */
+        $import = DeliveryImport::query()->create([
             'reference_no'    => filled($validated['reference_no']) ? $validated['reference_no'] : null,
             'import_date'     => $validated['import_date'],
             'source'          => $validated['source'],
+            'report_type'     => $validated['report_type'],
             'status'          => DeliveryImportStatus::Pending->value,
             'file_path'       => $filePath,
             'row_count'       => 0,
@@ -194,12 +215,71 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
             'unmatched_count' => 0,
             'imported_by'     => auth()->id(),
             'notes'           => filled($validated['notes']) ? $validated['notes'] : null,
+            'last_error'      => null,
         ]);
+
+        if ($import->file_path && $import->source === 'excel') {
+            try {
+                $result = app(DeliveryReportImportService::class)->importAndSaveReportRows($import);
+                $errCount = count($result['errors']);
+                $snippet = $errCount > 0 ? json_encode($result['errors'], JSON_UNESCAPED_UNICODE) : null;
+                $import->update([
+                    'row_count' => $result['total_rows'],
+                    'matched_count' => $result['saved'],
+                    'unmatched_count' => $errCount,
+                    'status' => $result['saved'] > 0
+                        ? DeliveryImportStatus::Processed->value
+                        : DeliveryImportStatus::Error->value,
+                    'last_error' => $snippet !== null ? mb_substr($snippet, 0, 65000) : null,
+                ]);
+            } catch (\Throwable $e) {
+                $import->update([
+                    'last_error' => mb_substr($e->getMessage(), 0, 65000),
+                    'status' => DeliveryImportStatus::Error->value,
+                ]);
+            }
+        }
 
         $this->showUploadForm = false;
         $this->resetUploadForm();
         $this->resetPage();
         session()->flash('saved', __('Import record created.'));
+    }
+
+    /**
+     * Aynı dosyayı tekrar okur (başlık satırı tespiti / şablon güncellemesi sonrası).
+     */
+    public function reprocessImport(int $id): void
+    {
+        Gate::authorize('create', DeliveryImport::class);
+        $import = DeliveryImport::query()->findOrFail($id);
+        if (! $import->file_path || $import->source !== 'excel') {
+            session()->flash('import_warning', __('No Excel file attached for this import.'));
+
+            return;
+        }
+
+        try {
+            $result = app(DeliveryReportImportService::class)->importAndSaveReportRows($import);
+            $errCount = count($result['errors']);
+            $snippet = $errCount > 0 ? json_encode($result['errors'], JSON_UNESCAPED_UNICODE) : null;
+            $import->update([
+                'row_count' => $result['total_rows'],
+                'matched_count' => $result['saved'],
+                'unmatched_count' => $errCount,
+                'status' => $result['saved'] > 0
+                    ? DeliveryImportStatus::Processed->value
+                    : DeliveryImportStatus::Error->value,
+                'last_error' => $snippet !== null ? mb_substr($snippet, 0, 65000) : null,
+            ]);
+            session()->flash('saved', __('Import reprocessed.'));
+        } catch (\Throwable $e) {
+            $import->update([
+                'last_error' => mb_substr($e->getMessage(), 0, 65000),
+                'status' => DeliveryImportStatus::Error->value,
+            ]);
+            session()->flash('import_warning', $e->getMessage());
+        }
     }
 
     public function markProcessed(int $id): void
@@ -233,6 +313,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
         $this->reference_no  = '';
         $this->import_date   = now()->format('Y-m-d');
         $this->source        = 'excel';
+        $this->report_type   = 'endustriyel_hammadde';
         $this->notes         = '';
         $this->uploadFile    = null;
     }
@@ -262,6 +343,28 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     @if (session('saved'))
         <flux:callout variant="success" icon="check-circle">
             <flux:callout.text>{{ session('saved') }}</flux:callout.text>
+        </flux:callout>
+    @endif
+    @if (session('import_warning'))
+        <flux:callout variant="warning" icon="exclamation-triangle">
+            <flux:callout.text class="whitespace-pre-wrap text-sm">{{ session('import_warning') }}</flux:callout.text>
+        </flux:callout>
+    @endif
+
+    @if (! \App\Support\DeliveryImportPhp::isZipAvailableForXlsx())
+        @php
+            $deliveryPhpIni = php_ini_loaded_file();
+        @endphp
+        <flux:callout variant="danger" icon="exclamation-triangle">
+            <flux:callout.heading>{{ __('Web sunucusunda PHP zip kapalı') }}</flux:callout.heading>
+            <flux:callout.text class="mt-2 space-y-2 text-sm">
+                <p>{{ __('.xlsx / .xlsm için ZipArchive gerekir. php.ini’de extension=zip açık olsun; Laragon’da Stop All → Start All.') }}</p>
+                @if ($deliveryPhpIni)
+                    <p class="font-mono text-xs text-zinc-400">{{ __('Active php.ini:') }} {{ $deliveryPhpIni }}</p>
+                @endif
+                <p class="text-zinc-300">{{ __('Geçici çözüm: Excel’de “Farklı Kaydet” → “Excel 97-2003 (.xls)” — .xls zip gerektirmez.') }}</p>
+                <p class="text-xs text-zinc-400">{{ __('CLI kontrolü:') }} <code class="rounded bg-zinc-800 px-1">php artisan delivery:check-php</code></p>
+            </flux:callout.text>
         </flux:callout>
     @endif
 
@@ -326,9 +429,14 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                     <option value="csv">CSV</option>
                     <option value="api">API</option>
                 </flux:select>
+                <flux:select wire:model="report_type" :label="__('Report type')">
+                    @foreach (config('delivery_report.report_types', []) as $key => $cfg)
+                        <option value="{{ $key }}">{{ $cfg['label'] ?? $key }}</option>
+                    @endforeach
+                </flux:select>
                 <div class="sm:col-span-2 lg:col-span-3">
-                    <flux:label>{{ __('File (optional)') }}</flux:label>
-                    <input type="file" wire:model="uploadFile" accept=".xlsx,.xls,.csv"
+                    <flux:label>{{ __('Excel file') }}</flux:label>
+                    <input type="file" wire:model="uploadFile" accept=".xlsx,.xlsm,.xls,.csv"
                            class="mt-1 block w-full text-sm text-zinc-600 file:mr-3 file:rounded file:border-0 file:bg-zinc-100 file:px-3 file:py-1 file:text-sm file:font-medium hover:file:bg-zinc-200 dark:text-zinc-400 dark:file:bg-zinc-800 dark:hover:file:bg-zinc-700" />
                     @error('uploadFile') <flux:error>{{ $message }}</flux:error> @enderror
                 </div>
@@ -394,7 +502,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                     @forelse ($this->paginatedImports as $import)
                         <tr>
                             <td class="py-2 pe-3">
-                                <input type="checkbox" wire:model="selectedIds" :value="$import->id" class="rounded border-zinc-300" />
+                                <input type="checkbox" wire:model="selectedIds" value="{{ $import->id }}" class="rounded border-zinc-300" />
                             </td>
                             <td class="py-2 pe-3">
                                 <span class="font-mono text-xs font-medium">{{ $import->reference_no ?? '—' }}</span>
@@ -412,10 +520,33 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                                 {{ number_format($import->unmatched_count) }}
                             </td>
                             <td class="py-2 pe-3">
-                                <flux:badge color="{{ $import->status->color() }}" size="sm">{{ $import->status->label() }}</flux:badge>
+                                <div class="flex flex-col gap-1">
+                                    <flux:badge color="{{ $import->status->color() }}" size="sm">{{ $import->status->label() }}</flux:badge>
+                                    @if ($import->last_error)
+                                        <span class="max-w-[14rem] cursor-help truncate text-[10px] text-red-400" title="{{ $import->last_error }}">{{ \Illuminate\Support\Str::limit($import->last_error, 42) }}</span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="py-2 text-end">
-                                <div class="flex justify-end gap-1">
+                                <div class="flex flex-wrap justify-end gap-1">
+                                    @can('view', $import)
+                                        <flux:button
+                                            size="sm"
+                                            variant="primary"
+                                            :href="route('admin.delivery-imports.show', $import) . '#delivery-import-grid'"
+                                            wire:navigate
+                                            icon="table-cells"
+                                        >
+                                            {{ __('Excel grid görüntüle') }}
+                                        </flux:button>
+                                    @endcan
+                                    @can('create', \App\Models\DeliveryImport::class)
+                                        @if ($import->file_path && $import->source === 'excel')
+                                            <flux:button size="sm" variant="ghost" wire:click="reprocessImport({{ $import->id }})" icon="arrow-path" wire:loading.attr="disabled">
+                                                {{ __('Reprocess') }}
+                                            </flux:button>
+                                        @endif
+                                    @endcan
                                     <flux:button size="sm" variant="ghost" wire:click="showAnalysis({{ $import->id }})">
                                         {{ __('Analyse') }}
                                     </flux:button>
@@ -515,7 +646,21 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                     </div>
                 @endif
 
-                <div class="flex justify-end">
+                @if ($rec->last_error)
+                    <div class="rounded-lg border border-red-500/30 bg-red-500/10 p-3">
+                        <flux:text class="text-xs text-red-400">{{ __('Last error') }}</flux:text>
+                        <flux:text class="mt-1 whitespace-pre-wrap break-words font-mono text-xs text-red-200">{{ $rec->last_error }}</flux:text>
+                    </div>
+                @endif
+
+                <div class="flex flex-wrap justify-end gap-2">
+                    @can('create', \App\Models\DeliveryImport::class)
+                        @if ($rec->file_path && $rec->source === 'excel')
+                            <flux:button variant="primary" wire:click="reprocessImport({{ $rec->id }})" icon="arrow-path">
+                                {{ __('Reprocess import') }}
+                            </flux:button>
+                        @endif
+                    @endcan
                     <flux:modal.close>
                         <flux:button variant="ghost">{{ __('Close') }}</flux:button>
                     </flux:modal.close>

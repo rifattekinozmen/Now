@@ -441,8 +441,11 @@ new #[Lazy, Title('Shipments')] class extends Component
     >
         <x-slot name="actions">
             <x-admin.index-actions>
-                <x-slot name="back">
-                    <flux:button :href="route('admin.orders.index')" variant="ghost" wire:navigate>{{ __('Orders') }}</flux:button>
+                {{-- Siparişler: back slotu wrap ile başlık altında kopuk görünmesin; extra ile sağdaki CTA grubunda --}}
+                <x-slot name="extra">
+                    <flux:button size="sm" :href="route('admin.orders.index')" variant="ghost" wire:navigate>
+                        {{ __('Orders') }}
+                    </flux:button>
                 </x-slot>
                 @if ($canWriteShipments)
                     <x-slot name="primary">
