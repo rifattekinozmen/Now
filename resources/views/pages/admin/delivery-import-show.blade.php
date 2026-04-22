@@ -29,9 +29,6 @@ new #[Title('Delivery import detail')] class extends Component
 
     public string $pivotSortMetric = 'Teslimat miktarı';
 
-    /** Günlük analiz: Ton | Mesafe | Araç | Malzeme sekmeleri */
-    public string $pivotMainTab = 'ton';
-
     public string $klinkerMatchingOrderForm = 'petrokok_once';
 
     public string $petrokokRoutePreferenceForm = 'ekinciler';
@@ -317,7 +314,14 @@ new #[Title('Delivery import detail')] class extends Component
     #[Computed]
     public function materialPivot(): array
     {
-        return app(DeliveryReportPivotService::class)->buildMaterialPivot($this->deliveryImport);
+        $plateFilter = trim($this->rowPlateFilter);
+        $plateIndex = $this->resolvePlateIndexForImportedRows();
+
+        return app(DeliveryReportPivotService::class)->buildMaterialPivot(
+            $this->deliveryImport,
+            $plateFilter !== '' ? $plateFilter : null,
+            $plateIndex
+        );
     }
 
     /**
@@ -348,15 +352,6 @@ new #[Title('Delivery import detail')] class extends Component
     public function pivotMalzemeRows(): array
     {
         return app(DeliveryReportPivotService::class)->buildMalzemeCombinedPivot($this->deliveryImport);
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    #[Computed]
-    public function vehicleDdBdRows(): array
-    {
-        return app(DeliveryReportPivotService::class)->buildVehicleDdBdReport($this->deliveryImport);
     }
 
     #[Computed]
@@ -464,13 +459,27 @@ new #[Title('Delivery import detail')] class extends Component
             return [];
         }
 
-        return DeliveryImportPlateCorrection::query()
+        $requests = DeliveryImportPlateCorrection::query()
             ->where('delivery_import_id', $this->deliveryImport->id)
             ->with(['requestedByUser:id,name', 'reviewedByUser:id,name'])
             ->orderByDesc('id')
             ->limit(100)
             ->get()
             ->all();
+
+        $selectedPlate = trim($this->rowPlateFilter);
+        if ($selectedPlate === '') {
+            return $requests;
+        }
+
+        $selectedNormalized = $this->normalizePlateForSort($selectedPlate);
+
+        return array_values(array_filter($requests, function (DeliveryImportPlateCorrection $request) use ($selectedNormalized): bool {
+            $oldPlate = $this->normalizePlateForSort((string) ($request->old_plate ?? ''));
+            $newPlate = $this->normalizePlateForSort((string) ($request->new_plate ?? ''));
+
+            return $oldPlate === $selectedNormalized || $newPlate === $selectedNormalized;
+        }));
     }
 
     #[Computed]
@@ -791,22 +800,6 @@ new #[Title('Delivery import detail')] class extends Component
         </div>
 
         @if (! empty($this->materialPivot['rows']))
-            <div class="flex flex-wrap gap-2 border-b border-zinc-200 px-4 pb-3 dark:border-zinc-700" role="tablist">
-                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'ton' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'ton')">
-                    {{ __('Ton') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
-                </flux:button>
-                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'mesafe' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'mesafe')">
-                    {{ __('Mesafe') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
-                </flux:button>
-                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'arac' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'arac')">
-                    {{ __('Araç') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
-                </flux:button>
-                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'malzeme' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'malzeme')">
-                    {{ __('Malzeme') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
-                </flux:button>
-            </div>
-
-            @if ($pivotMainTab === 'ton')
             @php
                 $mp = $this->materialPivot;
                 $materials = $mp['materials'] ?? [];
@@ -1217,107 +1210,6 @@ new #[Title('Delivery import detail')] class extends Component
                 </table>
                 </div>
             </div>
-            @elseif ($pivotMainTab === 'mesafe')
-                <div class="p-4">
-                    @if (count($this->pivotMesafeRows) === 0)
-                        <flux:text class="text-zinc-500">{{ __('Bu rapor tipi için varış / mesafe özeti tanımlı değil.') }}</flux:text>
-                    @else
-                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                            <table class="w-full min-w-full border-collapse border border-zinc-200 text-sm dark:border-zinc-600">
-                                <thead class="bg-zinc-100 dark:bg-zinc-800">
-                                    <tr>
-                                        @foreach (array_keys($this->pivotMesafeRows[0]) as $col)
-                                            <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ $col }}</th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($this->pivotMesafeRows as $row)
-                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
-                                            @foreach ($row as $cell)
-                                                <td class="border border-zinc-200 px-3 py-2 font-mono tabular-nums dark:border-zinc-600">
-                                                    @if (is_float($cell) || is_int($cell))
-                                                        {{ number_format((float) $cell, 3, ',', '.') }}
-                                                    @else
-                                                        {{ $cell }}
-                                                    @endif
-                                                </td>
-                                            @endforeach
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                </div>
-            @elseif ($pivotMainTab === 'malzeme')
-                <div class="p-4">
-                    @if (count($this->pivotMalzemeRows) === 0)
-                        <flux:text class="text-zinc-500">{{ __('Malzeme özeti oluşturulamadı.') }}</flux:text>
-                    @else
-                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                            <table class="w-full min-w-full border-collapse border border-zinc-200 text-sm dark:border-zinc-600">
-                                <thead class="bg-zinc-100 dark:bg-zinc-800">
-                                    <tr>
-                                        @foreach (array_keys($this->pivotMalzemeRows[0]) as $col)
-                                            <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ $col }}</th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($this->pivotMalzemeRows as $row)
-                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
-                                            @foreach ($row as $cell)
-                                                <td class="border border-zinc-200 px-3 py-2 font-mono tabular-nums dark:border-zinc-600">
-                                                    @if (is_float($cell) || is_int($cell))
-                                                        {{ number_format((float) $cell, 3, ',', '.') }}
-                                                    @else
-                                                        {{ $cell }}
-                                                    @endif
-                                                </td>
-                                            @endforeach
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @endif
-                </div>
-            @elseif ($pivotMainTab === 'arac')
-                <div class="p-4">
-                    @if (count($this->vehicleDdBdRows) === 0)
-                        <flux:text class="text-zinc-500">{{ __('Araç bazlı eşleştirme için uygun satır yok.') }}</flux:text>
-                    @else
-                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                            <table class="w-full min-w-full border-collapse border border-zinc-200 text-sm dark:border-zinc-600">
-                                <thead class="bg-zinc-100 dark:bg-zinc-800">
-                                    <tr>
-                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Plaka') }}</th>
-                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('DD işlem') }}</th>
-                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('BD işlem') }}</th>
-                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('DD ton') }}</th>
-                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('BD ton') }}</th>
-                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('Toplam ton') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($this->vehicleDdBdRows as $v)
-                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
-                                            <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $v['plaka'] }}</td>
-                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ $v['dd_sefer'] }}</td>
-                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ $v['bd_sefer'] }}</td>
-                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ number_format((float) $v['dd_miktar'], 3, ',', '.') }}</td>
-                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ number_format((float) $v['bd_miktar'], 3, ',', '.') }}</td>
-                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ number_format((float) $v['toplam_miktar'], 3, ',', '.') }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        <flux:text class="mt-2 text-xs text-zinc-500">{{ __('Araç eşleştirmesi: Klinker ↔ Cüruf/Petrokok, FIFO, 7 gün penceresi; sıralama tarih → giriş → çıkış → plaka.') }}</flux:text>
-                    @endif
-                </div>
-            @endif
         @elseif (count($this->pivotRows) === 0)
             @if ($zipUnavailable)
                 <div class="p-4 pt-0">
@@ -1468,7 +1360,7 @@ new #[Title('Delivery import detail')] class extends Component
 
     <flux:card class="p-4">
         <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <flux:heading size="lg">{{ __('Plaka düzeltme talepleri') }} <span class="font-semibold text-amber-600 dark:text-amber-400">?*</span></flux:heading>
+            <flux:heading size="lg">{{ __('Plaka düzeltme talepleri') }}</flux:heading>
             @php
                 $pendingPlateReqCount = count(array_filter($this->plateCorrectionRequests, fn ($r) => ($r->status ?? '') === 'pending'));
             @endphp
@@ -1683,7 +1575,7 @@ new #[Title('Delivery import detail')] class extends Component
                     <div class="mt-2">
                         @if ($this->plateCorrectionFeatureEnabled)
                             <flux:button size="sm" variant="outline" icon="magnifying-glass" wire:click="openPlateCorrectionModal">
-                                {{ __('Plaka düzeltme talebi oluştur') }} <span class="font-semibold text-amber-600 dark:text-amber-400">?*</span>
+                                {{ __('Plaka düzeltme talebi oluştur') }}
                             </flux:button>
                         @else
                             <flux:text class="text-xs text-zinc-500">{{ __('Plaka talebi için migration gerekli: php artisan migrate') }}</flux:text>

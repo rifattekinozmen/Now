@@ -94,7 +94,7 @@ class DeliveryReportPivotService
      * @param  DeliveryImport  $import  Teslimat import batch'i
      * @return array{dates: array<int, string>, materials: array<int, array{key: string, label: string}>, rows: array<int, array{tarih: string, material_totals: array<string, float>, material_counts: array<string, int>, row_total: float, row_total_count: int, boş_dolu: float, dolu_dolu: float, malzeme_kisa_metni: string}>, totals_row: array{material_totals: array<string, float>, material_counts: array<string, int>, row_total: float, row_total_count: int, boş_dolu: float, dolu_dolu: float}, fatura_rota_gruplari: array<int, array{route_key: string, route_label: string, kalemler: array, route_toplam: float}>, fatura_toplam: float, firma_fatura_gruplari: array<int, array{label: string, rota_gruplari: array, toplam: float}>}
      */
-    public function buildMaterialPivot(DeliveryImport $import): array
+    public function buildMaterialPivot(DeliveryImport $import, ?string $plateFilter = null, ?int $plateIndex = null): array
     {
         $config = $this->getReportTypeConfig($import);
         $mp = $config['material_pivot'] ?? null;
@@ -158,6 +158,12 @@ class DeliveryReportPivotService
 
         foreach ($rows as $row) {
             $data = $row->row_data ?? [];
+            if ($plateFilter !== null && $plateFilter !== '' && $plateIndex !== null) {
+                $rowPlate = trim((string) ($data[$plateIndex] ?? ''));
+                if ($this->normalizePlateForMatch($rowPlate) !== $this->normalizePlateForMatch($plateFilter)) {
+                    continue;
+                }
+            }
             $date = $this->normalizeDateForPivot((string) ($data[$dateIndex] ?? ''));
             $code = trim((string) ($data[$materialCodeIndex] ?? ''));
             $short = $materialShortIndex !== null ? trim((string) ($data[$materialShortIndex] ?? '')) : '';
@@ -1172,6 +1178,11 @@ class DeliveryReportPivotService
         }
 
         return $result;
+    }
+
+    protected function normalizePlateForMatch(string $plate): string
+    {
+        return strtoupper(str_replace([' ', '-'], '', trim($plate)));
     }
 
     /**
