@@ -4,6 +4,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Tevkifatlı Özmal Araç Plakaları (624 2/10 Yük Taşımacılığı)
+    |--------------------------------------------------------------------------
+    | Fatura kalem özetinde "Tevkifatlı" grubuna dahil edilecek plakaları tanımlar.
+    | İstenirse import bazında meta.tevkifatli_ozmal_plakalar ile override edilebilir.
+    */
+    'tevkifatli_ozmal_plakalar' => [],
+
+    /*
+    |--------------------------------------------------------------------------
     | Teslimat Raporu Akışı (7 günlük Excel → Pivot)
     |--------------------------------------------------------------------------
     | 1. Tarafınıza haftalık (7 günlük) Excel teslimat raporu iletilir.

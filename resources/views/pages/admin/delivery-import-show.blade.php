@@ -1465,6 +1465,80 @@ new #[Title('Delivery import detail')] class extends Component
             </div>
 
             <div class="space-y-8">
+                @php
+                    $faturaPlakaOzeti = $this->materialPivot['fatura_plaka_ozeti'] ?? [];
+                    $plakaBazliRows = $faturaPlakaOzeti['plakaya_gore'] ?? [];
+                    $tevkifatliPlakalar = $faturaPlakaOzeti['tevkifatli_plakalar'] ?? [];
+                @endphp
+
+                @if ($faturaPlakaOzeti !== [])
+                    <div class="rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <div class="border-b border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/70">
+                            <flux:heading size="sm">{{ __('Pivot Sonucuna Göre Fatura Kalemi Toplamları') }}</flux:heading>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[680px] border-collapse text-sm dark:border-zinc-600">
+                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                    <tr class="text-start">
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Kırılım') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('Toplam Miktar (Ton)') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Not') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="bg-white dark:bg-zinc-950">
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ __('1) Tüm plakalar') }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-end font-mono tabular-nums dark:border-zinc-600">{{ number_format((float) ($faturaPlakaOzeti['tum_plakalar_toplam'] ?? 0), 2, ',', '.') }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-zinc-600 dark:border-zinc-600 dark:text-zinc-300">{{ __('Pivot plaka toplamı') }}</td>
+                                    </tr>
+                                    <tr class="bg-zinc-50 dark:bg-zinc-900">
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ __('2) Tevkifatlı 624 2/10 Yük Taşımacılığı Özmal Araç Plakaları') }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-end font-mono tabular-nums dark:border-zinc-600">{{ number_format((float) ($faturaPlakaOzeti['tevkifatli_toplam'] ?? 0), 2, ',', '.') }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-zinc-600 dark:border-zinc-600 dark:text-zinc-300">
+                                            @if ($tevkifatliPlakalar !== [])
+                                                {{ implode(', ', $tevkifatliPlakalar) }}
+                                            @else
+                                                {{ __('Tevkifatlı özmal plaka listesi tanımlanmadı') }}
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr class="bg-white dark:bg-zinc-950">
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ __('3) Diğer') }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-end font-mono tabular-nums dark:border-zinc-600">{{ number_format((float) ($faturaPlakaOzeti['diger_toplam'] ?? 0), 2, ',', '.') }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-zinc-600 dark:border-zinc-600 dark:text-zinc-300">{{ __('Tevkifatlı liste dışında kalan plakalar') }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($plakaBazliRows !== [])
+                    <div class="rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <div class="border-b border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/70">
+                            <flux:heading size="sm">{{ __('4) Plakaya Göre') }}</flux:heading>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[420px] border-collapse text-sm dark:border-zinc-600">
+                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                    <tr class="text-start">
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Plaka') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('Toplam Miktar (Ton)') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($plakaBazliRows as $plakaSatiri)
+                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                            <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $plakaSatiri['plaka'] ?? '' }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end font-mono tabular-nums dark:border-zinc-600">{{ number_format((float) ($plakaSatiri['miktar'] ?? 0), 2, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endif
+
                 @foreach ($this->materialPivot['fatura_rota_gruplari'] as $grup)
                     <div>
                         <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-600">

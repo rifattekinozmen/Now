@@ -723,6 +723,7 @@ class DeliveryReportPivotService
          * Grup 2 (Diğer): firma_adi = "A.Ş.", "GÜNEY", "TAŞERON" vb.
          */
         $firmaFaturaGruplari = $this->buildFirmaBasedInvoiceTables($import, $config, $faturaRotaGruplari);
+        $plateBasedInvoiceSummary = $this->buildPlateBasedInvoiceSummary($import, $config);
 
         return [
             'dates' => array_keys($pivotData),
@@ -739,6 +740,108 @@ class DeliveryReportPivotService
             'fatura_rota_gruplari' => $faturaRotaGruplari,
             'fatura_toplam' => round($faturaGenelToplam, 2),
             'firma_fatura_gruplari' => $firmaFaturaGruplari,
+            'fatura_plaka_ozeti' => $plateBasedInvoiceSummary,
+        ];
+    }
+
+    /**
+     * Pivot metrik miktarını plaka bazında özetler.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array{
+     *   tum_plakalar_toplam: float,
+     *   tevkifatli_toplam: float,
+     *   diger_toplam: float,
+     *   tevkifatli_plakalar: array<int, string>,
+     *   plakaya_gore: array<int, array{plaka: string, miktar: float}>
+     * }
+     */
+    protected function buildPlateBasedInvoiceSummary(DeliveryImport $import, array $config): array
+    {
+        $mapping = $config['invoice_line_mapping'] ?? [];
+        $mp = $config['material_pivot'] ?? null;
+        $plateIndex = isset($mapping['plaka']) ? (int) $mapping['plaka'] : null;
+        $quantityIndex = is_array($mp) && isset($mp['quantity_index']) ? (int) $mp['quantity_index'] : null;
+
+        if ($plateIndex === null || $quantityIndex === null) {
+            return [
+                'tum_plakalar_toplam' => 0.0,
+                'tevkifatli_toplam' => 0.0,
+                'diger_toplam' => 0.0,
+                'tevkifatli_plakalar' => [],
+                'plakaya_gore' => [],
+            ];
+        }
+
+        $rawTevkifatli = data_get($import->meta, 'tevkifatli_ozmal_plakalar', config('delivery_report.tevkifatli_ozmal_plakalar', []));
+        $tevkifatliPlakalar = [];
+        if (is_array($rawTevkifatli)) {
+            foreach ($rawTevkifatli as $plate) {
+                $plateStr = trim((string) $plate);
+                if ($plateStr !== '') {
+                    $tevkifatliPlakalar[] = $plateStr;
+                }
+            }
+        }
+        $tevkifatliNormalizedSet = [];
+        foreach ($tevkifatliPlakalar as $plate) {
+            $tevkifatliNormalizedSet[$this->normalizePlateForMatch($plate)] = true;
+        }
+
+        $rows = $import->relationLoaded('reportRows')
+            ? $import->reportRows
+            : $import->reportRows()->orderBy('row_index')->get();
+
+        $byPlate = [];
+        foreach ($rows as $row) {
+            $data = $row->row_data ?? [];
+            $plate = trim((string) ($data[$plateIndex] ?? ''));
+            if ($plate === '') {
+                continue;
+            }
+
+            $qty = $this->extractQuantity($data[$quantityIndex] ?? null);
+            if ($qty === null || $qty <= 0.001) {
+                continue;
+            }
+
+            $normalized = $this->normalizePlateForMatch($plate);
+            if (! isset($byPlate[$normalized])) {
+                $byPlate[$normalized] = ['plaka' => $plate, 'miktar' => 0.0];
+            }
+            $byPlate[$normalized]['miktar'] += $qty;
+        }
+
+        usort($byPlate, function (array $a, array $b): int {
+            return strcmp($this->normalizePlateForMatch((string) ($a['plaka'] ?? '')), $this->normalizePlateForMatch((string) ($b['plaka'] ?? '')));
+        });
+
+        $allTotal = 0.0;
+        $tevkifatliTotal = 0.0;
+        $otherTotal = 0.0;
+        foreach ($byPlate as $plateRow) {
+            $amount = (float) ($plateRow['miktar'] ?? 0);
+            $allTotal += $amount;
+            $plateNorm = $this->normalizePlateForMatch((string) ($plateRow['plaka'] ?? ''));
+            if (isset($tevkifatliNormalizedSet[$plateNorm])) {
+                $tevkifatliTotal += $amount;
+            } else {
+                $otherTotal += $amount;
+            }
+        }
+
+        return [
+            'tum_plakalar_toplam' => round($allTotal, 2),
+            'tevkifatli_toplam' => round($tevkifatliTotal, 2),
+            'diger_toplam' => round($otherTotal, 2),
+            'tevkifatli_plakalar' => $tevkifatliPlakalar,
+            'plakaya_gore' => array_map(
+                fn (array $row): array => [
+                    'plaka' => (string) ($row['plaka'] ?? ''),
+                    'miktar' => round((float) ($row['miktar'] ?? 0), 2),
+                ],
+                $byPlate
+            ),
         ];
     }
 
