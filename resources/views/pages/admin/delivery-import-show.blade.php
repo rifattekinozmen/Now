@@ -40,6 +40,9 @@ new #[Title('Delivery import detail')] class extends Component
     #[Url(history: true)]
     public string $rowSortDir = 'asc';
 
+    #[Url(history: true)]
+    public string $rowPlateFilter = '';
+
     public ?int $rowDetailExcelRowIndex = null;
 
     /**
@@ -92,6 +95,11 @@ new #[Title('Delivery import detail')] class extends Component
     {
         $this->rowSort = 'row_index';
         $this->rowSortDir = 'asc';
+        $this->resetPage('diRows');
+    }
+
+    public function updatedRowPlateFilter(): void
+    {
         $this->resetPage('diRows');
     }
 
@@ -296,9 +304,109 @@ new #[Title('Delivery import detail')] class extends Component
         $q = DeliveryImportRow::query()
             ->where('delivery_import_id', $this->deliveryImport->id);
 
+        $this->applyImportedRowPlateFilter($q);
         $this->applyImportedRowSort($q);
 
         return $q->paginate(25, pageName: 'diRows');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    #[Computed]
+    public function rowPlateOptions(): array
+    {
+        $plateIdx = $this->resolvePlateIndexForImportedRows();
+        if ($plateIdx === null) {
+            return [];
+        }
+
+        $rows = DeliveryImportRow::query()
+            ->where('delivery_import_id', $this->deliveryImport->id)
+            ->orderBy('row_index')
+            ->get(['row_data']);
+
+        $set = [];
+        foreach ($rows as $row) {
+            $plate = trim((string) (($row->row_data ?? [])[$plateIdx] ?? ''));
+            if ($plate !== '') {
+                $set[$plate] = true;
+            }
+        }
+
+        $plates = array_keys($set);
+        usort($plates, function (string $a, string $b): int {
+            return strcmp($this->normalizePlateForSort($a), $this->normalizePlateForSort($b));
+        });
+
+        return $plates;
+    }
+
+    private function applyImportedRowPlateFilter(Builder $query): void
+    {
+        $selected = trim($this->rowPlateFilter);
+        if ($selected === '') {
+            return;
+        }
+
+        $plateIdx = $this->resolvePlateIndexForImportedRows();
+        if ($plateIdx === null) {
+            return;
+        }
+
+        $driver = DB::connection()->getDriverName();
+        $path = '$['.$plateIdx.']';
+        $normalized = $this->normalizePlateForSort($selected);
+
+        if ($driver === 'mysql') {
+            $query->whereRaw(
+                "
+                UPPER(
+                    REPLACE(
+                        REPLACE(
+                            TRIM(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?))),
+                            ' ',
+                            ''
+                        ),
+                        '-',
+                        ''
+                    )
+                ) = ?
+                ",
+                [$path, $normalized]
+            );
+
+            return;
+        }
+
+        if ($driver === 'sqlite') {
+            $query->whereRaw(
+                "upper(replace(replace(trim(json_extract(row_data, ?)), ' ', ''), '-', '')) = ?",
+                [$path, $normalized]
+            );
+        }
+    }
+
+    private function resolvePlateIndexForImportedRows(): ?int
+    {
+        $types = config('delivery_report.report_types', []);
+        $rt = $this->deliveryImport->report_type;
+        $reportConfig = $rt ? ($types[$rt] ?? []) : [];
+        $vehicleMatching = $reportConfig['material_pivot']['vehicle_matching'] ?? null;
+
+        if (is_array($vehicleMatching) && isset($vehicleMatching['plate_index'])) {
+            return (int) $vehicleMatching['plate_index'];
+        }
+
+        $dimensions = $reportConfig['pivot_dimensions'] ?? [];
+        $plakaIndex = array_search('Plaka', $dimensions, true);
+
+        return $plakaIndex === false ? null : (int) $plakaIndex;
+    }
+
+    private function normalizePlateForSort(string $plate): string
+    {
+        return strtoupper(str_replace([' ', '-'], '', trim($plate)));
     }
 
     private function applyImportedRowSort(Builder $query): void
@@ -1120,10 +1228,20 @@ new #[Title('Delivery import detail')] class extends Component
                 <flux:heading size="lg">{{ __('Imported rows') }}</flux:heading>
                 <flux:text class="mt-1 text-sm text-zinc-500">{{ __('Her satır Excel’deki bir veri satırına karşılık gelir; sütun sırası aşağıdaki seçime göre değişir. Tüm satırlar için sayfalama kullanın.') }}</flux:text>
             </div>
-            <flux:select wire:model.live="rowTableMode" :label="__('Column order')" class="max-w-sm">
-                <option value="excel">{{ __('Excel file (left to right, as in sheet)') }}</option>
-                <option value="schema">{{ __('Report schema (normalized field order)') }}</option>
-            </flux:select>
+            <div class="flex flex-wrap items-end gap-3">
+                @if (count($this->rowPlateOptions) > 0)
+                    <flux:select wire:model.live="rowPlateFilter" :label="__('Plaka filtresi')" class="min-w-[14rem]">
+                        <option value="">{{ __('Tüm plakalar') }}</option>
+                        @foreach ($this->rowPlateOptions as $plateOpt)
+                            <option value="{{ $plateOpt }}">{{ $plateOpt }}</option>
+                        @endforeach
+                    </flux:select>
+                @endif
+                <flux:select wire:model.live="rowTableMode" :label="__('Column order')" class="max-w-sm">
+                    <option value="excel">{{ __('Excel file (left to right, as in sheet)') }}</option>
+                    <option value="schema">{{ __('Report schema (normalized field order)') }}</option>
+                </flux:select>
+            </div>
         </div>
         @if ($this->rowTableMode === 'excel' && count($this->excelColumnLayout) === 0)
             <flux:callout variant="neutral" class="mb-4" icon="information-circle">
@@ -1142,14 +1260,7 @@ new #[Title('Delivery import detail')] class extends Component
                     <thead>
                         <tr class="text-start">
                             <th scope="col" class="sticky left-0 z-30 w-24 min-w-[5.5rem] border border-zinc-300 border-e-2 border-e-zinc-400 bg-zinc-200 px-3 py-2 text-left text-[11px] font-semibold leading-tight text-zinc-900 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.08)] dark:border-zinc-600 dark:border-e-zinc-500 dark:bg-zinc-800 dark:text-white dark:shadow-[4px_0_14px_-2px_rgba(0,0,0,0.55)]">
-                                <button type="button" wire:click="toggleRowSort('row_index')" class="m-0 flex w-full min-w-0 cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white" title="{{ __('Row No') }}">
-                                    <span class="min-w-0 flex-1 truncate text-zinc-900 dark:text-white">{{ __('Row No') }}</span>
-                                    @if ($this->rowSort === 'row_index')
-                                        <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
-                                    @else
-                                        <flux:icon name="chevrons-up-down" variant="micro" class="shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
-                                    @endif
-                                </button>
+                                <span class="block truncate text-zinc-900 dark:text-white">{{ __('Row No') }}</span>
                             </th>
                             @if ($this->useExcelColumnOrder)
                                 @foreach ($this->excelColumnLayout as $col)
@@ -1157,32 +1268,14 @@ new #[Title('Delivery import detail')] class extends Component
                                         $sortKey = $col['expected_index'] !== null ? 'data:'.$col['expected_index'] : null;
                                     @endphp
                                     <th scope="col" class="min-w-[8rem] max-w-[11rem] border border-zinc-300 bg-zinc-200 px-3 py-2 text-left text-[11px] font-semibold leading-tight text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white" title="{{ ($col['header'] !== '' ? $col['header'] : '—').' · '.__('Excel column :n', ['n' => $col['excel_col'] + 1]) }}">
-                                        @if ($sortKey !== null)
-                                            <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 flex w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white" title="{{ $col['header'] !== '' ? $col['header'] : '—' }}">
-                                                <span class="min-w-0 flex-1 truncate text-zinc-900 dark:text-white">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
-                                                @if ($this->rowSort === $sortKey)
-                                                    <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
-                                                @else
-                                                    <flux:icon name="chevrons-up-down" variant="micro" class="shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
-                                                @endif
-                                            </button>
-                                        @else
-                                            <span class="block truncate text-left font-semibold text-zinc-900 dark:text-white" title="{{ $col['header'] !== '' ? $col['header'] : '—' }}">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
-                                        @endif
+                                        <span class="block truncate text-left font-semibold text-zinc-900 dark:text-white" title="{{ $col['header'] !== '' ? $col['header'] : '—' }}">{{ $col['header'] !== '' ? $col['header'] : '—' }}</span>
                                     </th>
                                 @endforeach
                             @else
                                 @foreach ($this->expectedHeaders as $idx => $label)
                                     @php $sortKey = 'data:'.$idx; @endphp
                                     <th scope="col" class="min-w-[7rem] max-w-[11rem] border border-zinc-300 bg-zinc-200 px-3 py-2 text-left text-[11px] font-semibold leading-tight text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white" title="{{ $label }}">
-                                        <button type="button" wire:click="toggleRowSort('{{ $sortKey }}')" class="m-0 flex w-full min-w-0 cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-left font-semibold text-zinc-900 outline-none ring-0 hover:opacity-90 dark:text-white dark:hover:text-white" title="{{ $label }}">
-                                            <span class="min-w-0 flex-1 truncate text-zinc-900 dark:text-white">{{ $label }}</span>
-                                            @if ($this->rowSort === $sortKey)
-                                                <flux:icon name="{{ $this->rowSortDir === 'asc' ? 'chevron-up' : 'chevron-down' }}" variant="micro" class="shrink-0 text-zinc-700 dark:text-white" />
-                                            @else
-                                                <flux:icon name="chevrons-up-down" variant="micro" class="shrink-0 text-zinc-600 opacity-80 dark:text-white/80" />
-                                            @endif
-                                        </button>
+                                        <span class="block truncate text-zinc-900 dark:text-white">{{ $label }}</span>
                                     </th>
                                 @endforeach
                             @endif
