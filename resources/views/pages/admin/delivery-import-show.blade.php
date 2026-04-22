@@ -1,14 +1,17 @@
 <?php
 
 use App\Models\DeliveryImport;
+use App\Models\DeliveryImportPlateCorrection;
 use App\Models\DeliveryImportRow;
 use App\Services\Delivery\DeliveryReportImportService;
+use App\Services\Delivery\DeliveryPlateCorrectionService;
 use App\Services\Delivery\DeliveryReportPivotService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -44,6 +47,18 @@ new #[Title('Delivery import detail')] class extends Component
     public string $rowPlateFilter = '';
 
     public ?int $rowDetailExcelRowIndex = null;
+
+    public ?int $rowDetailRowId = null;
+
+    public string $rowDetailCurrentPlate = '';
+
+    public string $plateCorrectionNewPlate = '';
+
+    public string $plateCorrectionReason = '';
+
+    public ?int $activePlateCorrectionRequestId = null;
+
+    public string $plateCorrectionReviewNote = '';
 
     /**
      * @var array<int, array{label: string, value: string}>
@@ -147,9 +162,106 @@ new #[Title('Delivery import detail')] class extends Component
         }
 
         $this->rowDetailExcelRowIndex = (int) $row->row_index;
+        $this->rowDetailRowId = (int) $row->id;
         $this->rowDetailItems = $items;
+        $plateIdx = $this->resolvePlateIndexForImportedRows();
+        $this->rowDetailCurrentPlate = $plateIdx !== null ? trim((string) (($row->row_data ?? [])[$plateIdx] ?? '')) : '';
+        $this->plateCorrectionNewPlate = '';
+        $this->plateCorrectionReason = '';
 
         $this->dispatch('modal-show', name: 'row-detail', scope: $this->getId());
+    }
+
+    public function openPlateCorrectionModal(): void
+    {
+        if (! $this->plateCorrectionFeatureEnabled) {
+            return;
+        }
+
+        if ($this->rowDetailRowId === null) {
+            return;
+        }
+
+        $this->plateCorrectionNewPlate = $this->rowDetailCurrentPlate;
+        $this->plateCorrectionReason = '';
+        $this->dispatch('modal-show', name: 'plate-correction', scope: $this->getId());
+    }
+
+    public function submitPlateCorrectionRequest(): void
+    {
+        if (! $this->plateCorrectionFeatureEnabled) {
+            $this->addError('plateCorrectionNewPlate', __('Plaka düzeltme özelliği için migration çalıştırılmalıdır.'));
+
+            return;
+        }
+
+        if ($this->rowDetailRowId === null) {
+            return;
+        }
+
+        $newPlate = trim($this->plateCorrectionNewPlate);
+        if ($newPlate === '') {
+            $this->addError('plateCorrectionNewPlate', __('Yeni plaka boş olamaz.'));
+
+            return;
+        }
+
+        /** @var DeliveryImportRow $row */
+        $row = DeliveryImportRow::query()
+            ->where('delivery_import_id', $this->deliveryImport->id)
+            ->findOrFail($this->rowDetailRowId);
+
+        app(DeliveryPlateCorrectionService::class)->createRequest(
+            $this->deliveryImport,
+            $row,
+            $newPlate,
+            $this->plateCorrectionReason !== '' ? $this->plateCorrectionReason : null,
+            auth()->id()
+        );
+
+        $this->dispatch('modal-close', name: 'plate-correction', scope: $this->getId());
+    }
+
+    public function approvePlateCorrection(int $requestId): void
+    {
+        if (! $this->plateCorrectionFeatureEnabled) {
+            return;
+        }
+
+        Gate::authorize('update', $this->deliveryImport);
+        /** @var DeliveryImportPlateCorrection $request */
+        $request = DeliveryImportPlateCorrection::query()
+            ->where('delivery_import_id', $this->deliveryImport->id)
+            ->findOrFail($requestId);
+
+        app(DeliveryPlateCorrectionService::class)->approveRequest(
+            $request,
+            auth()->id(),
+            $this->plateCorrectionReviewNote !== '' ? $this->plateCorrectionReviewNote : null
+        );
+        $this->activePlateCorrectionRequestId = null;
+        $this->plateCorrectionReviewNote = '';
+    }
+
+    public function rejectPlateCorrection(int $requestId): void
+    {
+        if (! $this->plateCorrectionFeatureEnabled) {
+            return;
+        }
+
+        Gate::authorize('update', $this->deliveryImport);
+        /** @var DeliveryImportPlateCorrection $request */
+        $request = DeliveryImportPlateCorrection::query()
+            ->where('delivery_import_id', $this->deliveryImport->id)
+            ->findOrFail($requestId);
+
+        app(DeliveryPlateCorrectionService::class)->rejectRequest(
+            $request,
+            auth()->id(),
+            $this->plateCorrectionReviewNote !== '' ? $this->plateCorrectionReviewNote : null
+        );
+        $this->activePlateCorrectionRequestId = null;
+        $this->plateCorrectionReviewNote = '';
     }
 
     /**
@@ -340,6 +452,31 @@ new #[Title('Delivery import detail')] class extends Component
         });
 
         return $plates;
+    }
+
+    /**
+     * @return array<int, DeliveryImportPlateCorrection>
+     */
+    #[Computed]
+    public function plateCorrectionRequests(): array
+    {
+        if (! $this->plateCorrectionFeatureEnabled) {
+            return [];
+        }
+
+        return DeliveryImportPlateCorrection::query()
+            ->where('delivery_import_id', $this->deliveryImport->id)
+            ->with(['requestedByUser:id,name', 'reviewedByUser:id,name'])
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->all();
+    }
+
+    #[Computed]
+    public function plateCorrectionFeatureEnabled(): bool
+    {
+        return Schema::hasTable('delivery_import_plate_corrections');
     }
 
     private function applyImportedRowPlateFilter(Builder $query): void
@@ -1329,6 +1466,80 @@ new #[Title('Delivery import detail')] class extends Component
         @endif
     </flux:card>
 
+    <flux:card class="p-4">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <flux:heading size="lg">{{ __('Plaka düzeltme talepleri') }} <span class="font-semibold text-amber-600 dark:text-amber-400">?*</span></flux:heading>
+            @php
+                $pendingPlateReqCount = count(array_filter($this->plateCorrectionRequests, fn ($r) => ($r->status ?? '') === 'pending'));
+            @endphp
+            <flux:badge color="{{ $pendingPlateReqCount > 0 ? 'amber' : 'zinc' }}" size="sm">{{ __('Bekleyen: :n', ['n' => $pendingPlateReqCount]) }}</flux:badge>
+        </div>
+
+        @if (! $this->plateCorrectionFeatureEnabled)
+            <flux:callout variant="warning" icon="exclamation-triangle">
+                <flux:callout.text class="text-sm">
+                    {{ __('Plaka düzeltme özelliği için veritabanı migration çalıştırılmalı: php artisan migrate') }}
+                </flux:callout.text>
+            </flux:callout>
+        @elseif ($this->plateCorrectionRequests === [])
+            <flux:text class="text-sm text-zinc-500">{{ __('Henüz plaka düzeltme talebi yok.') }}</flux:text>
+        @else
+            <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <table class="w-full min-w-[900px] border-collapse text-sm dark:border-zinc-600">
+                    <thead class="bg-zinc-100 dark:bg-zinc-800">
+                        <tr class="text-start">
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Durum') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Excel satır') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Eski plaka') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Yeni plaka') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Talep eden') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Onaylayan') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Talep nedeni') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Talep zamanı') }}</th>
+                            @can('update', $deliveryImport)
+                                <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('İşlem') }}</th>
+                            @endcan
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($this->plateCorrectionRequests as $req)
+                            <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">
+                                    @if (($req->status ?? '') === 'pending')
+                                        <flux:badge color="amber" size="sm">{{ __('Bekliyor') }}</flux:badge>
+                                    @elseif (($req->status ?? '') === 'approved')
+                                        <flux:badge color="green" size="sm">{{ __('Onaylandı') }}</flux:badge>
+                                    @else
+                                        <flux:badge color="zinc" size="sm">{{ __('Reddedildi') }}</flux:badge>
+                                    @endif
+                                </td>
+                                <td class="border border-zinc-200 px-3 py-2 font-mono text-xs dark:border-zinc-600">{{ $req->row_index }}</td>
+                                <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $req->old_plate }}</td>
+                                <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $req->new_plate }}</td>
+                                <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $req->requestedByUser?->name ?? '—' }}</td>
+                                <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $req->reviewedByUser?->name ?? '—' }}</td>
+                                <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $req->request_reason ?: '—' }}</td>
+                                <td class="border border-zinc-200 px-3 py-2 text-xs text-zinc-500 dark:border-zinc-600">{{ optional($req->created_at)->format('d.m.Y H:i') }}</td>
+                                @can('update', $deliveryImport)
+                                    <td class="border border-zinc-200 px-3 py-2 text-end dark:border-zinc-600">
+                                        @if (($req->status ?? '') === 'pending')
+                                            <div class="inline-flex items-center gap-2">
+                                                <flux:button size="xs" variant="primary" wire:click="approvePlateCorrection({{ $req->id }})">{{ __('Onayla') }}</flux:button>
+                                                <flux:button size="xs" variant="ghost" wire:click="rejectPlateCorrection({{ $req->id }})">{{ __('Reddet') }}</flux:button>
+                                            </div>
+                                        @else
+                                            <span class="text-xs text-zinc-400">—</span>
+                                        @endif
+                                    </td>
+                                @endcan
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </flux:card>
+
     @if (! empty($this->materialPivot['fatura_rota_gruplari']))
         <flux:card class="scroll-mt-24 p-4">
             <div class="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1465,6 +1676,20 @@ new #[Title('Delivery import detail')] class extends Component
                 <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
                     {{ __('Excel satır: :n', ['n' => $rowDetailExcelRowIndex ?? '—']) }}
                 </p>
+                @if ($rowDetailCurrentPlate !== '')
+                    <div class="mt-2">
+                        <flux:text class="text-sm text-zinc-500">{{ __('Plaka') }}: <span class="font-mono text-zinc-800 dark:text-zinc-200">{{ $rowDetailCurrentPlate }}</span></flux:text>
+                    </div>
+                    <div class="mt-2">
+                        @if ($this->plateCorrectionFeatureEnabled)
+                            <flux:button size="sm" variant="outline" icon="magnifying-glass" wire:click="openPlateCorrectionModal">
+                                {{ __('Plaka düzeltme talebi oluştur') }} <span class="font-semibold text-amber-600 dark:text-amber-400">?*</span>
+                            </flux:button>
+                        @else
+                            <flux:text class="text-xs text-zinc-500">{{ __('Plaka talebi için migration gerekli: php artisan migrate') }}</flux:text>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             <div class="row-detail-sheet max-h-[70vh] overflow-auto rounded-lg border-2 border-zinc-400 bg-white dark:border-zinc-500 dark:bg-zinc-950">
@@ -1484,6 +1709,28 @@ new #[Title('Delivery import detail')] class extends Component
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </flux:modal>
+
+    <flux:modal name="plate-correction" class="w-full max-w-lg">
+        <div class="space-y-4 text-zinc-900 dark:text-zinc-100">
+            <div>
+                <h2 class="text-lg font-semibold">{{ __('Plaka düzeltme talebi') }}</h2>
+                <flux:text class="mt-1 text-sm text-zinc-500">{{ __('Talep admin onayı sonrası satır verisine ve yüklenen Excel dosyasına uygulanır.') }}</flux:text>
+            </div>
+
+            <div class="grid gap-3">
+                <flux:input :label="__('Mevcut plaka')" :value="$rowDetailCurrentPlate" readonly />
+                <flux:input wire:model="plateCorrectionNewPlate" :label="__('Yeni plaka')" />
+                <flux:textarea wire:model="plateCorrectionReason" :label="__('Talep gerekçesi (opsiyonel)')" rows="3" />
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Vazgeç') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="primary" wire:click="submitPlateCorrectionRequest">{{ __('Talep gönder') }}</flux:button>
             </div>
         </div>
     </flux:modal>
