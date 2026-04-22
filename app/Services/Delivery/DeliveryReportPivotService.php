@@ -1631,17 +1631,346 @@ class DeliveryReportPivotService
     }
 
     /**
+     * Özel sütun indeksleri → etiket eşlemesi ile pivot satırları üretir (config metrikleri ile).
+     *
+     * @param  array<int, string>  $dimensionIndexToLabel  [columnIndex => dimensionLabel]
+     * @return array<int, array<string, mixed>>
+     */
+    public function buildPivotForDimensionMap(DeliveryImport $import, array $dimensionIndexToLabel): array
+    {
+        $config = $this->getReportTypeConfig($import);
+        $metrics = $config['pivot_metrics'];
+        $metricLabels = $config['pivot_metric_labels'] ?? [];
+
+        if ($metrics === [] || $dimensionIndexToLabel === []) {
+            return [];
+        }
+
+        $rows = $import->relationLoaded('reportRows')
+            ? $import->reportRows
+            : $import->reportRows()->orderBy('row_index')->get();
+        $aggregated = [];
+
+        foreach ($rows as $row) {
+            $data = $row->row_data ?? [];
+            $groupKeyParts = [];
+            foreach ($dimensionIndexToLabel as $idx => $_label) {
+                $groupKeyParts[] = trim((string) ($data[$idx] ?? ''));
+            }
+            $groupKey = implode('|', $groupKeyParts);
+
+            if (! isset($aggregated[$groupKey])) {
+                $aggregated[$groupKey] = [];
+                foreach ($dimensionIndexToLabel as $idx => $label) {
+                    $aggregated[$groupKey][$label] = trim((string) ($data[$idx] ?? ''));
+                }
+                foreach (array_keys($metrics) as $metricKey) {
+                    if ($metricKey === 'rows') {
+                        $aggregated[$groupKey]['_count_rows'] = 0;
+                    } else {
+                        $aggregated[$groupKey]['_sum_'.$metricKey] = 0;
+                    }
+                }
+            }
+
+            foreach ($metrics as $metricIndex => $metricType) {
+                if ($metricIndex === 'rows') {
+                    $aggregated[$groupKey]['_count_rows']++;
+                } elseif ($metricType === 'sum' && isset($data[$metricIndex])) {
+                    $val = $data[$metricIndex];
+                    $aggregated[$groupKey]['_sum_'.$metricIndex] += is_numeric($val) ? (float) $val : 0;
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($aggregated as $row) {
+            $out = [];
+            foreach ($dimensionIndexToLabel as $_idx => $label) {
+                $out[$label] = $row[$label] ?? '';
+            }
+            foreach ($metrics as $metricIndex => $metricType) {
+                $ml = $metricLabels[$metricIndex] ?? ('Metrik '.$metricIndex);
+                if ($metricIndex === 'rows') {
+                    $out[$ml] = (int) ($row['_count_rows'] ?? 0);
+                } else {
+                    $out[$ml] = (float) ($row['_sum_'.$metricIndex] ?? 0);
+                }
+            }
+            $result[] = $out;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Malzeme kodu + kısa metin birleşik anahtarı ile özet pivot.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function buildMalzemeCombinedPivot(DeliveryImport $import): array
+    {
+        $config = $this->getReportTypeConfig($import);
+        $mp = $config['material_pivot'] ?? null;
+        $metrics = $config['pivot_metrics'];
+        $metricLabels = $config['pivot_metric_labels'] ?? [];
+
+        if (! $mp || ! isset($mp['material_code_index'], $mp['quantity_index']) || $metrics === []) {
+            return [];
+        }
+
+        $codeIdx = (int) $mp['material_code_index'];
+        $shortIdx = isset($mp['material_short_text_index']) ? (int) $mp['material_short_text_index'] : null;
+
+        $rows = $import->relationLoaded('reportRows')
+            ? $import->reportRows
+            : $import->reportRows()->orderBy('row_index')->get();
+
+        $labelMalzeme = 'Malzeme';
+        $aggregated = [];
+
+        foreach ($rows as $row) {
+            $data = $row->row_data ?? [];
+            $code = trim((string) ($data[$codeIdx] ?? ''));
+            $short = $shortIdx !== null ? trim((string) ($data[$shortIdx] ?? '')) : '';
+            $matLabel = ($code !== '' && $short !== '') ? $code.' | '.$short : ($code !== '' ? $code : ($short !== '' ? $short : ''));
+            if ($matLabel === '') {
+                continue;
+            }
+
+            if (! isset($aggregated[$matLabel])) {
+                $aggregated[$matLabel] = [$labelMalzeme => $matLabel];
+                foreach (array_keys($metrics) as $metricKey) {
+                    if ($metricKey === 'rows') {
+                        $aggregated[$matLabel]['_count_rows'] = 0;
+                    } else {
+                        $aggregated[$matLabel]['_sum_'.$metricKey] = 0;
+                    }
+                }
+            }
+
+            foreach ($metrics as $metricIndex => $metricType) {
+                if ($metricIndex === 'rows') {
+                    $aggregated[$matLabel]['_count_rows']++;
+                } elseif ($metricType === 'sum') {
+                    $q = $this->extractQuantity($data[$metricIndex] ?? null);
+                    if ($q !== null) {
+                        $aggregated[$matLabel]['_sum_'.$metricIndex] += $q;
+                    }
+                }
+            }
+        }
+
+        $result = [];
+        foreach ($aggregated as $row) {
+            $out = [$labelMalzeme => $row[$labelMalzeme]];
+            foreach ($metrics as $metricIndex => $metricType) {
+                $ml = $metricLabels[$metricIndex] ?? ('Metrik '.$metricIndex);
+                if ($metricIndex === 'rows') {
+                    $out[$ml] = (int) ($row['_count_rows'] ?? 0);
+                } else {
+                    $out[$ml] = (float) ($row['_sum_'.$metricIndex] ?? 0);
+                }
+            }
+            $result[] = $out;
+        }
+
+        usort($result, fn (array $a, array $b): int => strcmp((string) ($a[$labelMalzeme] ?? ''), (string) ($b[$labelMalzeme] ?? '')));
+
+        return $result;
+    }
+
+    /**
      * Araç (Plaka) bazında Dolu-Dolu / Boş-Dolu sefer raporu üretir.
      *
-     * Her satır bir seferi temsil eder. Geçerli Miktar 2 (gecerli_miktar_2_index) > 0 ise
-     * araç her iki yönde de yük taşımış (DD sefer); aksi hâlde tek yönde taşımış (BD sefer).
+     * `vehicle_matching` config'i varsa: aynı plaka için Klinker → Cüruf/Petrokok FIFO eşleştirmesi
+     * (varsayılan 7 gün penceresi), sıralama: Tarih → araç giriş → çıkış → plaka.
      *
-     * Sadece material_pivot config'i bulunan rapor tipleri desteklenir (örn. endustriyel_hammadde).
-     * Desteklenmeyen tipler için boş dizi döner.
+     * Yoksa: Geçerli Miktar 2 > 0 ise DD satırı (legacy).
      *
      * @return array<int, array{plaka: string, dd_sefer: int, bd_sefer: int, toplam_sefer: int, dd_miktar: float, bd_miktar: float, toplam_miktar: float}>
      */
     public function buildVehicleDdBdReport(DeliveryImport $import): array
+    {
+        $config = $this->getReportTypeConfig($import);
+        $mp = $config['material_pivot'] ?? null;
+
+        if (! $mp || ! isset($mp['quantity_index'])) {
+            return [];
+        }
+
+        $vm = $mp['vehicle_matching'] ?? null;
+        if (! is_array($vm) || ! isset($vm['plate_index'], $vm['main_date_index'], $vm['window_days'])) {
+            return $this->buildVehicleDdBdReportLegacy($import);
+        }
+
+        $quantityIndex = (int) $mp['quantity_index'];
+        $codeIdx = (int) ($mp['material_code_index'] ?? 12);
+        $shortIdx = isset($mp['material_short_text_index']) ? (int) $mp['material_short_text_index'] : null;
+        $plateIdx = (int) $vm['plate_index'];
+        $mainDateIdx = (int) $vm['main_date_index'];
+        $windowSeconds = max(1, (int) $vm['window_days']) * 86400;
+
+        $entryDateIdx = array_key_exists('entry_date_index', $vm) && $vm['entry_date_index'] !== null ? (int) $vm['entry_date_index'] : null;
+        $entryTimeIdx = array_key_exists('entry_time_index', $vm) && $vm['entry_time_index'] !== null ? (int) $vm['entry_time_index'] : null;
+        $exitDateIdx = array_key_exists('exit_date_index', $vm) && $vm['exit_date_index'] !== null ? (int) $vm['exit_date_index'] : null;
+        $exitTimeIdx = array_key_exists('exit_time_index', $vm) && $vm['exit_time_index'] !== null ? (int) $vm['exit_time_index'] : null;
+
+        $rows = $import->relationLoaded('reportRows')
+            ? $import->reportRows
+            : $import->reportRows()->orderBy('row_index')->get();
+
+        /** @var array<string, list<array{class: string, qty: float, sort: array{tarih4: int, entry: int, exit: int, plaka: string}, match_ts: int}>> $byPlaka */
+        $byPlaka = [];
+
+        foreach ($rows as $row) {
+            $data = $row->row_data ?? [];
+            $plaka = trim((string) ($data[$plateIdx] ?? ''));
+            if ($plaka === '') {
+                continue;
+            }
+
+            $qty = $this->extractQuantity($data[$quantityIndex] ?? null);
+            if ($qty === null || $qty <= 0.001) {
+                continue;
+            }
+
+            $code = trim((string) ($data[$codeIdx] ?? ''));
+            $short = $shortIdx !== null ? trim((string) ($data[$shortIdx] ?? '')) : '';
+            $class = $this->classifyKlinkerCurufPetrokok($code, $short);
+            if ($class === 'other') {
+                continue;
+            }
+
+            $tarih4 = $this->mainDateToSortInt($data[$mainDateIdx] ?? '');
+            $entryTs = $this->combineVehicleDateTimeSortable($data, $mainDateIdx, $entryDateIdx, $entryTimeIdx);
+            $exitTs = $this->combineVehicleDateTimeSortable($data, $mainDateIdx, $exitDateIdx, $exitTimeIdx);
+            if ($exitTs < $entryTs) {
+                $exitTs = $entryTs;
+            }
+
+            $matchTs = $entryTs;
+
+            $byPlaka[$plaka][] = [
+                'class' => $class,
+                'qty' => $qty,
+                'sort' => [
+                    'tarih4' => $tarih4,
+                    'entry' => $entryTs,
+                    'exit' => $exitTs,
+                    'plaka' => $plaka,
+                ],
+                'match_ts' => $matchTs,
+            ];
+        }
+
+        /** @var array<string, array{dd_sefer: int, bd_sefer: int, dd_miktar: float, bd_miktar: float}> $totals */
+        $totals = [];
+
+        foreach ($byPlaka as $plaka => $items) {
+            usort($items, function (array $a, array $b): int {
+                $sA = $a['sort'];
+                $sB = $b['sort'];
+                if ($sA['tarih4'] !== $sB['tarih4']) {
+                    return $sA['tarih4'] <=> $sB['tarih4'];
+                }
+                if ($sA['entry'] !== $sB['entry']) {
+                    return $sA['entry'] <=> $sB['entry'];
+                }
+                if ($sA['exit'] !== $sB['exit']) {
+                    return $sA['exit'] <=> $sB['exit'];
+                }
+
+                return strcmp($sA['plaka'], $sB['plaka']);
+            });
+
+            /** @var list<array{qty: float, match_ts: int}> $queue */
+            $queue = [];
+            $ddTon = 0.0;
+            $bdTon = 0.0;
+            $ddEvents = 0;
+            $bdEvents = 0;
+
+            foreach ($items as $item) {
+                if ($item['class'] === 'klinker') {
+                    $queue[] = ['qty' => $item['qty'], 'match_ts' => $item['match_ts']];
+
+                    continue;
+                }
+
+                $returnQty = $item['qty'];
+                $T = $item['match_ts'];
+
+                while ($queue !== [] && ($T - $queue[0]['match_ts']) > $windowSeconds) {
+                    $expired = array_shift($queue);
+                    $bdTon += $expired['qty'];
+                    $bdEvents++;
+                }
+
+                $R = $returnQty;
+                while ($R > 0.001 && $queue !== []) {
+                    $head = &$queue[0];
+                    if (($T - $head['match_ts']) > $windowSeconds) {
+                        $old = array_shift($queue);
+                        $bdTon += $old['qty'];
+                        $bdEvents++;
+
+                        continue;
+                    }
+                    $m = min($R, $head['qty']);
+                    $ddTon += $m;
+                    $ddEvents++;
+                    $R -= $m;
+                    $head['qty'] -= $m;
+                    if ($head['qty'] <= 0.001) {
+                        array_shift($queue);
+                    }
+                }
+                unset($head);
+
+                if ($R > 0.001) {
+                    $bdTon += $R;
+                    $bdEvents++;
+                }
+            }
+
+            foreach ($queue as $left) {
+                $bdTon += $left['qty'];
+                $bdEvents++;
+            }
+
+            $totals[$plaka] = [
+                'dd_sefer' => $ddEvents,
+                'bd_sefer' => $bdEvents,
+                'dd_miktar' => $ddTon,
+                'bd_miktar' => $bdTon,
+            ];
+        }
+
+        $result = [];
+        foreach ($totals as $plaka => $t) {
+            $result[] = [
+                'plaka' => $plaka,
+                'dd_sefer' => $t['dd_sefer'],
+                'bd_sefer' => $t['bd_sefer'],
+                'toplam_sefer' => $t['dd_sefer'] + $t['bd_sefer'],
+                'dd_miktar' => round($t['dd_miktar'], 3),
+                'bd_miktar' => round($t['bd_miktar'], 3),
+                'toplam_miktar' => round($t['dd_miktar'] + $t['bd_miktar'], 3),
+            ];
+        }
+
+        usort($result, fn (array $a, array $b): int => strcmp($a['plaka'], $b['plaka']));
+
+        return $result;
+    }
+
+    /**
+     * Legacy: satır başına Geçerli Miktar 2 ile DD/BD ayrımı.
+     *
+     * @return array<int, array{plaka: string, dd_sefer: int, bd_sefer: int, toplam_sefer: int, dd_miktar: float, bd_miktar: float, toplam_miktar: float}>
+     */
+    protected function buildVehicleDdBdReportLegacy(DeliveryImport $import): array
     {
         $config = $this->getReportTypeConfig($import);
         $mp = $config['material_pivot'] ?? null;
@@ -1708,5 +2037,109 @@ class DeliveryReportPivotService
         }
 
         return $result;
+    }
+
+    /**
+     * @return 'klinker'|'curuf'|'petrokok'|'other'
+     */
+    protected function classifyKlinkerCurufPetrokok(string $materialCode, string $materialShort): string
+    {
+        $upperCode = mb_strtoupper($materialCode);
+        $upperShort = mb_strtoupper($materialShort);
+        if (stripos($upperCode, 'KLINKER') !== false || stripos($upperShort, 'KLINKER') !== false) {
+            return 'klinker';
+        }
+        if (stripos($upperCode, 'CÜRUF') !== false || stripos($upperCode, 'CURUF') !== false
+            || stripos($upperShort, 'CÜRUF') !== false || stripos($upperShort, 'CURUF') !== false) {
+            return 'curuf';
+        }
+        if (stripos($upperCode, 'PETROKOK') !== false || stripos($upperCode, 'P.KOK') !== false
+            || stripos($upperShort, 'PETROKOK') !== false || stripos($upperShort, 'P.KOK') !== false) {
+            return 'petrokok';
+        }
+
+        return 'other';
+    }
+
+    protected function mainDateToSortInt(mixed $value): int
+    {
+        $norm = $this->normalizeDateForPivot($value);
+        if ($norm === '') {
+            return 0;
+        }
+        $dt = DateTime::createFromFormat('d.m.Y', $norm);
+
+        return $dt ? $dt->getTimestamp() : 0;
+    }
+
+    /**
+     * Sıralama ve eşleştirme için Unix zaman damgası (Europe/Istanbul gün + saat parçası).
+     *
+     * @param  array<int, mixed>  $data
+     */
+    protected function combineVehicleDateTimeSortable(array $data, int $mainDateIdx, ?int $dateIdx, ?int $timeIdx): int
+    {
+        $fallback = $data[$mainDateIdx] ?? '';
+        $datePart = $dateIdx !== null ? ($data[$dateIdx] ?? '') : '';
+        if ($datePart === null || $datePart === '') {
+            $datePart = $fallback;
+        }
+        $timePart = $timeIdx !== null ? ($data[$timeIdx] ?? '') : '';
+
+        $dateStr = $this->normalizeDateForPivot($datePart);
+        if ($dateStr === '') {
+            $dateStr = $this->normalizeDateForPivot($fallback);
+        }
+        if ($dateStr === '') {
+            return 0;
+        }
+
+        $base = DateTime::createFromFormat('d.m.Y', $dateStr, new DateTimeZone('Europe/Istanbul'));
+        if (! $base) {
+            return 0;
+        }
+
+        $sec = $this->parseTimePartToSeconds($timePart);
+        $base->setTime(0, 0, 0);
+
+        return $base->getTimestamp() + $sec;
+    }
+
+    protected function parseTimePartToSeconds(mixed $timePart): int
+    {
+        if ($timePart === null || $timePart === '') {
+            return 0;
+        }
+
+        if (is_numeric($timePart)) {
+            $f = (float) $timePart;
+            if ($f > 0 && $f < 1 && class_exists(Date::class)) {
+                $tz = new DateTimeZone('Europe/Istanbul');
+                $prev = Date::getExcelCalendar();
+                Date::setExcelCalendar(Date::CALENDAR_WINDOWS_1900);
+                try {
+                    $dt = Date::excelToDateTimeObject($f, $tz);
+
+                    return ((int) $dt->format('H')) * 3600 + ((int) $dt->format('i')) * 60 + (int) $dt->format('s');
+                } catch (Throwable) {
+                    return 0;
+                } finally {
+                    Date::setExcelCalendar($prev);
+                }
+            }
+        }
+
+        $s = trim((string) $timePart);
+        if (preg_match('/^(\d{1,2}):(\d{2})(?::(\d{2}))?/', $s, $m)) {
+            return ((int) $m[1]) * 3600 + ((int) $m[2]) * 60 + (int) ($m[3] ?? 0);
+        }
+
+        try {
+            $parsed = Carbon::parse($s, 'Europe/Istanbul');
+
+            return $parsed->hour * 3600 + $parsed->minute * 60 + $parsed->second;
+        } catch (Throwable) {
+            return 0;
+        }
     }
 }

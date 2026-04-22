@@ -26,6 +26,13 @@ new #[Title('Delivery import detail')] class extends Component
 
     public string $pivotSortMetric = 'Teslimat miktarı';
 
+    /** Günlük analiz: Ton | Mesafe | Araç | Malzeme sekmeleri */
+    public string $pivotMainTab = 'ton';
+
+    public string $klinkerMatchingOrderForm = 'petrokok_once';
+
+    public string $petrokokRoutePreferenceForm = 'ekinciler';
+
     /** Satır tablosu sıralama: `row_index` veya `data:{json dizi indeksi}` */
     #[Url(history: true)]
     public string $rowSort = 'row_index';
@@ -52,6 +59,33 @@ new #[Title('Delivery import detail')] class extends Component
                 $this->pivotSortMetric = $labels[0];
             }
         }
+        $this->klinkerMatchingOrderForm = $deliveryImport->klinker_matching_order;
+        $this->petrokokRoutePreferenceForm = $deliveryImport->petrokok_route_preference;
+    }
+
+    public function updatedKlinkerMatchingOrderForm(): void
+    {
+        $this->persistImportMeta(['klinker_matching_order' => $this->klinkerMatchingOrderForm]);
+    }
+
+    public function updatedPetrokokRoutePreferenceForm(): void
+    {
+        $this->persistImportMeta(['petrokok_route_preference' => $this->petrokokRoutePreferenceForm]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $merge
+     */
+    protected function persistImportMeta(array $merge): void
+    {
+        Gate::authorize('update', $this->deliveryImport);
+        $meta = $this->deliveryImport->meta ?? [];
+        foreach ($merge as $k => $v) {
+            $meta[$k] = $v;
+        }
+        $this->deliveryImport->update(['meta' => $meta]);
+        $this->deliveryImport->refresh();
+        unset($this->materialPivot);
     }
 
     public function updatedRowTableMode(): void
@@ -166,6 +200,45 @@ new #[Title('Delivery import detail')] class extends Component
         return app(DeliveryReportPivotService::class)->buildMaterialPivot($this->deliveryImport);
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    #[Computed]
+    public function pivotMesafeRows(): array
+    {
+        $types = config('delivery_report.report_types', []);
+        $rt = $this->deliveryImport->report_type;
+        if (! $rt || ! isset($types[$rt]['material_pivot'])) {
+            return [];
+        }
+        $mp = $types[$rt]['material_pivot'];
+        if (! isset($mp['pivot_mesafe_dimension_index'])) {
+            return [];
+        }
+        $idx = (int) $mp['pivot_mesafe_dimension_index'];
+        $label = (string) ($mp['pivot_mesafe_dimension_label'] ?? 'Varış');
+
+        return app(DeliveryReportPivotService::class)->buildPivotForDimensionMap($this->deliveryImport, [$idx => $label]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    #[Computed]
+    public function pivotMalzemeRows(): array
+    {
+        return app(DeliveryReportPivotService::class)->buildMalzemeCombinedPivot($this->deliveryImport);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    #[Computed]
+    public function vehicleDdBdRows(): array
+    {
+        return app(DeliveryReportPivotService::class)->buildVehicleDdBdReport($this->deliveryImport);
+    }
+
     #[Computed]
     public function reportTypeLabel(): ?string
     {
@@ -234,6 +307,91 @@ new #[Title('Delivery import detail')] class extends Component
         $dir = strtolower($this->rowSortDir) === 'desc' ? 'desc' : 'asc';
 
         if ($sort === '' || $sort === 'row_index') {
+            $types = config('delivery_report.report_types', []);
+            $rt = $this->deliveryImport->report_type;
+            $reportConfig = $rt ? ($types[$rt] ?? []) : [];
+            $vehicleMatching = $reportConfig['material_pivot']['vehicle_matching'] ?? null;
+            $driver = DB::connection()->getDriverName();
+
+            if (is_array($vehicleMatching)
+                && isset($vehicleMatching['main_date_index'], $vehicleMatching['entry_date_index'], $vehicleMatching['entry_time_index'], $vehicleMatching['exit_date_index'], $vehicleMatching['exit_time_index'], $vehicleMatching['plate_index'])) {
+                $mainDatePath = '$['.(int) $vehicleMatching['main_date_index'].']';
+                $entryDatePath = '$['.(int) $vehicleMatching['entry_date_index'].']';
+                $entryTimePath = '$['.(int) $vehicleMatching['entry_time_index'].']';
+                $exitDatePath = '$['.(int) $vehicleMatching['exit_date_index'].']';
+                $exitTimePath = '$['.(int) $vehicleMatching['exit_time_index'].']';
+                $platePath = '$['.(int) $vehicleMatching['plate_index'].']';
+
+                if ($driver === 'mysql') {
+                    $query->orderByRaw(
+                        "
+                        UPPER(
+                            REPLACE(
+                                REPLACE(
+                                    TRIM(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?))),
+                                    ' ',
+                                    ''
+                                ),
+                                '-',
+                                ''
+                            )
+                        ) COLLATE utf8mb4_unicode_ci {$dir},
+                        STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%d.%m.%Y') {$dir},
+                        STR_TO_DATE(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), ''), JSON_UNQUOTE(JSON_EXTRACT(row_data, ?))), '%d.%m.%Y') {$dir},
+                        COALESCE(
+                            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%H:%i:%s'),
+                            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%H:%i'),
+                            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%r')
+                        ) {$dir},
+                        STR_TO_DATE(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), ''), JSON_UNQUOTE(JSON_EXTRACT(row_data, ?))), '%d.%m.%Y') {$dir},
+                        COALESCE(
+                            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%H:%i:%s'),
+                            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%H:%i'),
+                            STR_TO_DATE(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?)), '%r')
+                        ) {$dir},
+                        UPPER(
+                            REPLACE(
+                                REPLACE(
+                                    TRIM(JSON_UNQUOTE(JSON_EXTRACT(row_data, ?))),
+                                    ' ',
+                                    ''
+                                ),
+                                '-',
+                                ''
+                            )
+                        ) COLLATE utf8mb4_unicode_ci {$dir},
+                        row_index asc
+                        ",
+                        [
+                            $platePath,
+                            $mainDatePath,
+                            $entryDatePath, $mainDatePath,
+                            $entryTimePath, $entryTimePath, $entryTimePath,
+                            $exitDatePath, $mainDatePath,
+                            $exitTimePath, $exitTimePath, $exitTimePath,
+                            $platePath,
+                        ]
+                    );
+
+                    return;
+                }
+
+                if ($driver === 'sqlite') {
+                    $query->orderByRaw(
+                        'json_extract(row_data, ?) COLLATE NOCASE '.$dir.',
+                         json_extract(row_data, ?) COLLATE NOCASE '.$dir.',
+                         json_extract(row_data, ?) COLLATE NOCASE '.$dir.',
+                         json_extract(row_data, ?) COLLATE NOCASE '.$dir.',
+                         json_extract(row_data, ?) COLLATE NOCASE '.$dir.',
+                         json_extract(row_data, ?) COLLATE NOCASE '.$dir.',
+                         row_index asc',
+                        [$platePath, $mainDatePath, $entryDatePath, $entryTimePath, $exitDatePath, $exitTimePath]
+                    );
+
+                    return;
+                }
+            }
+
             $query->orderBy('row_index', $dir);
 
             return;
@@ -388,6 +546,22 @@ new #[Title('Delivery import detail')] class extends Component
         </div>
 
         @if (! empty($this->materialPivot['rows']))
+            <div class="flex flex-wrap gap-2 border-b border-zinc-200 px-4 pb-3 dark:border-zinc-700" role="tablist">
+                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'ton' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'ton')">
+                    {{ __('Ton') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
+                </flux:button>
+                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'mesafe' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'mesafe')">
+                    {{ __('Mesafe') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
+                </flux:button>
+                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'arac' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'arac')">
+                    {{ __('Araç') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
+                </flux:button>
+                <flux:button type="button" size="sm" :variant="$pivotMainTab === 'malzeme' ? 'primary' : 'ghost'" wire:click="$set('pivotMainTab', 'malzeme')">
+                    {{ __('Malzeme') }} <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
+                </flux:button>
+            </div>
+
+            @if ($pivotMainTab === 'ton')
             @php
                 $mp = $this->materialPivot;
                 $materials = $mp['materials'] ?? [];
@@ -798,6 +972,107 @@ new #[Title('Delivery import detail')] class extends Component
                 </table>
                 </div>
             </div>
+            @elseif ($pivotMainTab === 'mesafe')
+                <div class="p-4">
+                    @if (count($this->pivotMesafeRows) === 0)
+                        <flux:text class="text-zinc-500">{{ __('Bu rapor tipi için varış / mesafe özeti tanımlı değil.') }}</flux:text>
+                    @else
+                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <table class="w-full min-w-full border-collapse border border-zinc-200 text-sm dark:border-zinc-600">
+                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                    <tr>
+                                        @foreach (array_keys($this->pivotMesafeRows[0]) as $col)
+                                            <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ $col }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($this->pivotMesafeRows as $row)
+                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                            @foreach ($row as $cell)
+                                                <td class="border border-zinc-200 px-3 py-2 font-mono tabular-nums dark:border-zinc-600">
+                                                    @if (is_float($cell) || is_int($cell))
+                                                        {{ number_format((float) $cell, 3, ',', '.') }}
+                                                    @else
+                                                        {{ $cell }}
+                                                    @endif
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            @elseif ($pivotMainTab === 'malzeme')
+                <div class="p-4">
+                    @if (count($this->pivotMalzemeRows) === 0)
+                        <flux:text class="text-zinc-500">{{ __('Malzeme özeti oluşturulamadı.') }}</flux:text>
+                    @else
+                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <table class="w-full min-w-full border-collapse border border-zinc-200 text-sm dark:border-zinc-600">
+                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                    <tr>
+                                        @foreach (array_keys($this->pivotMalzemeRows[0]) as $col)
+                                            <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ $col }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($this->pivotMalzemeRows as $row)
+                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                            @foreach ($row as $cell)
+                                                <td class="border border-zinc-200 px-3 py-2 font-mono tabular-nums dark:border-zinc-600">
+                                                    @if (is_float($cell) || is_int($cell))
+                                                        {{ number_format((float) $cell, 3, ',', '.') }}
+                                                    @else
+                                                        {{ $cell }}
+                                                    @endif
+                                                </td>
+                                            @endforeach
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            @elseif ($pivotMainTab === 'arac')
+                <div class="p-4">
+                    @if (count($this->vehicleDdBdRows) === 0)
+                        <flux:text class="text-zinc-500">{{ __('Araç bazlı eşleştirme için uygun satır yok.') }}</flux:text>
+                    @else
+                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <table class="w-full min-w-full border-collapse border border-zinc-200 text-sm dark:border-zinc-600">
+                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                    <tr>
+                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Plaka') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('DD işlem') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('BD işlem') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('DD ton') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('BD ton') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('Toplam ton') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($this->vehicleDdBdRows as $v)
+                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                            <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $v['plaka'] }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ $v['dd_sefer'] }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ $v['bd_sefer'] }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ number_format((float) $v['dd_miktar'], 3, ',', '.') }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ number_format((float) $v['bd_miktar'], 3, ',', '.') }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end tabular-nums dark:border-zinc-600">{{ number_format((float) $v['toplam_miktar'], 3, ',', '.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <flux:text class="mt-2 text-xs text-zinc-500">{{ __('Araç eşleştirmesi: Klinker ↔ Cüruf/Petrokok, FIFO, 7 gün penceresi; sıralama tarih → giriş → çıkış → plaka.') }}</flux:text>
+                    @endif
+                </div>
+            @endif
         @elseif (count($this->pivotRows) === 0)
             @if ($zipUnavailable)
                 <div class="p-4 pt-0">
@@ -960,6 +1235,95 @@ new #[Title('Delivery import detail')] class extends Component
             <div class="mt-4">{{ $this->rowsPaginator->links() }}</div>
         @endif
     </flux:card>
+
+    @if (! empty($this->materialPivot['fatura_rota_gruplari']))
+        <flux:card class="scroll-mt-24 p-4">
+            <div class="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="min-w-0 space-y-1">
+                    <flux:heading size="lg" class="inline-flex flex-wrap items-center gap-2">
+                        {{ __('Fatura Kalemleri') }}
+                        <span class="font-semibold text-amber-600 dark:text-amber-400" title="{{ __('Revizyon') }}">?*</span>
+                    </flux:heading>
+                    @if ($this->materialPivotDateRangeText !== '')
+                        <flux:text class="text-sm text-zinc-500">{{ str_replace(' – ', ' — ', $this->materialPivotDateRangeText) }}</flux:text>
+                    @endif
+                </div>
+                <div class="flex flex-shrink-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    @can('update', $deliveryImport)
+                        <flux:select wire:model.live="klinkerMatchingOrderForm" :label="__('Klinker eşleşme')" class="min-w-[12rem]">
+                            <option value="petrokok_once">{{ __('Petrokok önce') }}</option>
+                            <option value="curuf_once">{{ __('Cüruf önce') }}</option>
+                            <option value="proportional">{{ __('Oransal') }}</option>
+                        </flux:select>
+                        <flux:select wire:model.live="petrokokRoutePreferenceForm" :label="__('Petrokok rotası')" class="min-w-[12rem]">
+                            <option value="ekinciler">{{ __('Ekinciler Tesisi') }}</option>
+                            <option value="isdemir">{{ __('İsdemir (Petrokok)') }}</option>
+                        </flux:select>
+                    @else
+                        <flux:text class="text-sm text-zinc-500">{{ __('Klinker eşleşme ve rota ayarlarını yalnızca lojistik yöneticisi değiştirebilir.') }}</flux:text>
+                    @endcan
+                    <flux:text class="text-end text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                        {{ number_format((float) ($this->materialPivot['fatura_toplam'] ?? 0), 2, ',', '.') }} {{ __('Ton') }}
+                    </flux:text>
+                </div>
+            </div>
+
+            <div class="space-y-8">
+                @foreach ($this->materialPivot['fatura_rota_gruplari'] as $grup)
+                    <div>
+                        <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-600">
+                            <flux:heading size="sm" class="font-semibold">{{ $grup['route_label'] ?? '' }}</flux:heading>
+                            <flux:text class="text-sm font-medium tabular-nums text-zinc-600 dark:text-zinc-400">
+                                {{ number_format((float) ($grup['route_toplam'] ?? 0), 2, ',', '.') }} {{ __('Ton') }}
+                            </flux:text>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                            <table class="w-full min-w-[720px] border-collapse text-sm dark:border-zinc-600">
+                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                    <tr class="text-start">
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Malzeme kodu') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Malzeme kısa metni') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Nerden — Nereye') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Taşıma tipi') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('Toplam miktar') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600">{{ __('Birim') }}</th>
+                                        <th class="border border-zinc-200 px-3 py-2 text-end font-semibold dark:border-zinc-600">{{ __('Birim fiyat') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($grup['kalemler'] ?? [] as $k)
+                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                            <td class="border border-zinc-200 px-3 py-2 font-mono text-xs dark:border-zinc-600">{{ $k['material_code'] ?? '' }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $k['material_short'] ?? '' }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300">{{ $k['nerden_nereye'] ?? '' }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">
+                                                @php $tip = (string) ($k['tasima_tipi'] ?? ''); @endphp
+                                                @if ($tip === 'Dolu-Dolu')
+                                                    <flux:badge color="green" size="sm">{{ $tip }}</flux:badge>
+                                                @else
+                                                    <flux:badge color="sky" size="sm">{{ $tip }}</flux:badge>
+                                                @endif
+                                            </td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end font-mono tabular-nums dark:border-zinc-600">{{ number_format((float) ($k['miktar'] ?? 0), 2, ',', '.') }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ __('Ton') }}</td>
+                                            <td class="border border-zinc-200 px-3 py-2 text-end text-zinc-400 dark:border-zinc-600">—</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="mt-6 flex justify-end border-t border-zinc-200 pt-4 dark:border-zinc-600">
+                <flux:text class="text-base font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+                    {{ __('Genel toplam') }}:
+                    {{ number_format((float) ($this->materialPivot['fatura_toplam'] ?? 0), 2, ',', '.') }} {{ __('Ton') }}
+                </flux:text>
+            </div>
+        </flux:card>
+    @endif
 
     {{-- Row detail modal: çerçeve Tailwind arbitrary ile modal içinde güvenilir değil; !important ile zorla --}}
     <flux:modal name="row-detail" class="w-full max-w-4xl">

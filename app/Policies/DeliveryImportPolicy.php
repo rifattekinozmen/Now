@@ -47,4 +47,9 @@ class DeliveryImportPolicy
 
         return (int) $effectiveTenantId === (int) $deliveryImport->tenant_id;
     }
+
+    public function update(User $user, DeliveryImport $deliveryImport): bool
+    {
+        return $this->delete($user, $deliveryImport);
+    }
 }

@@ -155,6 +155,24 @@ return [
                 'bos_agirlik_index' => 15,
                 'gecerli_miktar_2_index' => 18,
                 'firma_miktari_index' => 36,
+                /*
+                 * Araç bazlı Klinker ↔ Cüruf/Petrokok eşleştirme (7 gün FIFO).
+                 * Başlık indeksleri headers dizisi ile uyumludur (0 tabanlı).
+                 */
+                'vehicle_matching' => [
+                    'plate_index' => 37,
+                    'main_date_index' => 4,
+                    'entry_date_index' => 32,
+                    'entry_time_index' => 33,
+                    'exit_date_index' => 34,
+                    'exit_time_index' => 35,
+                    'window_days' => 7,
+                ],
+                /*
+                 * Mesafe sekmesi: ayrı km kolonu yok; varış (Ad) üzerinden özet.
+                 */
+                'pivot_mesafe_dimension_index' => 22,
+                'pivot_mesafe_dimension_label' => 'Varış (Ad)',
             ],
         ],
         'dokme_cimento' => [
