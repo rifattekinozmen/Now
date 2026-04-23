@@ -16,7 +16,7 @@ final class FuelPriceImportTemplateExport implements FromArray, WithHeadings
     public function array(): array
     {
         return [
-            ['diesel', '45.5000', 'TRY', '2026-03-30', 'TotalEnergies', 'İstanbul'],
+            ['01.04.2026', '64.36', '79.38', '0.00'],
         ];
     }
 
@@ -25,6 +25,6 @@ final class FuelPriceImportTemplateExport implements FromArray, WithHeadings
      */
     public function headings(): array
     {
-        return ['Yakıt Tipi', 'Fiyat', 'Para Birimi', 'Kayıt Tarihi', 'Kaynak', 'Bölge'];
+        return ['Tarih', 'Excellium Kurşunsuz 95 TL/Lt', 'Motorin TL/Lt', 'Otogaz TL/Lt'];
     }
 }

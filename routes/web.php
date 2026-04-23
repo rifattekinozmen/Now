@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\ExportFinanceOrdersCsvController;
 use App\Http\Controllers\Admin\ExportLogoOrdersXmlController;
 use App\Http\Controllers\Admin\ExportPaymentsCsvController;
 use App\Http\Controllers\Admin\ExportVouchersCsvController;
+use App\Http\Controllers\Admin\FuelPriceArchivePrintController;
 use App\Http\Controllers\Admin\PayrollPrintController;
 use App\Http\Controllers\Admin\ShipmentPodDeliveryPhotoController;
 use App\Http\Controllers\Admin\ShipmentPodPrintController;
@@ -73,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('fuel-intakes/template.xlsx', DownloadFuelIntakeImportTemplateController::class)->name('fuel-intakes.template.xlsx');
             Route::livewire('fuel-prices', 'pages::admin.fuel-prices-index')->name('fuel-prices.index');
             Route::get('fuel-prices/template.xlsx', DownloadFuelPriceImportTemplateController::class)->name('fuel-prices.template.xlsx');
+            Route::get('fuel-prices/print', FuelPriceArchivePrintController::class)->name('fuel-prices.print');
             Route::livewire('employees', 'pages::admin.employees-index')->name('employees.index');
             Route::get('employees/template.xlsx', DownloadEmployeeImportTemplateController::class)->name('employees.template.xlsx');
             Route::livewire('employees/{employee}', 'pages::admin.employee-show')->name('employees.show');

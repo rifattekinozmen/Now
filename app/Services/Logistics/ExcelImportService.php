@@ -1020,6 +1020,7 @@ class ExcelImportService
     public function getFuelPriceImportMapping(): array
     {
         return [
+            // Eski satır bazlı şema
             'Yakıt Tipi' => 'fuel_type',
             'Fuel Type' => 'fuel_type',
             'Type' => 'fuel_type',
@@ -1034,6 +1035,22 @@ class ExcelImportService
             'Source' => 'source',
             'Bölge' => 'region',
             'Region' => 'region',
+
+            // Yeni arşiv şeması (tarih satırı + çoklu yakıt kolonları)
+            'Tarih' => 'recorded_at',
+            'Date' => 'recorded_at',
+            'Excellium Kurşunsuz 95 TL/Lt' => 'gasoline_price',
+            'Kurşunsuz 95' => 'gasoline_price',
+            'Motorin TL/Lt' => 'diesel_price',
+            'Motorin' => 'diesel_price',
+            'Otogaz TL/Lt' => 'lpg_price',
+            'Otogaz' => 'lpg_price',
+            'İl' => 'province',
+            'Il' => 'province',
+            'Province' => 'province',
+            'İlçe' => 'district',
+            'Ilce' => 'district',
+            'District' => 'district',
         ];
     }
 
@@ -1087,18 +1104,8 @@ class ExcelImportService
             try {
                 $raw = $this->normalizeRow($assoc, $mapping);
 
-                $fuelType = strtolower(trim((string) ($raw['fuel_type'] ?? '')));
-                if (! in_array($fuelType, ['diesel', 'gasoline', 'lpg'], true)) {
-                    throw new \InvalidArgumentException(__('Fuel type must be diesel, gasoline, or lpg.'));
-                }
-
-                $price = $raw['price'] ?? null;
-                if ($price === null || $price === '' || ! is_numeric($price)) {
-                    throw new \InvalidArgumentException(__('Price is required and must be numeric.'));
-                }
-
-                $recordedAt = $raw['recorded_at'] ?? null;
-                if ($recordedAt === null || $recordedAt === '') {
+                $recordedAt = $this->normalizeFuelImportDate($raw['recorded_at'] ?? null);
+                if ($recordedAt === null) {
                     throw new \InvalidArgumentException(__('Recorded at is required.'));
                 }
 
@@ -1109,6 +1116,63 @@ class ExcelImportService
 
                 $source = trim((string) ($raw['source'] ?? ''));
                 $region = trim((string) ($raw['region'] ?? ''));
+                $province = trim((string) ($raw['province'] ?? ''));
+                $district = trim((string) ($raw['district'] ?? ''));
+                if ($region === '' && $province !== '' && $district !== '') {
+                    $region = $province.' / '.$district;
+                }
+
+                $dieselPrice = $this->normalizeFuelImportNumeric($raw['diesel_price'] ?? null);
+                $gasolinePrice = $this->normalizeFuelImportNumeric($raw['gasoline_price'] ?? null);
+                $lpgPrice = $this->normalizeFuelImportNumeric($raw['lpg_price'] ?? null);
+
+                $isArchiveRow = array_key_exists('diesel_price', $raw)
+                    || array_key_exists('gasoline_price', $raw)
+                    || array_key_exists('lpg_price', $raw);
+
+                if ($isArchiveRow) {
+                    $fuelRows = [
+                        'diesel' => $dieselPrice,
+                        'gasoline' => $gasolinePrice,
+                        'lpg' => $lpgPrice,
+                    ];
+
+                    $createdThisRow = 0;
+                    foreach ($fuelRows as $fuelType => $price) {
+                        if ($price === null) {
+                            continue;
+                        }
+
+                        FuelPrice::query()->create([
+                            'tenant_id' => $tenantId,
+                            'fuel_type' => $fuelType,
+                            'price' => $price,
+                            'currency' => $currency,
+                            'recorded_at' => $recordedAt,
+                            'source' => $source !== '' ? $source : 'GüzelEnerji API',
+                            'region' => $region !== '' ? $region : null,
+                        ]);
+                        $createdThisRow++;
+                    }
+
+                    if ($createdThisRow === 0) {
+                        throw new \InvalidArgumentException(__('At least one fuel price column is required.'));
+                    }
+
+                    $created += $createdThisRow;
+
+                    continue;
+                }
+
+                $fuelType = strtolower(trim((string) ($raw['fuel_type'] ?? '')));
+                if (! in_array($fuelType, ['diesel', 'gasoline', 'lpg'], true)) {
+                    throw new \InvalidArgumentException(__('Fuel type must be diesel, gasoline, or lpg.'));
+                }
+
+                $price = $this->normalizeFuelImportNumeric($raw['price'] ?? null);
+                if ($price === null) {
+                    throw new \InvalidArgumentException(__('Price is required and must be numeric.'));
+                }
 
                 FuelPrice::query()->create([
                     'tenant_id' => $tenantId,
@@ -1143,5 +1207,77 @@ class ExcelImportService
         } while (Order::query()->where('order_number', $number)->exists());
 
         return $number;
+    }
+
+    private function normalizeFuelImportNumeric(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $text = trim($value);
+        if ($text === '') {
+            return null;
+        }
+
+        $text = str_replace([' ', "\xc2\xa0"], '', $text);
+        $lastComma = strrpos($text, ',');
+        $lastDot = strrpos($text, '.');
+        if ($lastComma !== false && ($lastDot === false || $lastComma > $lastDot)) {
+            $text = str_replace('.', '', $text);
+            $text = str_replace(',', '.', $text);
+        } else {
+            $text = str_replace(',', '', $text);
+        }
+
+        return is_numeric($text) ? (float) $text : null;
+    }
+
+    private function normalizeFuelImportDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        if (is_string($value)) {
+            $text = trim($value);
+            if ($text === '') {
+                return null;
+            }
+
+            foreach (['d.m.Y', 'Y-m-d', 'd/m/Y'] as $format) {
+                try {
+                    return Carbon::createFromFormat($format, $text)->toDateString();
+                } catch (\Throwable) {
+                    // try next format
+                }
+            }
+
+            try {
+                return Carbon::parse($text)->toDateString();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        if (is_numeric($value)) {
+            try {
+                return Carbon::createFromTimestampMs((int) $value)->toDateString();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

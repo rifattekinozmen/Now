@@ -7,7 +7,9 @@ use App\Services\Logistics\ExcelImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
@@ -43,6 +45,23 @@ new #[Lazy, Title('Fuel prices')] class extends Component
 
     public string $sortDirection = 'desc';
 
+    public string $archiveProvince = '';
+
+    public string $archiveDistrict = '';
+
+    public string $archiveStartDate = '';
+
+    public string $archiveEndDate = '';
+
+    /** @var list<array{id: string, name: string}> */
+    public array $archiveCityOptions = [];
+
+    /** @var list<array{id: string, name: string}> */
+    public array $archiveDistrictOptions = [];
+
+    /** @var list<array<string, mixed>> */
+    public array $archiveApiRows = [];
+
 
     /** @var list<int> */
     public array $selectedIds = [];
@@ -51,11 +70,21 @@ new #[Lazy, Title('Fuel prices')] class extends Component
     {
         Gate::authorize('viewAny', FuelPrice::class);
         $this->recorded_at = now()->timezone(config('app.timezone'))->format('Y-m-d');
+        $this->archiveStartDate = now()->subDays(30)->format('Y-m-d');
+        $this->archiveEndDate = now()->format('Y-m-d');
+        $this->loadArchiveCityOptions();
+        $this->loadArchiveDistrictOptions();
+        $this->searchArchive();
     }
 
     public function updatedFilterSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedArchiveProvince(): void
+    {
+        $this->loadArchiveDistrictOptions();
     }
 
     /**
@@ -112,6 +141,134 @@ new #[Lazy, Title('Fuel prices')] class extends Component
     public function paginatedPrices(): LengthAwarePaginator
     {
         return $this->pricesQuery()->paginate(15);
+    }
+
+    public function searchArchive(): void
+    {
+        if (app()->runningUnitTests()) {
+            $this->archiveApiRows = [];
+
+            return;
+        }
+
+        $cityId = trim($this->archiveProvince);
+        $countyId = trim($this->archiveDistrict);
+
+        if ($cityId === '' || $countyId === '') {
+            $this->archiveApiRows = [];
+
+            return;
+        }
+
+        $start = $this->archiveStartDate !== '' ? $this->archiveStartDate : now()->subDays(30)->toDateString();
+        $end = $this->archiveEndDate !== '' ? $this->archiveEndDate : now()->toDateString();
+
+        $base = rtrim((string) config('totalenergies.archive_api_base_url', 'https://apimobile.guzelenerji.com.tr'), '/');
+
+        try {
+            $response = Http::timeout((int) config('totalenergies.timeout_seconds', 15))
+                ->retry(2, 100)
+                ->asJson()
+                ->post($base.'/exapi/fuel_prices_by_date', [
+                    'county_id' => (int) $countyId,
+                    'start_date' => $start.'T00:00:00Z',
+                    'end_date' => $end.'T23:59:59Z',
+                ]);
+
+            if (! $response->successful()) {
+                $this->archiveApiRows = [];
+                session()->flash('archive_error', __('Arşiv verisi alınamadı. Lütfen tekrar deneyin.'));
+
+                return;
+            }
+
+            $payload = $response->json();
+            $rows = is_array($payload) ? array_values(array_filter($payload, 'is_array')) : [];
+            usort($rows, function (array $a, array $b): int {
+                $dateA = isset($a['pricedate']) && is_string($a['pricedate']) ? $a['pricedate'] : '';
+                $dateB = isset($b['pricedate']) && is_string($b['pricedate']) ? $b['pricedate'] : '';
+
+                return strcmp($dateB, $dateA);
+            });
+            $this->archiveApiRows = $rows;
+            session()->forget('archive_error');
+        } catch (\Throwable) {
+            $this->archiveApiRows = [];
+            session()->flash('archive_error', __('Arşiv servisine erişilemedi.'));
+        }
+    }
+
+    /**
+     * @return array{
+     *   day_count: int,
+     *   latest_motorin: float|null,
+     *   average_motorin: float|null,
+     *   peak_daily_change_pct: float|null
+     * }
+     */
+    #[Computed]
+    public function archiveKpiStats(): array
+    {
+        $rows = $this->archiveApiRowsWithChanges;
+        if ($rows === []) {
+            return [
+                'day_count' => 0,
+                'latest_motorin' => null,
+                'average_motorin' => null,
+                'peak_daily_change_pct' => null,
+            ];
+        }
+
+        $motorinValues = [];
+        $peak = null;
+        foreach ($rows as $row) {
+            if (isset($row['motorin']) && is_numeric($row['motorin'])) {
+                $motorinValues[] = (float) $row['motorin'];
+            }
+
+            if (isset($row['motorin_change_prev_pct']) && is_numeric($row['motorin_change_prev_pct'])) {
+                $change = (float) $row['motorin_change_prev_pct'];
+                if ($peak === null || abs($change) > abs($peak)) {
+                    $peak = $change;
+                }
+            }
+        }
+
+        return [
+            'day_count' => count($rows),
+            'latest_motorin' => isset($rows[0]['motorin']) && is_numeric($rows[0]['motorin']) ? (float) $rows[0]['motorin'] : null,
+            'average_motorin' => $motorinValues !== [] ? (array_sum($motorinValues) / count($motorinValues)) : null,
+            'peak_daily_change_pct' => $peak,
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    #[Computed]
+    public function archiveApiRowsWithChanges(): array
+    {
+        $rows = array_values($this->archiveApiRows);
+        $count = count($rows);
+
+        for ($i = 0; $i < $count; $i++) {
+            $current = isset($rows[$i]['motorin']) ? (float) $rows[$i]['motorin'] : null;
+            $previous = ($i > 0 && isset($rows[$i - 1]['motorin'])) ? (float) $rows[$i - 1]['motorin'] : null;
+            $next = ($i < $count - 1 && isset($rows[$i + 1]['motorin'])) ? (float) $rows[$i + 1]['motorin'] : null;
+
+            $rows[$i]['motorin_change_prev_pct'] = null;
+            $rows[$i]['motorin_change_next_pct'] = null;
+
+            if ($current !== null && $previous !== null && abs($previous) > 0.000001) {
+                $rows[$i]['motorin_change_prev_pct'] = (($current - $previous) / $previous) * 100;
+            }
+
+            if ($current !== null && $next !== null && abs($current) > 0.000001) {
+                $rows[$i]['motorin_change_next_pct'] = (($next - $current) / $current) * 100;
+            }
+        }
+
+        return $rows;
     }
 
     public function sortBy(string $column): void
@@ -266,6 +423,157 @@ new #[Lazy, Title('Fuel prices')] class extends Component
         $this->region = '';
     }
 
+    private function loadArchiveCityOptions(): void
+    {
+        if (app()->runningUnitTests()) {
+            $this->archiveCityOptions = [];
+
+            return;
+        }
+
+        $base = rtrim((string) config('totalenergies.archive_api_base_url', 'https://apimobile.guzelenerji.com.tr'), '/');
+
+        try {
+            $response = Http::timeout((int) config('totalenergies.timeout_seconds', 15))
+                ->retry(2, 100)
+                ->get($base.'/exapi/fuel_price_cities');
+
+            if (! $response->successful()) {
+                $this->archiveCityOptions = [];
+
+                return;
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload)) {
+                $this->archiveCityOptions = [];
+
+                return;
+            }
+
+            $cities = [];
+            foreach ($payload as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $id = isset($item['city_id']) ? (string) $item['city_id'] : '';
+                $name = isset($item['city_name']) && is_string($item['city_name']) ? $item['city_name'] : '';
+                if ($id === '' || $name === '') {
+                    continue;
+                }
+
+                $cities[] = ['id' => $id, 'name' => $name];
+            }
+
+            usort($cities, fn (array $a, array $b): int => strcmp(Str::ascii($a['name']), Str::ascii($b['name'])));
+            $this->archiveCityOptions = $cities;
+        } catch (\Throwable) {
+            $this->archiveCityOptions = [];
+        }
+
+        if ($this->archiveCityOptions === []) {
+            return;
+        }
+
+        $adana = collect($this->archiveCityOptions)->first(function (array $city): bool {
+            return Str::upper(Str::ascii($city['name'])) === 'ADANA';
+        });
+
+        if (is_array($adana) && isset($adana['id'])) {
+            $this->archiveProvince = (string) $adana['id'];
+        } else {
+            $selectedExists = collect($this->archiveCityOptions)->contains(
+                fn (array $city): bool => $city['id'] === $this->archiveProvince
+            );
+            if (! $selectedExists) {
+                $this->archiveProvince = $this->archiveCityOptions[0]['id'];
+            }
+        }
+    }
+
+    private function loadArchiveDistrictOptions(): void
+    {
+        if (app()->runningUnitTests()) {
+            $this->archiveDistrictOptions = [];
+            $this->archiveDistrict = '';
+
+            return;
+        }
+
+        $cityId = trim($this->archiveProvince);
+        if ($cityId === '') {
+            $this->archiveDistrictOptions = [];
+            $this->archiveDistrict = '';
+
+            return;
+        }
+
+        $base = rtrim((string) config('totalenergies.archive_api_base_url', 'https://apimobile.guzelenerji.com.tr'), '/');
+
+        try {
+            $response = Http::timeout((int) config('totalenergies.timeout_seconds', 15))
+                ->retry(2, 100)
+                ->get($base.'/exapi/fuel_price_counties/'.$cityId, ['is_active' => 'true']);
+
+            if (! $response->successful()) {
+                $this->archiveDistrictOptions = [];
+                $this->archiveDistrict = '';
+
+                return;
+            }
+
+            $payload = $response->json();
+            if (! is_array($payload)) {
+                $this->archiveDistrictOptions = [];
+                $this->archiveDistrict = '';
+
+                return;
+            }
+
+            $districts = [];
+            foreach ($payload as $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $id = isset($item['county_id']) ? (string) $item['county_id'] : '';
+                $name = isset($item['county_name']) && is_string($item['county_name']) ? $item['county_name'] : '';
+                if ($id === '' || $name === '') {
+                    continue;
+                }
+
+                $districts[] = ['id' => $id, 'name' => $name];
+            }
+
+            usort($districts, fn (array $a, array $b): int => strcmp(Str::ascii($a['name']), Str::ascii($b['name'])));
+            $this->archiveDistrictOptions = $districts;
+        } catch (\Throwable) {
+            $this->archiveDistrictOptions = [];
+        }
+
+        if ($this->archiveDistrictOptions === []) {
+            $this->archiveDistrict = '';
+
+            return;
+        }
+
+        $merkez = collect($this->archiveDistrictOptions)->first(function (array $district): bool {
+            return Str::upper(Str::ascii($district['name'])) === 'MERKEZ';
+        });
+
+        if (is_array($merkez) && isset($merkez['id'])) {
+            $this->archiveDistrict = (string) $merkez['id'];
+        } else {
+            $selectedExists = collect($this->archiveDistrictOptions)->contains(
+                fn (array $district): bool => $district['id'] === $this->archiveDistrict
+            );
+            if (! $selectedExists) {
+                $this->archiveDistrict = $this->archiveDistrictOptions[0]['id'];
+            }
+        }
+    }
+
     public function importFuelPrices(ExcelImportService $excelImport): void
     {
         $this->ensureLogisticsWrite(LogisticsPermission::VEHICLES_WRITE);
@@ -307,99 +615,188 @@ new #[Lazy, Title('Fuel prices')] class extends Component
 }; ?>
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
-    @php
-        $authUser = auth()->user();
-        $canWrite =
-            $authUser instanceof \App\Models\User
-            && \App\Authorization\LogisticsPermission::canWrite($authUser, \App\Authorization\LogisticsPermission::VEHICLES_WRITE);
-    @endphp
-
     <x-admin.page-header
         :heading="__('Fuel prices')"
         :description="__('Market fuel price records per type and region. Import CSV/XLSX or add rows manually — full history and edit stay on this list page (no separate show route).')"
     >
         <x-slot name="actions">
             <x-admin.index-actions>
-                <x-slot name="back">
-                    <flux:button size="sm" :href="route('admin.fuel-intakes.index')" variant="ghost" wire:navigate>{{ __('Fuel intakes') }}</flux:button>
-                </x-slot>
                 <x-slot name="export">
-                    <flux:button size="sm" icon="document-arrow-down" variant="outline" :href="route('admin.fuel-prices.template.xlsx')">
-                        {{ __('Download XLSX template') }}
-                    </flux:button>
+                    <div class="flex items-center gap-2">
+                        <flux:button
+                            size="sm"
+                            icon="document-arrow-down"
+                            variant="outline"
+                            :href="route('admin.fuel-prices.template.xlsx', ['city_id' => $archiveProvince, 'county_id' => $archiveDistrict, 'start_date' => $archiveStartDate, 'end_date' => $archiveEndDate])"
+                        >
+                            {{ __('Excel İndir') }}
+                        </flux:button>
+                        <flux:button
+                            size="sm"
+                            icon="document-text"
+                            variant="outline"
+                            :href="route('admin.fuel-prices.print', ['city_id' => $archiveProvince, 'county_id' => $archiveDistrict, 'start_date' => $archiveStartDate, 'end_date' => $archiveEndDate, 'mode' => 'pdf'])"
+                            target="_blank"
+                        >
+                            {{ __('PDF') }}
+                        </flux:button>
+                        <flux:button
+                            size="sm"
+                            icon="printer"
+                            variant="outline"
+                            :href="route('admin.fuel-prices.print', ['city_id' => $archiveProvince, 'county_id' => $archiveDistrict, 'start_date' => $archiveStartDate, 'end_date' => $archiveEndDate, 'mode' => 'print'])"
+                            target="_blank"
+                        >
+                            {{ __('Yazdır') }}
+                        </flux:button>
+                    </div>
                 </x-slot>
-                @if ($canWrite)
-                    <x-slot name="import">
-                        <div class="flex min-w-0 flex-wrap items-center justify-end gap-2" x-data>
-                            <input
-                                type="file"
-                                wire:model="importFile"
-                                accept=".xlsx,.xls,.csv"
-                                class="sr-only"
-                                x-ref="importFileInput"
-                            />
-                            <flux:tooltip
-                                :content="__('Template headers: Yakıt Tipi, Fiyat, Para Birimi, Kayıt Tarihi, Kaynak, Bölge')"
-                                position="bottom"
-                            >
-                                <flux:button
-                                    type="button"
-                                    icon="information-circle"
-                                    variant="ghost"
-                                    size="sm"
-                                    :aria-label="__('Import format help')"
-                                />
-                            </flux:tooltip>
-                            <flux:button
-                                type="button"
-                                size="sm"
-                                icon="arrow-up-tray"
-                                variant="primary"
-                                @click.prevent="$refs.importFileInput.click()"
-                            >
-                                {{ __('Import file') }}
-                            </flux:button>
-                        </div>
-                    </x-slot>
-                @endif
             </x-admin.index-actions>
         </x-slot>
     </x-admin.page-header>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <flux:card class="!p-4">
-            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total records') }}</flux:text>
-            <flux:heading size="xl">{{ number_format($this->fuelPriceStats['total']) }}</flux:heading>
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Arşiv gün sayısı') }}</flux:text>
+            <flux:heading size="xl">{{ number_format($this->archiveKpiStats['day_count']) }}</flux:heading>
         </flux:card>
         <flux:card class="!p-4">
-            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Prices this month') }}</flux:text>
-            <flux:heading size="xl">{{ number_format($this->fuelPriceStats['prices_this_month']) }}</flux:heading>
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Son motorin (TL/Lt)') }}</flux:text>
+            <flux:heading size="xl">
+                {{ $this->archiveKpiStats['latest_motorin'] !== null ? number_format((float) $this->archiveKpiStats['latest_motorin'], 2) : '—' }}
+            </flux:heading>
         </flux:card>
         <flux:card class="!p-4">
-            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Avg. price') }}</flux:text>
-            <flux:heading size="xl">{{ number_format($this->fuelPriceStats['avg_price'], 4) }}</flux:heading>
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Dönem ort. motorin (TL/Lt)') }}</flux:text>
+            <flux:heading size="xl">
+                {{ $this->archiveKpiStats['average_motorin'] !== null ? number_format((float) $this->archiveKpiStats['average_motorin'], 2) : '—' }}
+            </flux:heading>
         </flux:card>
         <flux:card class="!p-4">
-            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Fuel types') }}</flux:text>
-            <flux:heading size="xl">{{ $this->fuelPriceStats['fuel_types_count'] }}</flux:heading>
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('En yüksek günlük değişim') }}</flux:text>
+            <flux:heading size="xl">
+                {{ $this->archiveKpiStats['peak_daily_change_pct'] !== null ? (($this->archiveKpiStats['peak_daily_change_pct'] > 0 ? '+' : '').number_format((float) $this->archiveKpiStats['peak_daily_change_pct'], 2).'%') : '—' }}
+            </flux:heading>
         </flux:card>
     </div>
 
-    <flux:card class="p-4">
-        <flux:input
-            wire:model.live.debounce.300ms="filterSearch"
-            :label="__('Quick search')"
-            :placeholder="__('Search by type / source / region')"
-            icon="magnifying-glass"
-            class="max-w-full sm:max-w-md"
-        />
-    </flux:card>
+    <flux:card class="overflow-hidden border-zinc-200 p-0 dark:border-zinc-700">
+        <div class="flex items-center justify-between gap-3 bg-red-600 px-4 py-3 text-white">
+            <flux:heading size="lg" class="text-white">{{ __('Akaryakıt Fiyatları') }}</flux:heading>
+        </div>
 
-    @if (session()->has('bulk_deleted'))
-        <flux:callout variant="success" icon="check-circle">
-            {{ __('Deleted :count records.', ['count' => session('bulk_deleted')]) }}
-        </flux:callout>
-    @endif
+        <div class="flex flex-nowrap gap-3 overflow-x-auto p-4">
+            <div class="min-w-[200px] flex-1">
+                <flux:select wire:model.live="archiveProvince" :label="__('İl')">
+                    @foreach ($archiveCityOptions as $provinceOption)
+                        <option value="{{ $provinceOption['id'] }}">{{ $provinceOption['name'] }}</option>
+                    @endforeach
+                </flux:select>
+            </div>
+
+            <div class="min-w-[200px] flex-1">
+                <flux:select wire:model.live="archiveDistrict" :label="__('İlçe')">
+                    @foreach ($archiveDistrictOptions as $districtOption)
+                        <option value="{{ $districtOption['id'] }}">{{ $districtOption['name'] }}</option>
+                    @endforeach
+                </flux:select>
+            </div>
+
+            <div class="min-w-[200px] flex-1">
+                <flux:input wire:model.live="archiveStartDate" type="date" :label="__('Başlangıç Tarihi')" />
+            </div>
+
+            <div class="min-w-[200px] flex-1">
+                <flux:input wire:model.live="archiveEndDate" type="date" :label="__('Bitiş Tarihi')" />
+            </div>
+
+            <div class="flex min-w-[140px] flex-1 items-end">
+                <flux:button class="h-10 w-full bg-red-600 hover:bg-red-700" variant="primary" wire:click="searchArchive">
+                    {{ __('Ara') }}
+                </flux:button>
+            </div>
+        </div>
+
+        <div class="px-4 pb-4">
+            <div class="mb-3 text-sm text-zinc-500">{{ __('Fiyatlara KDV Dahildir') }}</div>
+            @if (session()->has('archive_error'))
+                <flux:callout variant="danger" icon="exclamation-triangle" class="mb-3">
+                    {{ session('archive_error') }}
+                </flux:callout>
+            @endif
+            <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Tarih') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Excellium Kurşunsuz 95 TL/Lt') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Motorin TL/Lt') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Motorin Günlük Değişim (%)') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Excellium Motorin TL/Lt') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Kalorifer Yakıtı TL/Kg') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Fuel Oil TL/Kg') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Yüksek Kükürtlü Fuel Oil TL/Kg') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Otogaz TL/Lt') }}</th>
+                            <th class="px-3 py-2 text-left font-medium">{{ __('Gazyağı TL/Lt') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                        @forelse ($this->archiveApiRowsWithChanges as $archiveRow)
+                            <tr>
+                                <td class="px-3 py-2 whitespace-nowrap">
+                                    {{ isset($archiveRow['pricedate']) ? \Carbon\Carbon::parse($archiveRow['pricedate'])->translatedFormat('d F Y') : '—' }}
+                                </td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['kursunsuz_95_excellium_95']) ? number_format((float) $archiveRow['kursunsuz_95_excellium_95'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['motorin']) ? number_format((float) $archiveRow['motorin'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">
+                                    @php
+                                        $prev = $archiveRow['motorin_change_prev_pct'] ?? null;
+
+                                        $prevArrow = $prev === null ? '•' : ($prev > 0 ? '▲' : ($prev < 0 ? '▼' : '→'));
+
+                                        $prevClass = $prev === null
+                                            ? 'text-zinc-600 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-300'
+                                            : ((float) abs($prev) <= 5
+                                                ? 'text-zinc-700 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-200'
+                                                : ($prev > 0
+                                                ? 'text-emerald-900 bg-emerald-200'
+                                                : ($prev < 0
+                                                    ? 'text-rose-800 bg-rose-200'
+                                                    : 'text-zinc-700 bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-200')));
+
+                                        $prevStyle = '';
+                                        if ($prev !== null && (float) abs($prev) > 5) {
+                                            $prevStyle = $prev > 0
+                                                ? 'background-color:#34d399;color:#052e16;'
+                                                : 'background-color:#fb7185;color:#4c0519;';
+                                        }
+                                    @endphp
+                                    <div class="min-w-[104px] text-xs">
+                                        <span class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium {{ $prevClass }}" style="{{ $prevStyle }}">
+                                            <span class="text-sm leading-none">{{ $prevArrow }}</span>
+                                            <span>
+                                                {{ $prev !== null ? (($prev > 0 ? '+' : '').number_format((float) $prev, 2).'%') : '—' }}
+                                            </span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['motorin_excellium']) ? number_format((float) $archiveRow['motorin_excellium'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['kalorifer_yakiti']) ? number_format((float) $archiveRow['kalorifer_yakiti'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['fuel_oil']) ? number_format((float) $archiveRow['fuel_oil'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['yuksek_kukurtlu_fuel_oil']) ? number_format((float) $archiveRow['yuksek_kukurtlu_fuel_oil'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['otogaz']) ? number_format((float) $archiveRow['otogaz'], 2) : '—' }}</td>
+                                <td class="px-3 py-2">{{ isset($archiveRow['gazyagi']) ? number_format((float) $archiveRow['gazyagi'], 2) : '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="10" class="px-3 py-6 text-center text-zinc-500">{{ __('Bu filtrede kayıt bulunamadı.') }}</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </flux:card>
 
     @if (session()->has('import_created'))
         <flux:callout variant="success">
@@ -417,165 +814,4 @@ new #[Lazy, Title('Fuel prices')] class extends Component
             </ul>
         </flux:callout>
     @endif
-
-    @if ($canWrite)
-        <flux:card class="p-4">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <flux:heading size="lg">{{ __('Add or edit record') }}</flux:heading>
-                @if ($editingId === null)
-                    <flux:button type="button" variant="primary" wire:click="startCreate">{{ __('New fuel price') }}</flux:button>
-                @endif
-            </div>
-
-            @if ($editingId !== null)
-                <form wire:submit="save" class="grid max-w-xl gap-4 sm:grid-cols-2">
-                    <flux:select wire:model="fuel_type" :label="__('Fuel type')" required>
-                        <option value="diesel">{{ __('Diesel') }}</option>
-                        <option value="gasoline">{{ __('Gasoline') }}</option>
-                        <option value="lpg">{{ __('LPG') }}</option>
-                    </flux:select>
-                    <flux:input wire:model="price" type="text" :label="__('Price')" required />
-                    <flux:select wire:model="currency" :label="__('Currency')" required>
-                        <option value="TRY">TRY</option>
-                        <option value="EUR">EUR</option>
-                        <option value="USD">USD</option>
-                    </flux:select>
-                    <flux:input wire:model="recorded_at" type="date" :label="__('Recorded at')" required />
-                    <flux:input wire:model="source" type="text" :label="__('Source')" class="sm:col-span-2" />
-                    <flux:input wire:model="region" type="text" :label="__('Region')" class="sm:col-span-2" />
-                    <div class="flex flex-wrap gap-2 sm:col-span-2">
-                        <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
-                        <flux:button type="button" variant="ghost" wire:click="cancelForm">{{ __('Cancel') }}</flux:button>
-                    </div>
-                </form>
-            @endif
-        </flux:card>
-    @endif
-
-    @if ($canWrite && count($selectedIds) > 0)
-        <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
-            <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
-            <flux:button
-                type="button"
-                variant="danger"
-                wire:click="bulkDeleteSelected"
-                wire:confirm="{{ __('Delete selected fuel price records?') }}"
-            >
-                {{ __('Delete selected') }}
-            </flux:button>
-        </div>
-    @endif
-
-    <flux:card class="p-4">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
-                <thead>
-                    <tr class="text-start text-zinc-500 dark:text-zinc-400">
-                        @if ($canWrite)
-                            <th class="w-12 py-2 pe-4">
-                                <span class="sr-only">{{ __('Select page') }}</span>
-                                <input
-                                    type="checkbox"
-                                    class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
-                                    @checked($this->isPageFullySelected())
-                                    wire:click.prevent="toggleSelectPage"
-                                    wire:key="select-page-prices"
-                                />
-                            </th>
-                        @endif
-                        <th class="py-2 pe-4">
-                            <button type="button" wire:click="sortBy('id')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
-                                ID
-                                @if ($sortColumn === 'id')
-                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                @endif
-                            </button>
-                        </th>
-                        <th class="py-2 pe-4">
-                            <button type="button" wire:click="sortBy('fuel_type')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
-                                {{ __('Type') }}
-                                @if ($sortColumn === 'fuel_type')
-                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                @endif
-                            </button>
-                        </th>
-                        <th class="py-2 pe-4">
-                            <button type="button" wire:click="sortBy('price')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
-                                {{ __('Price') }}
-                                @if ($sortColumn === 'price')
-                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                @endif
-                            </button>
-                        </th>
-                        <th class="py-2 pe-4">
-                            <button type="button" wire:click="sortBy('currency')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
-                                {{ __('Currency') }}
-                                @if ($sortColumn === 'currency')
-                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                @endif
-                            </button>
-                        </th>
-                        <th class="py-2 pe-4">{{ __('Source') }}</th>
-                        <th class="py-2 pe-4">{{ __('Region') }}</th>
-                        <th class="py-2 pe-4">
-                            <button type="button" wire:click="sortBy('recorded_at')" class="flex items-center gap-1 font-medium text-zinc-800 dark:text-white">
-                                {{ __('Recorded') }}
-                                @if ($sortColumn === 'recorded_at')
-                                    <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                                @endif
-                            </button>
-                        </th>
-                        @if ($canWrite)
-                            <th class="py-2 text-end">{{ __('Actions') }}</th>
-                        @endif
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    @forelse ($this->paginatedPrices as $row)
-                        <tr>
-                            @if ($canWrite)
-                                <td class="py-2 pe-4">
-                                    <input
-                                        type="checkbox"
-                                        class="size-4 rounded border-zinc-300 text-primary focus:ring-primary dark:border-zinc-600"
-                                        wire:key="price-select-{{ $row->id }}"
-                                        wire:model.live="selectedIds"
-                                        value="{{ $row->id }}"
-                                    />
-                                </td>
-                            @endif
-                            <td class="py-2 pe-4 font-mono text-xs">{{ $row->id }}</td>
-                            <td class="py-2 pe-4">{{ ucfirst($row->fuel_type) }}</td>
-                            <td class="py-2 pe-4">{{ number_format((float) $row->price, 4) }}</td>
-                            <td class="py-2 pe-4">{{ $row->currency }}</td>
-                            <td class="py-2 pe-4">{{ $row->source ?? '—' }}</td>
-                            <td class="py-2 pe-4">{{ $row->region ?? '—' }}</td>
-                            <td class="py-2 pe-4 whitespace-nowrap">{{ $row->recorded_at->format('Y-m-d') }}</td>
-                            @if ($canWrite)
-                                <td class="py-2 text-end">
-                                    <flux:button size="sm" variant="ghost" wire:click="startEdit({{ $row->id }})">{{ __('Edit') }}</flux:button>
-                                    <flux:button
-                                        size="sm"
-                                        variant="ghost"
-                                        wire:click="delete({{ $row->id }})"
-                                        wire:confirm="{{ __('Delete this fuel price record?') }}"
-                                    >
-                                        {{ __('Delete') }}
-                                    </flux:button>
-                                </td>
-                            @endif
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ $canWrite ? 9 : 8 }}" class="py-6 text-center text-zinc-500">{{ __('No fuel price records yet.') }}</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4">
-            {{ $this->paginatedPrices->links() }}
-        </div>
-    </flux:card>
 </div>

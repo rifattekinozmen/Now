@@ -124,6 +124,61 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Web panel (fiyat arşivi) entegrasyonu
+    |--------------------------------------------------------------------------
+    |
+    | Bu ayarlar giriş sonrası "fiyat arşivi" tablosunu çekmek için kullanılır.
+    | Ekran/form alan adları kurum ortamında değişebileceği için alan anahtarları
+    | ve sorgu parametreleri konfigüre edilebilir bırakılmıştır.
+    |
+    */
+
+    'archive_login_url' => env('TOTALENERGIES_ARCHIVE_LOGIN_URL'),
+
+    'archive_url' => env('TOTALENERGIES_ARCHIVE_URL'),
+
+    'archive_api_base_url' => env('TOTALENERGIES_ARCHIVE_API_BASE_URL', 'https://apimobile.guzelenerji.com.tr'),
+
+    'archive_username' => env('TOTALENERGIES_ARCHIVE_USERNAME'),
+
+    'archive_password' => env('TOTALENERGIES_ARCHIVE_PASSWORD'),
+
+    'archive_username_field' => env('TOTALENERGIES_ARCHIVE_USERNAME_FIELD', 'Username'),
+
+    'archive_password_field' => env('TOTALENERGIES_ARCHIVE_PASSWORD_FIELD', 'Password'),
+
+    'archive_csrf_field' => env('TOTALENERGIES_ARCHIVE_CSRF_FIELD', '__RequestVerificationToken'),
+
+    /*
+    | Ek login alanları (JSON), örn: {"RememberMe":"true"}
+    */
+    'archive_login_payload' => (static function (): array {
+        $raw = json_decode((string) env('TOTALENERGIES_ARCHIVE_LOGIN_PAYLOAD', '{}'), true);
+
+        return is_array($raw) ? $raw : [];
+    })(),
+
+    /*
+    | Fiyat arşivi istek parametreleri (JSON), il/ilçe parametreleri kod tarafında
+    | otomatik set edilir. Örn: {"stationType":"corporate"}
+    */
+    'archive_query' => (static function (): array {
+        $raw = json_decode((string) env('TOTALENERGIES_ARCHIVE_QUERY', '{}'), true);
+
+        return is_array($raw) ? $raw : [];
+    })(),
+
+    /*
+    | Tablo başlıklarından fuel_type eşlemesi (anahtar kelime içerme kontrolü)
+    */
+    'archive_column_map' => [
+        'diesel' => ['Motorin', 'Excellium Motorin'],
+        'gasoline' => ['Kurşunsuz 95', 'Excellium Kurşunsuz 95', 'Benzin'],
+        'lpg' => ['Otogaz', 'OtoGaz', 'LPG'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Yanıttan fiyat çıkarma (dot notation)
     |--------------------------------------------------------------------------
     |

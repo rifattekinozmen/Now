@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Exports\FuelPriceArchiveTableExport;
 use App\Http\Controllers\Controller;
 use App\Models\FuelPrice;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
-use Maatwebsite\Excel\Facades\Excel;
 
-class DownloadFuelPriceImportTemplateController extends Controller
+class FuelPriceArchivePrintController extends Controller
 {
     public function __invoke(Request $request)
     {
@@ -20,6 +18,7 @@ class DownloadFuelPriceImportTemplateController extends Controller
         $countyId = (int) $request->query('county_id', 0);
         $startDate = (string) $request->query('start_date', now()->subDays(30)->toDateString());
         $endDate = (string) $request->query('end_date', now()->toDateString());
+        $mode = (string) $request->query('mode', 'print'); // print|pdf
 
         $rows = [];
         if ($countyId > 0) {
@@ -54,21 +53,26 @@ class DownloadFuelPriceImportTemplateController extends Controller
                     }
 
                     $rows[] = [
-                        isset($items[$i]['pricedate']) ? Carbon::parse((string) $items[$i]['pricedate'])->format('d.m.Y') : null,
-                        $items[$i]['kursunsuz_95_excellium_95'] ?? null,
-                        $items[$i]['motorin'] ?? null,
-                        $delta !== null ? round($delta, 2) : null,
-                        $items[$i]['motorin_excellium'] ?? null,
-                        $items[$i]['kalorifer_yakiti'] ?? null,
-                        $items[$i]['fuel_oil'] ?? null,
-                        $items[$i]['yuksek_kukurtlu_fuel_oil'] ?? null,
-                        $items[$i]['otogaz'] ?? null,
-                        $items[$i]['gazyagi'] ?? null,
+                        'pricedate' => isset($items[$i]['pricedate']) ? Carbon::parse((string) $items[$i]['pricedate'])->format('d.m.Y') : '-',
+                        'kursunsuz_95_excellium_95' => $items[$i]['kursunsuz_95_excellium_95'] ?? null,
+                        'motorin' => $items[$i]['motorin'] ?? null,
+                        'motorin_change_prev_pct' => $delta,
+                        'motorin_excellium' => $items[$i]['motorin_excellium'] ?? null,
+                        'kalorifer_yakiti' => $items[$i]['kalorifer_yakiti'] ?? null,
+                        'fuel_oil' => $items[$i]['fuel_oil'] ?? null,
+                        'yuksek_kukurtlu_fuel_oil' => $items[$i]['yuksek_kukurtlu_fuel_oil'] ?? null,
+                        'otogaz' => $items[$i]['otogaz'] ?? null,
+                        'gazyagi' => $items[$i]['gazyagi'] ?? null,
                     ];
                 }
             }
         }
 
-        return Excel::download(new FuelPriceArchiveTableExport($rows), 'fuel-price-archive-table.xlsx');
+        return view('admin.fuel-prices.archive-print', [
+            'rows' => $rows,
+            'startDate' => $startDate,
+            'endDate' => $endDate,
+            'mode' => $mode,
+        ]);
     }
 }
