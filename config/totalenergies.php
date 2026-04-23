@@ -179,6 +179,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Yakıt fiyatı bildirim ayarları (yeni kayıt + % değişim)
+    |--------------------------------------------------------------------------
+    */
+    'alerts' => [
+        'enabled' => (bool) env('FUEL_PRICE_ALERTS_ENABLED', true),
+        'warning_threshold_percent' => (float) env('FUEL_PRICE_ALERT_WARNING_THRESHOLD', 3),
+        'critical_threshold_percent' => (float) env('FUEL_PRICE_ALERT_CRITICAL_THRESHOLD', 5),
+        'dedupe_hours' => max(1, (int) env('FUEL_PRICE_ALERT_DEDUPE_HOURS', 12)),
+        'quiet_hours_start' => env('FUEL_PRICE_ALERT_QUIET_HOURS_START', '22:00'),
+        'quiet_hours_end' => env('FUEL_PRICE_ALERT_QUIET_HOURS_END', '08:00'),
+        'recipient_roles' => (static function (): array {
+            $raw = (string) env('FUEL_PRICE_ALERT_RECIPIENT_ROLES', 'tenant-user');
+            $parts = array_map('trim', explode(',', $raw));
+
+            return array_values(array_filter($parts, fn (string $role): bool => $role !== ''));
+        })(),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Yanıttan fiyat çıkarma (dot notation)
     |--------------------------------------------------------------------------
     |

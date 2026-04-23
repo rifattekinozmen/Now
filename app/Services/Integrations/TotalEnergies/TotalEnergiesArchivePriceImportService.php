@@ -8,6 +8,7 @@ use App\Models\User;
 use GuzzleHttp\Cookie\CookieJar;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 
@@ -178,7 +179,8 @@ final class TotalEnergiesArchivePriceImportService
 
                         if ($fuelType === 'diesel' && $previousDieselPrice !== null && (float) $previousDieselPrice > 0) {
                             $changePct = (((float) $price - (float) $previousDieselPrice) / (float) $previousDieselPrice) * 100;
-                            if (abs($changePct) >= 5.0) {
+                            $criticalThreshold = (float) config('totalenergies.alerts.critical_threshold_percent', 5.0);
+                            if (abs($changePct) >= $criticalThreshold) {
                                 $dieselAlerts[] = [
                                     'date' => (string) $row['recorded_at'],
                                     'previous' => (float) $previousDieselPrice,
@@ -359,36 +361,66 @@ final class TotalEnergiesArchivePriceImportService
      */
     private function notifyPriceEvents(int $tenantId, int $importedCount, array $dieselAlerts, string $region): void
     {
+        if (! (bool) config('totalenergies.alerts.enabled', true)) {
+            return;
+        }
+
         if ($importedCount <= 0 && $dieselAlerts === []) {
             return;
         }
 
-        $users = User::query()
+        $usersQuery = User::query()
             ->withoutGlobalScopes()
-            ->where('tenant_id', $tenantId)
-            ->get();
+            ->where('tenant_id', $tenantId);
+
+        $recipientRoles = config('totalenergies.alerts.recipient_roles', []);
+        if (is_array($recipientRoles) && $recipientRoles !== []) {
+            $roleList = array_values(array_filter($recipientRoles, 'is_string'));
+            if ($roleList !== []) {
+                $usersQuery->whereHas('roles', fn ($q) => $q->whereIn('name', $roleList));
+            }
+        }
+
+        $users = $usersQuery->get();
+        $dedupeHours = max(1, (int) config('totalenergies.alerts.dedupe_hours', 12));
+        $criticalThreshold = (float) config('totalenergies.alerts.critical_threshold_percent', 5.0);
+        $quietStart = (string) config('totalenergies.alerts.quiet_hours_start', '22:00');
+        $quietEnd = (string) config('totalenergies.alerts.quiet_hours_end', '08:00');
+        $inQuietHours = $this->isNowInQuietHours($quietStart, $quietEnd);
 
         foreach ($users as $user) {
             if ($importedCount > 0) {
-                AppNotification::query()->create([
-                    'tenant_id' => $tenantId,
-                    'user_id' => $user->id,
-                    'type' => 'fuel_price_new',
-                    'title' => __('Yeni yakıt fiyatı kaydı eklendi'),
-                    'body' => __(':count yeni fiyat satırı eklendi (:region).', [
-                        'count' => $importedCount,
-                        'region' => $region,
-                    ]),
-                    'is_read' => false,
-                    'data' => [
-                        'imported_count' => $importedCount,
-                        'region' => $region,
-                    ],
-                    'url' => route('admin.fuel-prices.index'),
-                ]);
+                $newPriceKey = "fuel-alert:new:{$tenantId}:{$user->id}:{$region}:".now()->toDateString();
+                if (Cache::add($newPriceKey, true, now()->addHours($dedupeHours))) {
+                    AppNotification::query()->create([
+                        'tenant_id' => $tenantId,
+                        'user_id' => $user->id,
+                        'type' => 'fuel_price_new',
+                        'title' => __('Yeni yakıt fiyatı kaydı eklendi'),
+                        'body' => __(':count yeni fiyat satırı eklendi (:region).', [
+                            'count' => $importedCount,
+                            'region' => $region,
+                        ]),
+                        'is_read' => false,
+                        'data' => [
+                            'imported_count' => $importedCount,
+                            'region' => $region,
+                        ],
+                        'url' => route('admin.fuel-prices.index'),
+                    ]);
+                }
             }
 
             foreach ($dieselAlerts as $alert) {
+                if ($inQuietHours && abs((float) $alert['change_pct']) < $criticalThreshold) {
+                    continue;
+                }
+
+                $alertKey = "fuel-alert:change:{$tenantId}:{$user->id}:{$region}:{$alert['date']}";
+                if (! Cache::add($alertKey, true, now()->addHours($dedupeHours))) {
+                    continue;
+                }
+
                 AppNotification::query()->create([
                     'tenant_id' => $tenantId,
                     'user_id' => $user->id,
@@ -412,6 +444,25 @@ final class TotalEnergiesArchivePriceImportService
                 ]);
             }
         }
+    }
+
+    private function isNowInQuietHours(string $start, string $end): bool
+    {
+        $now = now()->format('H:i');
+        $start = trim($start);
+        $end = trim($end);
+        if ($start === '' || $end === '') {
+            return false;
+        }
+        if ($start === $end) {
+            return false;
+        }
+
+        if ($start < $end) {
+            return $now >= $start && $now < $end;
+        }
+
+        return $now >= $start || $now < $end;
     }
 
     /**
