@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DownloadCustomerImportTemplateController;
+use App\Http\Controllers\Admin\DownloadDeliveryAnalysisExcelController;
 use App\Http\Controllers\Admin\DownloadDeliveryInvoiceLinesCsvController;
 use App\Http\Controllers\Admin\DownloadDeliveryMaterialPivotCsvController;
 use App\Http\Controllers\Admin\DownloadDocumentController;
@@ -140,6 +141,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('work-orders', 'pages::admin.work-orders-index')->name('work-orders.index');
             Route::livewire('vehicle-tyres', 'pages::admin.vehicle-tyres-index')->name('vehicle-tyres.index');
             Route::livewire('delivery-imports', 'pages::admin.delivery-imports-index')->name('delivery-imports.index');
+            Route::get('delivery-imports/{deliveryImport}/analiz.xlsx', DownloadDeliveryAnalysisExcelController::class)->name('delivery-imports.analysis.xlsx');
             Route::get('delivery-imports/{deliveryImport}/pivot.csv', DownloadDeliveryMaterialPivotCsvController::class)->name('delivery-imports.material-pivot.csv');
             Route::get('delivery-imports/{deliveryImport}/fatura-kalemleri.csv', DownloadDeliveryInvoiceLinesCsvController::class)->name('delivery-imports.invoice-lines.csv');
             Route::livewire('delivery-imports/{deliveryImport}', 'pages::admin.delivery-import-show')->name('delivery-imports.show');

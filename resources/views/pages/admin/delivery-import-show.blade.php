@@ -770,14 +770,8 @@ new #[Title('Delivery import detail')] class extends Component
                         </div>
                     </div>
                     <div class="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
-                        <flux:button size="sm" variant="outline" icon="arrow-down-tray" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" :href="route('admin.delivery-imports.material-pivot.csv', $deliveryImport)">
-                            {{ __('Pivot CSV') }}
-                        </flux:button>
-                        <flux:button size="sm" variant="outline" icon="arrow-down-tray" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" :href="route('admin.delivery-imports.invoice-lines.csv', $deliveryImport)">
-                            {{ __('Fatura Kalemleri CSV') }}
-                        </flux:button>
-                        <flux:button size="sm" variant="outline" icon="arrow-left" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" href="#delivery-import-grid" wire:navigate="false">
-                            {{ __('Rapor Detayı') }}
+                        <flux:button size="sm" variant="outline" icon="arrow-down-tray" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" :href="route('admin.delivery-imports.analysis.xlsx', ['deliveryImport' => $deliveryImport, 'plate' => $rowPlateFilter !== '' ? $rowPlateFilter : null])">
+                            {{ __('Analiz Excel') }}
                         </flux:button>
                         <flux:button size="sm" variant="outline" icon="bars-3" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" :href="route('admin.delivery-imports.index')" wire:navigate>
                             {{ __('Listeye Dön') }}
