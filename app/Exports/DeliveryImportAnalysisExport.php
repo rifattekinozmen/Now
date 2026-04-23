@@ -219,7 +219,7 @@ final class DeliveryImportAnalysisExport implements WithMultipleSheets
         }
 
         if ($rows !== []) {
-            $totalLine = ['Toplam'];
+            $totalLine = [__('Total')];
             foreach ($materials as $m) {
                 $key = (string) ($m['key'] ?? '');
                 $qty = (float) ($totals['material_totals'][$key] ?? 0);
@@ -310,7 +310,7 @@ final class DeliveryImportAnalysisExport implements WithMultipleSheets
 
     private function summarySheetName(): string
     {
-        return $this->isTurkish() ? '01_YoneticiOzeti' : '01_ExecutiveSummary';
+        return $this->isTurkish() ? '01_Ozet' : '01_Summary';
     }
 
     private function masterPivotSheetName(): string
@@ -320,22 +320,22 @@ final class DeliveryImportAnalysisExport implements WithMultipleSheets
 
     private function masterInvoiceSheetName(): string
     {
-        return $this->isTurkish() ? '03_FaturaKalemleri' : '03_InvoiceLines';
+        return $this->isTurkish() ? '03_Fatura' : '03_Invoices';
     }
 
     private function platePivotSheetName(): string
     {
-        return $this->isTurkish() ? '02_PlakaPivotOzeti' : '02_PlatePivotSummary';
+        return $this->isTurkish() ? '02_PlakaPivot' : '02_PlatePivot';
     }
 
     private function plateInvoiceSheetName(): string
     {
-        return $this->isTurkish() ? '03_PlakaFaturaKalemleri' : '03_PlateInvoiceLines';
+        return $this->isTurkish() ? '03_PlakaFatura' : '03_PlateInvoices';
     }
 
     private function plateDetailPrefix(): string
     {
-        return $this->isTurkish() ? '04_PlakaDetay_' : '04_PlateDetail_';
+        return $this->isTurkish() ? '04_Plaka_' : '04_Plate_';
     }
 }
 
@@ -412,7 +412,7 @@ final class DeliveryImportSummarySheet implements FromArray, WithTitle, WithStyl
 
         $rows = [
             [__('7-Day Delivery Analysis Summary'), ''],
-            [__('Import No'), (string) ($this->deliveryImport->reference_no ?? $this->deliveryImport->id)],
+            [__('Report No'), (string) ($this->deliveryImport->reference_no ?? $this->deliveryImport->id)],
             [__('Total Ton'), number_format($totalTon, 2, ',', '.')],
             [__('Total Rows'), (string) $totalRows],
             [__('Plate Count'), (string) $plateCount],

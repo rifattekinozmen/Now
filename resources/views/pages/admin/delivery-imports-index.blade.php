@@ -13,7 +13,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
-new #[Lazy, Title('Delivery Imports')] class extends Component
+new #[Lazy, Title('Delivery Reports')] class extends Component
 {
     use WithFileUploads;
     use WithPagination;
@@ -243,7 +243,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
         $this->showUploadForm = false;
         $this->resetUploadForm();
         $this->resetPage();
-        session()->flash('saved', __('Import record created.'));
+        session()->flash('saved', __('Report record created.'));
     }
 
     /**
@@ -254,7 +254,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
         Gate::authorize('create', DeliveryImport::class);
         $import = DeliveryImport::query()->findOrFail($id);
         if (! $import->file_path || $import->source !== 'excel') {
-            session()->flash('import_warning', __('No Excel file attached for this import.'));
+            session()->flash('import_warning', __('No Excel file attached to this report.'));
 
             return;
         }
@@ -272,7 +272,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                     : DeliveryImportStatus::Error->value,
                 'last_error' => $snippet !== null ? mb_substr($snippet, 0, 65000) : null,
             ]);
-            session()->flash('saved', __('Import reprocessed.'));
+            session()->flash('saved', __('The report was reprocessed.'));
         } catch (\Throwable $e) {
             $import->update([
                 'last_error' => mb_substr($e->getMessage(), 0, 65000),
@@ -322,13 +322,13 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
     <x-admin.page-header
-        :heading="__('Delivery Imports')"
-        :description="__('Track and manage delivery reconciliation imports.')"
+        :heading="__('Delivery Reports')"
+        :description="__('Track and manage delivery reconciliation reports.')"
     >
         <x-slot name="actions">
             @can('create', \App\Models\DeliveryImport::class)
                 <flux:button type="button" variant="primary" wire:click="startUpload" icon="arrow-up-tray">
-                    {{ __('New import') }}
+                    {{ __('New report') }}
                 </flux:button>
             @endcan
         </x-slot>
@@ -371,7 +371,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     {{-- KPI Cards --}}
     <div class="grid gap-3 sm:grid-cols-4">
         <flux:card class="p-4">
-            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total Imports') }}</flux:text>
+            <flux:text class="text-sm text-zinc-500 dark:text-zinc-400">{{ __('Total reports') }}</flux:text>
             <flux:heading size="lg">{{ $this->kpiStats['total'] }}</flux:heading>
         </flux:card>
         <flux:card class="p-4">
@@ -420,10 +420,10 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     {{-- Upload Form --}}
     @if ($showUploadForm)
         <flux:card class="p-4">
-            <flux:heading size="lg" class="mb-4">{{ __('New Import Record') }}</flux:heading>
+            <flux:heading size="lg" class="mb-4">{{ __('New report record') }}</flux:heading>
             <form wire:submit="save" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <flux:input wire:model="reference_no" :label="__('Reference No')" placeholder="IMP-2024-001" />
-                <flux:input wire:model="import_date" type="date" :label="__('Import Date')" required />
+                <flux:input wire:model="import_date" type="date" :label="__('Report date')" required />
                 <flux:select wire:model="source" :label="__('Source')">
                     <option value="excel">Excel</option>
                     <option value="csv">CSV</option>
@@ -454,7 +454,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
         <div class="flex flex-wrap items-center gap-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-600 dark:bg-zinc-900">
             <flux:text>{{ __(':count selected', ['count' => count($selectedIds)]) }}</flux:text>
             <flux:button type="button" variant="danger" wire:click="bulkDeleteSelected"
-                wire:confirm="{{ __('Delete selected import records?') }}">
+                wire:confirm="{{ __('Delete selected report records?') }}">
                 {{ __('Delete selected') }}
             </flux:button>
         </div>
@@ -475,7 +475,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                         <th class="py-2 pe-3 font-medium">{{ __('Reference') }}</th>
                         <th class="py-2 pe-3 font-medium">
                             <button wire:click="sortBy('import_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
-                                {{ __('Import Date') }}@if ($sortColumn === 'import_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                                {{ __('Report date') }}@if ($sortColumn === 'import_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
                             </button>
                         </th>
                         <th class="py-2 pe-3 font-medium">{{ __('Source') }}</th>
@@ -537,7 +537,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                                             wire:navigate
                                             icon="table-cells"
                                         >
-                                            {{ __('Excel grid görüntüle') }}
+                                            {{ __('View Excel grid') }}
                                         </flux:button>
                                     @endcan
                                     @can('create', \App\Models\DeliveryImport::class)
@@ -566,7 +566,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                     @empty
                         <tr>
                             <td colspan="9" class="py-8 text-center text-zinc-500">
-                                {{ __('No import records yet.') }}
+                                {{ __('No report records yet.') }}
                             </td>
                         </tr>
                     @endforelse
@@ -580,7 +580,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
     <flux:modal name="confirm-delete" class="min-w-[22rem]">
         <div class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Delete import record?') }}</flux:heading>
+                <flux:heading size="lg">{{ __('Delete this report record?') }}</flux:heading>
                 <flux:text class="mt-2">{{ __('This action cannot be undone.') }}</flux:text>
             </div>
             <div class="flex justify-end gap-2">
@@ -604,7 +604,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                         <flux:text class="font-mono font-medium">{{ $rec->reference_no ?? '—' }}</flux:text>
                     </flux:card>
                     <flux:card class="p-3">
-                        <flux:text class="text-xs text-zinc-500">{{ __('Import Date') }}</flux:text>
+                        <flux:text class="text-xs text-zinc-500">{{ __('Report date') }}</flux:text>
                         <flux:text class="font-medium">{{ $rec->import_date->format('d M Y') }}</flux:text>
                     </flux:card>
                     <flux:card class="p-3">
@@ -657,7 +657,7 @@ new #[Lazy, Title('Delivery Imports')] class extends Component
                     @can('create', \App\Models\DeliveryImport::class)
                         @if ($rec->file_path && $rec->source === 'excel')
                             <flux:button variant="primary" wire:click="reprocessImport({{ $rec->id }})" icon="arrow-path">
-                                {{ __('Reprocess import') }}
+                                {{ __('Reprocess report') }}
                             </flux:button>
                         @endif
                     @endcan

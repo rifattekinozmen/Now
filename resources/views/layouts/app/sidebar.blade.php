@@ -100,7 +100,7 @@
                             <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.orders.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Orders') }}</flux:sidebar.item>
                             <flux:sidebar.item icon="cube" :href="route('admin.shipments.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Shipments') }}</flux:sidebar.item>
                             <flux:sidebar.item icon="hashtag" :href="route('admin.delivery-numbers.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('PIN Pool') }}</flux:sidebar.item>
-                            <flux:sidebar.item icon="arrow-up-tray" :href="route('admin.delivery-imports.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Delivery Imports') }}</flux:sidebar.item>
+                            <flux:sidebar.item icon="arrow-up-tray" :href="route('admin.delivery-imports.index')" wire:navigate wire:current="bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100">{{ __('Delivery Reports') }}</flux:sidebar.item>
                         </div>
                     </div>
                     <div>
@@ -160,7 +160,7 @@
                             <flux:menu.item :href="route('admin.orders.index')" icon="clipboard-document-list" wire:navigate>{{ __('Orders') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.shipments.index')" icon="cube" wire:navigate>{{ __('Shipments') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.delivery-numbers.index')" icon="hashtag" wire:navigate>{{ __('PIN Pool') }}</flux:menu.item>
-                            <flux:menu.item :href="route('admin.delivery-imports.index')" icon="arrow-up-tray" wire:navigate>{{ __('Delivery Imports') }}</flux:menu.item>
+                            <flux:menu.item :href="route('admin.delivery-imports.index')" icon="arrow-up-tray" wire:navigate>{{ __('Delivery Reports') }}</flux:menu.item>
                             <flux:menu.heading>{{ __('Fleet & workshop') }}</flux:menu.heading>
                             <flux:menu.item :href="route('admin.vehicles.index')" icon="truck" wire:navigate>{{ __('Vehicles') }}</flux:menu.item>
                             <flux:menu.item :href="route('admin.fuel-intakes.index')" icon="bolt" wire:navigate>{{ __('Fuel Intakes') }}</flux:menu.item>

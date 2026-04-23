@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\DeliveryImportStatus;
 use App\Models\DeliveryImport;
 use App\Models\DeliveryImportPlateCorrection;
 use App\Models\DeliveryImportRow;
@@ -18,7 +19,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Title('Delivery import detail')] class extends Component
+new #[Title('Delivery report detail')] class extends Component
 {
     use WithPagination;
 
@@ -61,6 +62,18 @@ new #[Title('Delivery import detail')] class extends Component
      * @var array<int, array{label: string, value: string}>
      */
     public array $rowDetailItems = [];
+
+    /**
+     * Rapor satırı durumu rozeti (Beklemede / İşlendi / Hata) için kısa açıklama.
+     */
+    public function reportStatusHelp(): string
+    {
+        return match ($this->deliveryImport->status) {
+            DeliveryImportStatus::Pending => __('Report status: pending help'),
+            DeliveryImportStatus::Processed => __('Report status: processed help'),
+            DeliveryImportStatus::Error => __('Report status: error help'),
+        };
+    }
 
     public function mount(DeliveryImport $deliveryImport): void
     {
@@ -703,15 +716,19 @@ new #[Title('Delivery import detail')] class extends Component
 
 <div class="mx-auto flex w-full max-w-7xl flex-col gap-6 p-4 lg:p-8">
 
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="flex w-full flex-wrap items-center justify-between gap-3">
         <flux:button :href="route('admin.delivery-imports.index')" variant="ghost" wire:navigate icon="arrow-left" size="sm">
-            {{ __('Delivery Imports') }}
+            {{ __('Delivery Reports') }}
         </flux:button>
-        <flux:badge color="{{ $deliveryImport->status->color() }}" size="sm">{{ $deliveryImport->status->label() }}</flux:badge>
+        <flux:tooltip :content="$this->reportStatusHelp()" position="bottom">
+            <span class="inline-flex cursor-help" tabindex="0">
+                <flux:badge color="{{ $deliveryImport->status->color() }}" size="sm">{{ $deliveryImport->status->label() }}</flux:badge>
+            </span>
+        </flux:tooltip>
     </div>
 
     <x-admin.page-header
-        :heading="$deliveryImport->reference_no ?? __('Import #:id', ['id' => $deliveryImport->id])"
+        :heading="$deliveryImport->reference_no ?? __('Report #:id', ['id' => $deliveryImport->id])"
         :description="__('Excel rows, pivot summary, and tonnage sort.')"
     >
         <x-slot name="actions">
@@ -758,7 +775,7 @@ new #[Title('Delivery import detail')] class extends Component
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0 space-y-2">
                         <flux:heading size="lg" class="font-bold text-slate-900 dark:text-zinc-50">
-                            {{ $this->materialPivotDayCount }} {{ __('Günlük Veri Analiz Raporu') }}
+                            {{ __(':n-Day Data Analysis Report', ['n' => $this->materialPivotDayCount]) }}
                         </flux:heading>
                         <div class="flex flex-wrap items-center gap-2">
                             @if ($this->reportTypeLabel)
@@ -771,14 +788,14 @@ new #[Title('Delivery import detail')] class extends Component
                     </div>
                     <div class="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
                         <flux:button size="sm" variant="outline" icon="arrow-down-tray" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" :href="route('admin.delivery-imports.analysis.xlsx', ['deliveryImport' => $deliveryImport, 'plate' => $rowPlateFilter !== '' ? $rowPlateFilter : null])">
-                            {{ __('Analiz Excel') }}
+                            {{ __('Analysis Excel') }}
                         </flux:button>
                         <flux:button size="sm" variant="outline" icon="bars-3" class="border-[#e0e0e0] text-slate-800 dark:border-zinc-600 dark:text-zinc-200" :href="route('admin.delivery-imports.index')" wire:navigate>
-                            {{ __('Listeye Dön') }}
+                            {{ __('Back to list') }}
                         </flux:button>
                     </div>
                 </div>
-                <flux:text class="mt-3 text-sm text-zinc-600 dark:text-zinc-300">{{ __('Tarih satırları ve malzeme sütunları; hücrede Geçerli Miktar toplamı (Ton / Adet). Sağdaki renkli sütunlar BOŞ-DOLU ve DOLU-DOLU taşınan geçerli miktarlardır.') }}</flux:text>
+                <flux:text class="mt-3 text-sm text-zinc-600 dark:text-zinc-300">{{ __('The pivot table shows date rows and material columns. Each cell shows valid quantity totals (t / count). The colored columns on the right show empty–full and full–full valid quantities.') }}</flux:text>
             @else
                 <div class="flex flex-wrap items-end justify-between gap-4">
                     <flux:heading size="lg">{{ __('Pivot summary') }}</flux:heading>
@@ -1211,7 +1228,7 @@ new #[Title('Delivery import detail')] class extends Component
                 </div>
             @else
                 <div class="p-4 pt-0">
-                    <flux:text class="text-zinc-500">{{ __('No pivot data. Import an Excel file or check report type.') }}</flux:text>
+                    <flux:text class="text-zinc-500">{{ __('No pivot data. Load an Excel file or check the report type.') }}</flux:text>
                 </div>
             @endif
         @else
@@ -1268,14 +1285,14 @@ new #[Title('Delivery import detail')] class extends Component
         </div>
         @if ($this->rowTableMode === 'excel' && count($this->excelColumnLayout) === 0)
             <flux:callout variant="neutral" class="mb-4" icon="information-circle">
-                <flux:callout.text class="text-sm">{{ __('Excel column order is available after a successful import (layout is saved with the file). Showing report schema order below.') }}</flux:callout.text>
+                <flux:callout.text class="text-sm">{{ __('Excel column order is available after a successful upload (column layout is stored with the file). Report schema order is shown below.') }}</flux:callout.text>
             </flux:callout>
         @endif
         @if ($this->rowsPaginator->isEmpty())
             @if ($zipUnavailable)
                 <flux:text class="text-zinc-500">{{ __('Satır kaydı yok: sunucu zip eklentisi olmadan modern Excel dosyasını açamadı. Üstteki uyarıyı izleyin veya aynı veriyi .xls olarak kaydedip yeniden içe aktarın; ardından «Yeniden işle» ile deneyin.') }}</flux:text>
             @else
-                <flux:text class="text-zinc-500">{{ __('No rows stored for this import.') }}</flux:text>
+                <flux:text class="text-zinc-500">{{ __('No rows stored for this report.') }}</flux:text>
             @endif
         @else
             <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
