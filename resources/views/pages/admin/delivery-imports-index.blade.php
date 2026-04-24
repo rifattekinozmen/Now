@@ -7,13 +7,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Lazy;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
-new #[Lazy, Title('Delivery Reports')] class extends Component
+new #[Title('Delivery Reports')] class extends Component
 {
     use WithFileUploads;
     use WithPagination;
@@ -26,8 +25,6 @@ new #[Lazy, Title('Delivery Reports')] class extends Component
 
     public string $sortColumn    = 'import_date';
     public string $sortDirection = 'desc';
-
-    public bool $filtersOpen = false;
 
     /** @var int[] */
     public array $selectedIds = [];
@@ -130,11 +127,20 @@ new #[Lazy, Title('Delivery Reports')] class extends Component
     #[Computed]
     public function kpiStats(): array
     {
+        $processed = DeliveryImportStatus::Processed->value;
+        $row = DeliveryImport::query()
+            ->toBase()
+            ->selectRaw('COUNT(*) as agg_total')
+            ->selectRaw('COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) as agg_processed', [$processed])
+            ->selectRaw('COALESCE(SUM(matched_count), 0) as agg_matched')
+            ->selectRaw('COALESCE(SUM(unmatched_count), 0) as agg_unmatched')
+            ->first();
+
         return [
-            'total'            => DeliveryImport::query()->count(),
-            'processed'        => DeliveryImport::query()->where('status', DeliveryImportStatus::Processed->value)->count(),
-            'total_matched'    => (int) DeliveryImport::query()->sum('matched_count'),
-            'total_unmatched'  => (int) DeliveryImport::query()->sum('unmatched_count'),
+            'total'           => (int) ($row->agg_total ?? 0),
+            'processed'       => (int) ($row->agg_processed ?? 0),
+            'total_matched'   => (int) ($row->agg_matched ?? 0),
+            'total_unmatched' => (int) ($row->agg_unmatched ?? 0),
         ];
     }
 
@@ -392,29 +398,22 @@ new #[Lazy, Title('Delivery Reports')] class extends Component
 
     {{-- Filters --}}
     <flux:card class="p-4">
-        <div class="flex flex-wrap items-center justify-end gap-2">
-            <flux:button variant="ghost" wire:click="$toggle('filtersOpen')" icon="{{ $filtersOpen ? 'chevron-up' : 'chevron-down' }}">
-                {{ __('Filters') }}
-            </flux:button>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <flux:select wire:model.live="filterStatus" :label="__('Status')" class="min-w-0 w-full">
+                <option value="">{{ __('All statuses') }}</option>
+                @foreach (\App\Enums\DeliveryImportStatus::cases() as $s)
+                    <option value="{{ $s->value }}">{{ $s->label() }}</option>
+                @endforeach
+            </flux:select>
+            <flux:select wire:model.live="filterSource" :label="__('Source')" class="min-w-0 w-full">
+                <option value="">{{ __('All sources') }}</option>
+                <option value="excel">Excel</option>
+                <option value="csv">CSV</option>
+                <option value="api">API</option>
+            </flux:select>
+            <flux:input wire:model.live="filterFrom" type="date" :label="__('From')" class="min-w-0 w-full" />
+            <flux:input wire:model.live="filterTo" type="date" :label="__('To')" class="min-w-0 w-full" />
         </div>
-        @if ($filtersOpen)
-            <div class="mt-4 flex flex-wrap gap-4">
-                <flux:select wire:model.live="filterStatus" :label="__('Status')" class="max-w-[180px]">
-                    <option value="">{{ __('All statuses') }}</option>
-                    @foreach (\App\Enums\DeliveryImportStatus::cases() as $s)
-                        <option value="{{ $s->value }}">{{ $s->label() }}</option>
-                    @endforeach
-                </flux:select>
-                <flux:select wire:model.live="filterSource" :label="__('Source')" class="max-w-[160px]">
-                    <option value="">{{ __('All sources') }}</option>
-                    <option value="excel">Excel</option>
-                    <option value="csv">CSV</option>
-                    <option value="api">API</option>
-                </flux:select>
-                <flux:input wire:model.live="filterFrom" type="date" :label="__('From')" class="max-w-[160px]" />
-                <flux:input wire:model.live="filterTo" type="date" :label="__('To')" class="max-w-[160px]" />
-            </div>
-        @endif
     </flux:card>
 
     {{-- Upload Form --}}
@@ -465,70 +464,70 @@ new #[Lazy, Title('Delivery Reports')] class extends Component
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
                 <thead>
-                    <tr class="text-start text-zinc-500 dark:text-zinc-400">
-                        <th class="w-12 py-2 pe-3">
+                    <tr class="text-zinc-500 dark:text-zinc-400">
+                        <th scope="col" class="w-12 px-3 py-3 text-center align-middle">
                             <input type="checkbox"
                                    wire:click.prevent="toggleSelectPage"
                                    @checked($this->isPageFullySelected())
                                    class="rounded border-zinc-300" />
                         </th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Reference') }}</th>
-                        <th class="py-2 pe-3 font-medium">
-                            <button wire:click="sortBy('import_date')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
-                                {{ __('Report date') }}@if ($sortColumn === 'import_date') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
+                        <th scope="col" class="px-4 py-3 text-start align-middle font-medium">{{ __('Reference') }}</th>
+                        <th scope="col" class="px-4 py-3 text-start align-middle font-medium">
+                            <button type="button" wire:click="sortBy('import_date')" class="inline-flex w-full items-center justify-start gap-1.5 hover:text-zinc-700 dark:hover:text-zinc-200">
+                                {{ __('Report date') }}@if ($sortColumn === 'import_date') <span class="text-xs tabular-nums">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
                             </button>
                         </th>
-                        <th class="py-2 pe-3 font-medium">{{ __('Source') }}</th>
-                        <th class="py-2 pe-3 font-medium text-end">
-                            <button wire:click="sortBy('row_count')" class="ms-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                        <th scope="col" class="px-4 py-3 text-start align-middle font-medium">{{ __('Source') }}</th>
+                        <th scope="col" class="px-4 py-3 text-end align-middle font-medium tabular-nums">
+                            <button type="button" wire:click="sortBy('row_count')" class="inline-flex w-full items-center justify-end gap-1.5 hover:text-zinc-700 dark:hover:text-zinc-200">
                                 {{ __('Rows') }}@if ($sortColumn === 'row_count') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
                             </button>
                         </th>
-                        <th class="py-2 pe-3 font-medium text-end">
-                            <button wire:click="sortBy('matched_count')" class="ms-auto flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                        <th scope="col" class="px-4 py-3 text-end align-middle font-medium tabular-nums">
+                            <button type="button" wire:click="sortBy('matched_count')" class="inline-flex w-full items-center justify-end gap-1.5 hover:text-zinc-700 dark:hover:text-zinc-200">
                                 {{ __('Matched') }}@if ($sortColumn === 'matched_count') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
                             </button>
                         </th>
-                        <th class="py-2 pe-3 font-medium text-end">{{ __('Unmatched') }}</th>
-                        <th class="py-2 pe-3 font-medium">
-                            <button wire:click="sortBy('status')" class="flex items-center gap-1 hover:text-zinc-700 dark:hover:text-zinc-200">
+                        <th scope="col" class="px-4 py-3 text-end align-middle font-medium tabular-nums">{{ __('Unmatched') }}</th>
+                        <th scope="col" class="px-4 py-3 text-start align-middle font-medium">
+                            <button type="button" wire:click="sortBy('status')" class="inline-flex w-full items-center justify-start gap-1.5 hover:text-zinc-700 dark:hover:text-zinc-200">
                                 {{ __('Status') }}@if ($sortColumn === 'status') <span class="text-xs">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span>@endif
                             </button>
                         </th>
-                        <th class="py-2 text-end font-medium">{{ __('Actions') }}</th>
+                        <th scope="col" class="px-4 py-3 text-end align-middle font-medium">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
                     @forelse ($this->paginatedImports as $import)
-                        <tr>
-                            <td class="py-2 pe-3">
+                        <tr class="align-middle">
+                            <td class="w-12 px-3 py-3 text-center">
                                 <input type="checkbox" wire:model="selectedIds" value="{{ $import->id }}" class="rounded border-zinc-300" />
                             </td>
-                            <td class="py-2 pe-3">
+                            <td class="px-4 py-3 text-start align-top">
                                 <span class="font-mono text-xs font-medium">{{ $import->reference_no ?? '—' }}</span>
                                 @if ($import->notes)
                                     <span class="block max-w-[200px] truncate text-xs text-zinc-400">{{ $import->notes }}</span>
                                 @endif
                             </td>
-                            <td class="py-2 pe-3 whitespace-nowrap text-xs">{{ $import->import_date->format('d M Y') }}</td>
-                            <td class="py-2 pe-3">
+                            <td class="px-4 py-3 whitespace-nowrap text-start text-xs tabular-nums">{{ $import->import_date->format('d M Y') }}</td>
+                            <td class="px-4 py-3 text-start">
                                 <flux:badge color="zinc" size="sm">{{ strtoupper($import->source) }}</flux:badge>
                             </td>
-                            <td class="py-2 pe-3 text-end font-mono text-xs">{{ number_format($import->row_count) }}</td>
-                            <td class="py-2 pe-3 text-end font-mono text-xs text-green-600">{{ number_format($import->matched_count) }}</td>
-                            <td class="py-2 pe-3 text-end font-mono text-xs {{ $import->unmatched_count > 0 ? 'text-red-500' : 'text-zinc-400' }}">
+                            <td class="px-4 py-3 text-end font-mono text-xs tabular-nums">{{ number_format($import->row_count) }}</td>
+                            <td class="px-4 py-3 text-end font-mono text-xs tabular-nums text-green-600">{{ number_format($import->matched_count) }}</td>
+                            <td class="px-4 py-3 text-end font-mono text-xs tabular-nums {{ $import->unmatched_count > 0 ? 'text-red-500' : 'text-zinc-400' }}">
                                 {{ number_format($import->unmatched_count) }}
                             </td>
-                            <td class="py-2 pe-3">
-                                <div class="flex flex-col gap-1">
+                            <td class="px-4 py-3 text-start">
+                                <div class="flex flex-col gap-1.5">
                                     <flux:badge color="{{ $import->status->color() }}" size="sm">{{ $import->status->label() }}</flux:badge>
                                     @if ($import->last_error)
                                         <span class="max-w-[14rem] cursor-help truncate text-[10px] text-red-400" title="{{ $import->last_error }}">{{ \Illuminate\Support\Str::limit($import->last_error, 42) }}</span>
                                     @endif
                                 </div>
                             </td>
-                            <td class="py-2 text-end">
-                                <div class="flex flex-wrap justify-end gap-1">
+                            <td class="px-4 py-3 text-end">
+                                <div class="flex flex-wrap items-center justify-end gap-2">
                                     @can('view', $import)
                                         <flux:button
                                             size="sm"
@@ -542,21 +541,21 @@ new #[Lazy, Title('Delivery Reports')] class extends Component
                                     @endcan
                                     @can('create', \App\Models\DeliveryImport::class)
                                         @if ($import->file_path && $import->source === 'excel')
-                                            <flux:button size="sm" variant="ghost" wire:click="reprocessImport({{ $import->id }})" icon="arrow-path" wire:loading.attr="disabled">
+                                            <flux:button type="button" size="sm" variant="ghost" wire:click="reprocessImport({{ $import->id }})" icon="arrow-path" wire:loading.attr="disabled">
                                                 {{ __('Reprocess') }}
                                             </flux:button>
                                         @endif
                                     @endcan
-                                    <flux:button size="sm" variant="ghost" wire:click="showAnalysis({{ $import->id }})">
+                                    <flux:button type="button" size="sm" variant="ghost" wire:click="showAnalysis({{ $import->id }})">
                                         {{ __('Analyse') }}
                                     </flux:button>
                                     @can('delete', $import)
                                         @if ($import->status->value === 'pending')
-                                            <flux:button size="sm" variant="primary" wire:click="markProcessed({{ $import->id }})">
+                                            <flux:button type="button" size="sm" variant="primary" wire:click="markProcessed({{ $import->id }})">
                                                 {{ __('Mark processed') }}
                                             </flux:button>
                                         @endif
-                                        <flux:button size="sm" variant="danger" wire:click="confirmDelete({{ $import->id }})">
+                                        <flux:button type="button" size="sm" variant="danger" wire:click="confirmDelete({{ $import->id }})">
                                             {{ __('Delete') }}
                                         </flux:button>
                                     @endcan
