@@ -94,7 +94,7 @@ class DeliveryReportPivotService
      * @param  DeliveryImport  $import  Teslimat import batch'i
      * @return array{dates: array<int, string>, materials: array<int, array{key: string, label: string}>, rows: array<int, array{tarih: string, material_totals: array<string, float>, material_counts: array<string, int>, row_total: float, row_total_count: int, boş_dolu: float, dolu_dolu: float, malzeme_kisa_metni: string}>, totals_row: array{material_totals: array<string, float>, material_counts: array<string, int>, row_total: float, row_total_count: int, boş_dolu: float, dolu_dolu: float}, fatura_rota_gruplari: array<int, array{route_key: string, route_label: string, kalemler: array, route_toplam: float}>, fatura_toplam: float, firma_fatura_gruplari: array<int, array{label: string, rota_gruplari: array, toplam: float}>}
      */
-    public function buildMaterialPivot(DeliveryImport $import, ?string $plateFilter = null, ?int $plateIndex = null): array
+    public function buildMaterialPivot(DeliveryImport $import, ?string $plateFilter = null, ?int $plateIndex = null, bool $includeDerivedTables = true): array
     {
         $config = $this->getReportTypeConfig($import);
         $mp = $config['material_pivot'] ?? null;
@@ -722,8 +722,21 @@ class DeliveryReportPivotService
          * Grup 1 (BRC): firma_adi = "BRC"
          * Grup 2 (Diğer): firma_adi = "A.Ş.", "GÜNEY", "TAŞERON" vb.
          */
-        $firmaFaturaGruplari = $this->buildFirmaBasedInvoiceTables($import, $config, $faturaRotaGruplari);
-        $plateBasedInvoiceSummary = $this->buildPlateBasedInvoiceSummary($import, $config);
+        $firmaFaturaGruplari = $includeDerivedTables
+            ? $this->buildFirmaBasedInvoiceTables($import, $config, $faturaRotaGruplari)
+            : [];
+        $plateBasedInvoiceSummary = $includeDerivedTables
+            ? $this->buildPlateBasedInvoiceSummary($import, $config)
+            : [
+                'tum_plakalar_toplam' => 0.0,
+                'tevkifatli_toplam' => 0.0,
+                'diger_toplam' => 0.0,
+                'tevkifatli_plakalar' => [],
+                'plakaya_gore' => [],
+            ];
+        $plateInvoiceGroups = $includeDerivedTables
+            ? $this->buildPlateInvoiceTablesByPlate($import, $config)
+            : [];
 
         return [
             'dates' => array_keys($pivotData),
@@ -741,7 +754,96 @@ class DeliveryReportPivotService
             'fatura_toplam' => round($faturaGenelToplam, 2),
             'firma_fatura_gruplari' => $firmaFaturaGruplari,
             'fatura_plaka_ozeti' => $plateBasedInvoiceSummary,
+            'fatura_plaka_gruplari' => $plateInvoiceGroups,
         ];
+    }
+
+    /**
+     * Her plaka için ayrı fatura tablosu üretir.
+     * Plaka sınıfı: Firma_Adı == BRC => tevkifatlı, aksi halde tevkifatsız.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<int, array{label: string, tablolar: array<int, array{plaka: string, rota_gruplari: array, toplam: float}>, toplam: float}>
+     */
+    protected function buildPlateInvoiceTablesByPlate(DeliveryImport $import, array $config): array
+    {
+        $mapping = $config['invoice_line_mapping'] ?? [];
+        $mp = $config['material_pivot'] ?? null;
+        $plateIndex = isset($mapping['plaka']) ? (int) $mapping['plaka'] : null;
+        $firmaIndex = isset($mapping['firma']) ? (int) $mapping['firma'] : null;
+
+        if ($plateIndex === null) {
+            return [];
+        }
+
+        $rows = $import->relationLoaded('reportRows')
+            ? $import->reportRows
+            : $import->reportRows()->orderBy('row_index')->get();
+
+        /** @var array<string, array{plate: string, all_brc: bool}> $plateBuckets */
+        $plateBuckets = [];
+        foreach ($rows as $row) {
+            $data = $row->row_data ?? [];
+            $plateRaw = trim((string) ($data[$plateIndex] ?? ''));
+            $plate = $this->normalizePlateForMatch($plateRaw);
+            if ($plate === '') {
+                continue;
+            }
+            $firmaRaw = $firmaIndex !== null ? trim((string) ($data[$firmaIndex] ?? '')) : '';
+            $isBrc = mb_strtoupper($firmaRaw) === 'BRC';
+
+            if (! isset($plateBuckets[$plate])) {
+                $plateBuckets[$plate] = [
+                    'plate' => $plateRaw !== '' ? $plateRaw : $plate,
+                    'all_brc' => $isBrc,
+                ];
+            } else {
+                $plateBuckets[$plate]['all_brc'] = $plateBuckets[$plate]['all_brc'] && $isBrc;
+            }
+        }
+
+        $groupDefs = [
+            ['key' => 'tevkifatli', 'label' => 'Tevkifatlı (BRC Plakalar)', 'tables' => [], 'total' => 0.0],
+            ['key' => 'diger', 'label' => 'Tevkifatsız (BRC Hariç Plakalar)', 'tables' => [], 'total' => 0.0],
+        ];
+
+        foreach ($plateBuckets as $plateInfo) {
+            $plateValue = (string) ($plateInfo['plate'] ?? '');
+            if ($plateValue === '') {
+                continue;
+            }
+            $platePivot = $this->buildMaterialPivot($import, $plateValue, $plateIndex, false);
+            $plateTotal = (float) ($platePivot['fatura_toplam'] ?? 0.0);
+            if ($plateTotal <= 0.001) {
+                continue;
+            }
+            $bucketKey = ($plateInfo['all_brc'] ?? false) ? 'tevkifatli' : 'diger';
+            foreach ($groupDefs as &$def) {
+                if ($def['key'] !== $bucketKey) {
+                    continue;
+                }
+                $def['tables'][] = [
+                    'plaka' => $plateValue,
+                    'rota_gruplari' => $platePivot['fatura_rota_gruplari'] ?? [],
+                    'toplam' => round($plateTotal, 2),
+                ];
+                $def['total'] += $plateTotal;
+                break;
+            }
+            unset($def);
+        }
+
+        $result = [];
+        foreach ($groupDefs as $def) {
+            usort($def['tables'], fn (array $a, array $b): int => strcmp($this->normalizePlateForMatch((string) ($a['plaka'] ?? '')), $this->normalizePlateForMatch((string) ($b['plaka'] ?? ''))));
+            $result[] = [
+                'label' => $def['label'],
+                'tablolar' => $def['tables'],
+                'toplam' => round((float) $def['total'], 2),
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -761,6 +863,7 @@ class DeliveryReportPivotService
         $mapping = $config['invoice_line_mapping'] ?? [];
         $mp = $config['material_pivot'] ?? null;
         $plateIndex = isset($mapping['plaka']) ? (int) $mapping['plaka'] : null;
+        $firmaIndex = isset($mapping['firma']) ? (int) $mapping['firma'] : null;
         $quantityIndex = is_array($mp) && isset($mp['quantity_index']) ? (int) $mp['quantity_index'] : null;
 
         if ($plateIndex === null || $quantityIndex === null) {
@@ -773,16 +876,7 @@ class DeliveryReportPivotService
             ];
         }
 
-        $rawTevkifatli = data_get($import->meta, 'tevkifatli_ozmal_plakalar', config('delivery_report.tevkifatli_ozmal_plakalar', []));
         $tevkifatliPlakalar = [];
-        if (is_array($rawTevkifatli)) {
-            foreach ($rawTevkifatli as $plate) {
-                $plateStr = trim((string) $plate);
-                if ($plateStr !== '') {
-                    $tevkifatliPlakalar[] = $plateStr;
-                }
-            }
-        }
         $tevkifatliNormalizedSet = [];
         foreach ($tevkifatliPlakalar as $plate) {
             $tevkifatliNormalizedSet[$this->normalizePlateForMatch($plate)] = true;
@@ -793,6 +887,7 @@ class DeliveryReportPivotService
             : $import->reportRows()->orderBy('row_index')->get();
 
         $byPlate = [];
+        $byPlateBrc = [];
         foreach ($rows as $row) {
             $data = $row->row_data ?? [];
             $plate = trim((string) ($data[$plateIndex] ?? ''));
@@ -810,11 +905,22 @@ class DeliveryReportPivotService
                 $byPlate[$normalized] = ['plaka' => $plate, 'miktar' => 0.0];
             }
             $byPlate[$normalized]['miktar'] += $qty;
+            $firmaRaw = $firmaIndex !== null ? trim((string) ($data[$firmaIndex] ?? '')) : '';
+            $isBrc = mb_strtoupper($firmaRaw) === 'BRC';
+            $byPlateBrc[$normalized] = ($byPlateBrc[$normalized] ?? true) && $isBrc;
         }
 
         usort($byPlate, function (array $a, array $b): int {
             return strcmp($this->normalizePlateForMatch((string) ($a['plaka'] ?? '')), $this->normalizePlateForMatch((string) ($b['plaka'] ?? '')));
         });
+
+        foreach ($byPlate as $plateRow) {
+            $plateNorm = $this->normalizePlateForMatch((string) ($plateRow['plaka'] ?? ''));
+            if (($byPlateBrc[$plateNorm] ?? false) === true) {
+                $tevkifatliNormalizedSet[$plateNorm] = true;
+                $tevkifatliPlakalar[] = (string) ($plateRow['plaka'] ?? '');
+            }
+        }
 
         $allTotal = 0.0;
         $tevkifatliTotal = 0.0;
@@ -864,46 +970,24 @@ class DeliveryReportPivotService
      */
     protected function buildFirmaBasedInvoiceTables(DeliveryImport $import, array $config, array $faturaRotaGruplari = []): array
     {
-        $mp = $config['material_pivot'] ?? null;
-        if (! $mp || ! isset($mp['material_code_index'], $mp['quantity_index'])) {
-            return [];
-        }
-
         $mapping = $config['invoice_line_mapping'] ?? [];
         $firmaIndex = $mapping['firma'] ?? null;
         if ($firmaIndex === null) {
             return [];
         }
 
-        $dateIndex = $this->resolveDateColumnIndex($import, $mp);
-        $materialCodeIndex = (int) $mp['material_code_index'];
-        $materialShortIndex = isset($mp['material_short_text_index']) ? (int) $mp['material_short_text_index'] : null;
-        $quantityIndex = (int) $mp['quantity_index'];
-        $uyTanimIndex = 9;
-        $adIndex = 22;
-
-        $petrokokRoutePref = $import->petrokok_route_preference ?? 'ekinciler';
-        $petrokokRouteKey = $petrokokRoutePref === 'isdemir' ? 'curuf_route' : 'petrokok_route';
-        $klinkerMatchingOrder = $import->klinker_matching_order ?? 'petrokok_once';
-
         $rows = $import->relationLoaded('reportRows')
             ? $import->reportRows
             : $import->reportRows()->orderBy('row_index')->get();
 
-        /*
-         * Satırları firma bazında grupla.
-         */
         $firmaGroupDefs = [
             ['label' => 'BRC', 'match' => fn (string $f): bool => mb_strtoupper(trim($f)) === 'BRC', 'rows' => []],
-            ['label' => 'A.Ş. / Güney / Taşeron', 'match' => fn (string $f): bool => mb_strtoupper(trim($f)) !== 'BRC' && trim($f) !== '', 'rows' => []],
+            ['label' => 'A.Ş. / Güney / Taşeron', 'match' => fn (string $f): bool => mb_strtoupper(trim($f)) !== 'BRC', 'rows' => []],
         ];
 
         foreach ($rows as $row) {
             $data = $row->row_data ?? [];
             $firmaAdi = trim((string) ($data[$firmaIndex] ?? ''));
-            if ($firmaAdi === '') {
-                continue;
-            }
             foreach ($firmaGroupDefs as &$gDef) {
                 if (($gDef['match'])($firmaAdi)) {
                     $gDef['rows'][] = $row;
@@ -913,371 +997,25 @@ class DeliveryReportPivotService
             unset($gDef);
         }
 
-        /* Rota config: Klinker bilgisini tüm satırlardan al */
-        $klinkerInfo = null;
-        foreach ($rows as $row) {
-            $data = $row->row_data ?? [];
-            $code = trim((string) ($data[$materialCodeIndex] ?? ''));
-            $short = $materialShortIndex !== null ? trim((string) ($data[$materialShortIndex] ?? '')) : '';
-            if (stripos($code, 'KLINKER') !== false || stripos($short, 'KLINKER') !== false) {
-                $klinkerInfo = [
-                    'uy_tanim' => trim((string) ($data[$uyTanimIndex] ?? '')),
-                    'ad' => trim((string) ($data[$adIndex] ?? '')),
-                ];
-                break;
-            }
-        }
-        $baseFactory = $klinkerInfo['uy_tanim'] ?? 'Adana Fabrika';
-        $klinkerDest = $klinkerInfo['ad'] ?? 'İskenderun 1';
-
-        $isdemirLabel = (stripos($klinkerDest, 'skenderun') !== false || stripos($klinkerDest, 'İSDEMİR') !== false)
-            ? 'İsdemir Tesisi'
-            : ($klinkerDest ?: 'İsdemir Tesisi');
-
-        $routeConfigs = [
-            'curuf_route' => [
-                'label' => $isdemirLabel,
-                'klinker_dir' => $baseFactory.' → '.$klinkerDest,
-                'partner_dir' => $klinkerDest.' → '.$baseFactory,
-            ],
-            'petrokok_route' => [
-                'label' => 'Ekinciler Tesisi',
-                'klinker_dir' => $baseFactory.' → Ekinciler Limanı',
-                'partner_dir' => 'Ekinciler Limanı → '.$baseFactory,
-            ],
-        ];
-
-        $petrokokInIsdemir = $petrokokRoutePref === 'isdemir';
-
         $result = [];
-
         foreach ($firmaGroupDefs as $gDef) {
             if ($gDef['rows'] === []) {
                 continue;
             }
 
-            /*
-             * Firma grubunun toplam malzeme miktarlarını hesapla.
-             */
-            $totalsMaterial = [];
-            $materialLocationInfo = [];
-
-            foreach ($gDef['rows'] as $row) {
-                $data = $row->row_data ?? [];
-                $code = trim((string) ($data[$materialCodeIndex] ?? ''));
-                $short = $materialShortIndex !== null ? trim((string) ($data[$materialShortIndex] ?? '')) : '';
-                $matKey = ($code !== '' && $short !== '') ? $code.' | '.$short : ($code ?: $short ?: '-');
-
-                $uyTanim = trim((string) ($data[$uyTanimIndex] ?? ''));
-                if ($uyTanim !== '') {
-                    $matKey .= ' ['.$uyTanim.']';
-                }
-
-                if ($matKey === '' || $matKey === '-') {
-                    continue;
-                }
-
-                $qty = $this->extractQuantity($data[$quantityIndex] ?? null);
-                if ($qty === null) {
-                    continue;
-                }
-
-                $totalsMaterial[$matKey] = ($totalsMaterial[$matKey] ?? 0) + $qty;
-
-                if (! isset($materialLocationInfo[$matKey])) {
-                    $materialLocationInfo[$matKey] = [
-                        'uy_tanim' => $uyTanim,
-                        'ad' => trim((string) ($data[$adIndex] ?? '')),
-                    ];
-                }
+            $groupImport = clone $import;
+            $groupImport->setRelation('reportRows', collect($gDef['rows']));
+            $groupPivot = $this->buildMaterialPivot($groupImport, null, null, false);
+            $groupRoutes = $groupPivot['fatura_rota_gruplari'] ?? [];
+            if ($groupRoutes === []) {
+                continue;
             }
 
-            /*
-             * Tarih bazlı pivot: her gün için Klinker ↔ Cüruf eşleşmesi yapılır.
-             * Böylece İsdemir Klinker DD doğru hesaplanır (sadece Cüruf olan günlerde).
-             */
-            $pivotData = [];
-            foreach ($gDef['rows'] as $row) {
-                $data = $row->row_data ?? [];
-                $date = $this->normalizeDateForPivot((string) ($data[$dateIndex] ?? ''));
-                $code = trim((string) ($data[$materialCodeIndex] ?? ''));
-                $short = $materialShortIndex !== null ? trim((string) ($data[$materialShortIndex] ?? '')) : '';
-                $matKey = ($code !== '' && $short !== '') ? $code.' | '.$short : ($code ?: $short ?: '-');
-                $uyTanim = trim((string) ($data[$uyTanimIndex] ?? ''));
-                if ($uyTanim !== '') {
-                    $matKey .= ' ['.$uyTanim.']';
-                }
-                if ($date === '' || $matKey === '' || $matKey === '-') {
-                    continue;
-                }
-                $qty = $this->extractQuantity($data[$quantityIndex] ?? null);
-                if ($qty === null) {
-                    continue;
-                }
-                $pivotData[$date][$matKey] = ($pivotData[$date][$matKey] ?? 0) + $qty;
-            }
-
-            /*
-             * Malzeme gruplarını belirle.
-             */
-            $klinkerVariants = [];
-            $curufVariants = [];
-            $petrokokVariants = [];
-            $klinkerQty = 0;
-            $curufQty = 0;
-            $petrokokQty = 0;
-
-            foreach ($totalsMaterial as $matKey => $qty) {
-                $upper = mb_strtoupper($matKey);
-                $bracketPos = strpos($upper, '[');
-                $upperClean = $bracketPos !== false ? substr($upper, 0, $bracketPos) : $upper;
-
-                if (stripos($upperClean, 'KLINKER') !== false) {
-                    $klinkerVariants[$matKey] = $qty;
-                    $klinkerQty += $qty;
-                } elseif (stripos($upperClean, 'CÜRUF') !== false || stripos($upperClean, 'CURUF') !== false) {
-                    $curufVariants[$matKey] = $qty;
-                    $curufQty += $qty;
-                } elseif (stripos($upperClean, 'PETROKOK') !== false || stripos($upperClean, 'P.KOK') !== false) {
-                    $petrokokVariants[$matKey] = $qty;
-                    $petrokokQty += $qty;
-                }
-            }
-
-            /*
-             * Tarih bazlı D-D/B-D eşleştirme ($klinkerMatchingOrder değerine göre):
-             * - curuf_once:    Klinker → önce Cüruf, kalan → Petrokok (carry-over ile)
-             * - petrokok_once: Klinker → önce Petrokok, kalan → Cüruf (carry-over ile)
-             * - proportional:  Klinker → Petrokok + Cüruf'a günlük oransal (carry-over ile)
-             */
-            $faturaTotals = [];
-
-            $ddKlinkerCurufTotal = 0;
-            $remainingCurufTotal = 0;
-            $klinkerEkincilerDDTotal = 0;
-            $remainingKlinkerBdTotal = 0;
-
-            /** @var array<string, array{d_d: float, b_d: float}> matKey → [d_d, b_d] */
-            $petrokokVarDDBD = [];
-
-            $sortedDates = array_keys($pivotData);
-            sort($sortedDates);
-
-            $carryOverKlinker = 0;
-
-            foreach ($sortedDates as $date) {
-                $materials = $pivotData[$date];
-                $dayKlinker = 0;
-                $dayCuruf = 0;
-                $dayPetrokokTotal = 0;
-                $dayPetrokokVars = [];
-
-                foreach ($materials as $matKey => $qty) {
-                    $upper = mb_strtoupper($matKey);
-                    $bracketPos = strpos($upper, '[');
-                    $upperClean = $bracketPos !== false ? substr($upper, 0, $bracketPos) : $upper;
-                    if (stripos($upperClean, 'KLINKER') !== false) {
-                        $dayKlinker += $qty;
-                    } elseif (stripos($upperClean, 'CÜRUF') !== false || stripos($upperClean, 'CURUF') !== false) {
-                        $dayCuruf += $qty;
-                    } elseif (stripos($upperClean, 'PETROKOK') !== false || stripos($upperClean, 'P.KOK') !== false) {
-                        $dayPetrokokVars[$matKey] = ($dayPetrokokVars[$matKey] ?? 0) + $qty;
-                        $dayPetrokokTotal += $qty;
-                    }
-                }
-
-                if ($klinkerMatchingOrder === 'petrokok_once') {
-                    /* Per-gün bağımsız hesap: carry-over yok (buildMaterialPivot ile tutarlı) */
-                    $dayPetrokokDD = min($dayKlinker, $dayPetrokokTotal);
-                    $dayPetrokokBD = $dayPetrokokTotal - $dayPetrokokDD;
-                    $dayKlinkerAfterPetrokok = $dayKlinker - $dayPetrokokDD;
-                    $dayDDKC = min($dayKlinkerAfterPetrokok, $dayCuruf);
-                    $klinkerEkincilerDDTotal += $dayPetrokokDD;
-                    $ddKlinkerCurufTotal += $dayDDKC;
-                    $remainingCurufTotal += ($dayCuruf - $dayDDKC);
-                    $remainingKlinkerBdTotal += ($dayKlinkerAfterPetrokok - $dayDDKC);
-                } elseif ($klinkerMatchingOrder === 'proportional') {
-                    $dayKlinkerAvailable = $dayKlinker + $carryOverKlinker;
-                    $partnerTotal = $dayPetrokokTotal + $dayCuruf;
-                    if ($partnerTotal > 0.001 && $dayKlinkerAvailable > 0.001) {
-                        $dayDDKC = min($dayKlinkerAvailable * ($dayCuruf / $partnerTotal), $dayCuruf);
-                        $dayPetrokokDD = min($dayKlinkerAvailable * ($dayPetrokokTotal / $partnerTotal), $dayPetrokokTotal);
-                    } else {
-                        $dayDDKC = 0;
-                        $dayPetrokokDD = 0;
-                    }
-                    $dayPetrokokBD = $dayPetrokokTotal - $dayPetrokokDD;
-                    $carryOverKlinker = max(0, $dayKlinkerAvailable - $dayDDKC - $dayPetrokokDD);
-                    $klinkerEkincilerDDTotal += $dayPetrokokDD;
-                    $ddKlinkerCurufTotal += $dayDDKC;
-                    $remainingCurufTotal += ($dayCuruf - $dayDDKC);
-                } else {
-                    /* curuf_once (varsayılan) */
-                    $dayDDKC = min($dayKlinker, $dayCuruf);
-                    $ddKlinkerCurufTotal += $dayDDKC;
-                    $remainingCurufTotal += ($dayCuruf - $dayDDKC);
-                    $dayKlinkerEkinciler = ($dayKlinker - $dayDDKC) + $carryOverKlinker;
-                    $klinkerEkincilerDDTotal += ($dayKlinker - $dayDDKC);
-                    $dayPetrokokDD = min($dayKlinkerEkinciler, $dayPetrokokTotal);
-                    $dayPetrokokBD = $dayPetrokokTotal - $dayPetrokokDD;
-                    $carryOverKlinker = max(0, $dayKlinkerEkinciler - $dayPetrokokDD);
-                }
-
-                /* Petrokok DD/BD'yi o günün BULK/SÜPER oranında dağıt */
-                foreach ($dayPetrokokVars as $pKey => $pQty) {
-                    $ratio = $dayPetrokokTotal > 0.001 ? $pQty / $dayPetrokokTotal : 0;
-                    $petrokokVarDDBD[$pKey] = $petrokokVarDDBD[$pKey] ?? ['d_d' => 0, 'b_d' => 0];
-                    $petrokokVarDDBD[$pKey]['d_d'] += $dayPetrokokDD * $ratio;
-                    $petrokokVarDDBD[$pKey]['b_d'] += $dayPetrokokBD * $ratio;
-                }
-            }
-
-            /* Cüruf D-D: Klinker ↔ Cüruf */
-            if ($ddKlinkerCurufTotal > 0.001) {
-                foreach ($klinkerVariants as $kKey => $kQty) {
-                    $share = $klinkerQty > 0.001 ? $ddKlinkerCurufTotal * ($kQty / $klinkerQty) : 0;
-                    if ($share > 0.001) {
-                        $faturaTotals['curuf_route'][$kKey] = $faturaTotals['curuf_route'][$kKey] ?? ['d_d' => 0, 'b_d' => 0];
-                        $faturaTotals['curuf_route'][$kKey]['d_d'] += $share;
-                    }
-                }
-                foreach ($curufVariants as $cKey => $cQty) {
-                    $cShare = $curufQty > 0.001 ? $ddKlinkerCurufTotal * ($cQty / $curufQty) : 0;
-                    if ($cShare > 0.001) {
-                        $faturaTotals['curuf_route'][$cKey] = $faturaTotals['curuf_route'][$cKey] ?? ['d_d' => 0, 'b_d' => 0];
-                        $faturaTotals['curuf_route'][$cKey]['d_d'] += $cShare;
-                    }
-                }
-            }
-
-            /* Cüruf B-D artanı → curuf_route */
-            if ($remainingCurufTotal > 0.001) {
-                foreach ($curufVariants as $cKey => $cQty) {
-                    $cShare = $curufQty > 0.001 ? $remainingCurufTotal * ($cQty / $curufQty) : 0;
-                    if ($cShare > 0.001) {
-                        $faturaTotals['curuf_route'][$cKey] = $faturaTotals['curuf_route'][$cKey] ?? ['d_d' => 0, 'b_d' => 0];
-                        $faturaTotals['curuf_route'][$cKey]['b_d'] += $cShare;
-                    }
-                }
-            }
-
-            /* Klinker B-D artanı → curuf_route (petrokok_once: per-gün eşleştirilemeyen klinker) */
-            if ($remainingKlinkerBdTotal > 0.001) {
-                foreach ($klinkerVariants as $kKey => $kQty) {
-                    $share = $klinkerQty > 0.001 ? $remainingKlinkerBdTotal * ($kQty / $klinkerQty) : 0;
-                    if ($share > 0.001) {
-                        $faturaTotals['curuf_route'][$kKey] = $faturaTotals['curuf_route'][$kKey] ?? ['d_d' => 0, 'b_d' => 0];
-                        $faturaTotals['curuf_route'][$kKey]['b_d'] += $share;
-                    }
-                }
-            }
-
-            /* Klinker DD → petrokok_route (Ekinciler) */
-            if ($klinkerEkincilerDDTotal > 0.001) {
-                foreach ($klinkerVariants as $kKey => $kQty) {
-                    $share = $klinkerQty > 0.001 ? $klinkerEkincilerDDTotal * ($kQty / $klinkerQty) : 0;
-                    if ($share > 0.001) {
-                        $faturaTotals[$petrokokRouteKey][$kKey] = $faturaTotals[$petrokokRouteKey][$kKey] ?? ['d_d' => 0, 'b_d' => 0];
-                        $faturaTotals[$petrokokRouteKey][$kKey]['d_d'] += $share;
-                    }
-                }
-            }
-
-            /* Petrokok DD/BD → petrokok_route (tarih bazlı varyant carry-over dağılımı) */
-            foreach ($petrokokVarDDBD as $pKey => $totals) {
-                if (($totals['d_d'] ?? 0) > 0.001) {
-                    $faturaTotals[$petrokokRouteKey][$pKey] = $faturaTotals[$petrokokRouteKey][$pKey] ?? ['d_d' => 0, 'b_d' => 0];
-                    $faturaTotals[$petrokokRouteKey][$pKey]['d_d'] += $totals['d_d'];
-                }
-                if (($totals['b_d'] ?? 0) > 0.001) {
-                    $faturaTotals[$petrokokRouteKey][$pKey] = $faturaTotals[$petrokokRouteKey][$pKey] ?? ['d_d' => 0, 'b_d' => 0];
-                    $faturaTotals[$petrokokRouteKey][$pKey]['b_d'] += $totals['b_d'];
-                }
-            }
-
-            /* Klinker/Cüruf/Petrokok dışındaki malzemeler (ARM-0103 vb.) */
-            $localRouteConfigs = $routeConfigs;
-            foreach ($totalsMaterial as $matKey => $totalQty) {
-                if ($totalQty <= 0.001) {
-                    continue;
-                }
-                $upperKey = mb_strtoupper($matKey);
-                $bracketPos = strpos($upperKey, '[');
-                $upperClean = $bracketPos !== false ? substr($upperKey, 0, $bracketPos) : $upperKey;
-                $isKnown = stripos($upperClean, 'KLINKER') !== false
-                    || stripos($upperClean, 'CÜRUF') !== false || stripos($upperClean, 'CURUF') !== false
-                    || stripos($upperClean, 'PETROKOK') !== false || stripos($upperClean, 'P.KOK') !== false;
-                if (! $isKnown) {
-                    $info = $materialLocationInfo[$matKey] ?? [];
-                    $uyTanim = $info['uy_tanim'] ?? '';
-                    $ad = $info['ad'] ?? '';
-                    $rKey = 'other_'.md5($matKey);
-                    $direction = ($uyTanim !== '' && $ad !== '') ? $ad.' → '.$baseFactory : ($ad !== '' ? $ad.' → '.$baseFactory : '');
-                    $faturaTotals[$rKey][$matKey] = ['d_d' => 0, 'b_d' => $totalQty];
-                    $localRouteConfigs[$rKey] = [
-                        'label' => $uyTanim ?: ($ad ?: 'Diğer'),
-                        'klinker_dir' => $direction,
-                        'partner_dir' => $direction,
-                    ];
-                }
-            }
-
-            /* Rota gruplarını oluştur */
-            $faturaRotaGruplariLocal = [];
-            $faturaGenelToplam = 0;
-
-            $allRouteKeys = array_unique(array_merge(['curuf_route', 'petrokok_route'], array_keys($localRouteConfigs)));
-            foreach ($allRouteKeys as $routeKey) {
-                $routeItems = $faturaTotals[$routeKey] ?? [];
-                if ($routeItems === [] || ! isset($localRouteConfigs[$routeKey])) {
-                    continue;
-                }
-                $cfg = $localRouteConfigs[$routeKey];
-                $routeKalemleri = [];
-                $routeToplam = 0;
-
-                foreach ($routeItems as $matKey => $totals) {
-                    $codeParts = explode(' | ', $matKey, 2);
-                    $materialCode = trim($codeParts[0] ?? '');
-                    $materialShort = trim($codeParts[1] ?? $materialCode);
-                    $isKlinker = stripos($matKey, 'KLINKER') !== false;
-                    $isPetrokok = stripos($matKey, 'PETROKOK') !== false || stripos($matKey, 'P.KOK') !== false;
-
-                    $direction = $isKlinker ? $cfg['klinker_dir']
-                        : (($isPetrokok && $petrokokInIsdemir && $routeKey === 'curuf_route') ? $klinkerDest.' → '.$baseFactory : $cfg['partner_dir']);
-
-                    if (($totals['d_d'] ?? 0) > 0.001) {
-                        $amount = round($totals['d_d'], 2);
-                        $routeKalemleri[] = ['material_key' => $matKey, 'material_code' => $materialCode, 'material_short' => $materialShort, 'nerden_nereye' => $direction, 'tasima_tipi' => 'Dolu-Dolu', 'miktar' => $amount];
-                        $routeToplam += $amount;
-                    }
-                    if (($totals['b_d'] ?? 0) > 0.001) {
-                        $amount = round($totals['b_d'], 2);
-                        $routeKalemleri[] = ['material_key' => $matKey, 'material_code' => $materialCode, 'material_short' => $materialShort, 'nerden_nereye' => $direction, 'tasima_tipi' => 'Boş-Dolu', 'miktar' => $amount];
-                        $routeToplam += $amount;
-                    }
-                }
-
-                usort($routeKalemleri, function (array $a, array $b): int {
-                    $go = fn (string $k): int => stripos(mb_strtoupper($k), 'KLINKER') !== false ? 0 : (stripos(mb_strtoupper($k), 'CÜRUF') !== false || stripos(mb_strtoupper($k), 'CURUF') !== false ? 1 : (stripos(mb_strtoupper($k), 'PETROKOK') !== false || stripos(mb_strtoupper($k), 'P.KOK') !== false ? 2 : 3));
-                    $c = $go($a['material_key']) <=> $go($b['material_key']);
-                    if ($c !== 0) {
-                        return $c;
-                    }
-                    $c = $a['material_key'] <=> $b['material_key'];
-
-                    return $c !== 0 ? $c : ((['Dolu-Dolu' => 0, 'Boş-Dolu' => 1][$a['tasima_tipi']] ?? 2) <=> (['Dolu-Dolu' => 0, 'Boş-Dolu' => 1][$b['tasima_tipi']] ?? 2));
-                });
-
-                if ($routeKalemleri !== []) {
-                    $faturaRotaGruplariLocal[] = ['route_key' => $routeKey, 'route_label' => $cfg['label'], 'kalemler' => $routeKalemleri, 'route_toplam' => round($routeToplam, 2)];
-                    $faturaGenelToplam += $routeToplam;
-                }
-            }
-
-            if ($faturaRotaGruplariLocal !== []) {
-                $result[] = ['label' => $gDef['label'], 'rota_gruplari' => $faturaRotaGruplariLocal, 'toplam' => round($faturaGenelToplam, 2)];
-            }
+            $result[] = [
+                'label' => $gDef['label'],
+                'rota_gruplari' => $groupRoutes,
+                'toplam' => (float) ($groupPivot['fatura_toplam'] ?? 0),
+            ];
         }
 
         return $result;

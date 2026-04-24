@@ -1261,6 +1261,296 @@ new #[Title('Delivery report detail')] class extends Component
         @endif
     </flux:card>
 
+    @php
+        $invoiceRouteGroups = $this->materialPivot['fatura_rota_gruplari'] ?? [];
+        $invoiceGrandTotal = (float) ($this->materialPivot['fatura_toplam'] ?? 0);
+        $plateInvoiceGroups = $this->materialPivot['fatura_plaka_gruplari'] ?? [];
+        $plateInvoiceSummary = $this->materialPivot['fatura_plaka_ozeti'] ?? [];
+        $tevkifatliTotal = (float) ($plateInvoiceSummary['tevkifatli_toplam'] ?? 0);
+        $tevkifatsizTotal = (float) ($plateInvoiceSummary['diger_toplam'] ?? 0);
+        $tevkifatliPlates = $plateInvoiceSummary['tevkifatli_plakalar'] ?? [];
+        $plateAmounts = $plateInvoiceSummary['plakaya_gore'] ?? [];
+        $tevkifatliPlateSet = [];
+        foreach ($tevkifatliPlates as $plateItem) {
+            $normalizedPlate = strtoupper(str_replace([' ', '-'], '', trim((string) $plateItem)));
+            if ($normalizedPlate !== '') {
+                $tevkifatliPlateSet[$normalizedPlate] = true;
+            }
+        }
+        $resolveUnitPrice = function (?string $routeLabel, ?string $tasimaTipi): float {
+            $routeNorm = mb_strtoupper(trim((string) $routeLabel));
+            $tipNorm = mb_strtoupper(trim((string) $tasimaTipi));
+
+            if (str_contains($routeNorm, 'İSDEMIR') || str_contains($routeNorm, 'ISDEMIR')) {
+                return $tipNorm === 'DOLU-DOLU' ? 200.0 : 300.0;
+            }
+            if (str_contains($routeNorm, 'EKINCILER') || str_contains($routeNorm, 'EKİNCİLER') || str_contains($routeNorm, 'EKINCIELR')) {
+                return $tipNorm === 'DOLU-DOLU' ? 250.0 : 350.0;
+            }
+
+            return 0.0;
+        };
+    @endphp
+
+    <flux:card class="p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <flux:heading size="lg">{{ __('Fatura Kalemleri (Ana Tablo)') }}</flux:heading>
+            <flux:badge color="sky" size="sm">
+                {{ __('Genel Toplam: :amount Ton', ['amount' => number_format($invoiceGrandTotal, 2, ',', '.')]) }}
+            </flux:badge>
+        </div>
+        @if ($invoiceRouteGroups === [])
+            <flux:text class="text-sm text-zinc-500">{{ __('Fatura kalemi verisi bulunamadı.') }}</flux:text>
+        @else
+            <div class="space-y-4">
+                @foreach ($invoiceRouteGroups as $routeGroup)
+                    <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                        <table class="min-w-[900px] w-full border-collapse text-sm">
+                            <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                <tr>
+                                    <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Rota') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Malzeme Kodu') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Malzeme') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Nereden → Nereye') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Taşıma Tipi') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Miktar (Ton)') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Birim Fiyat') }}</th>
+                                    <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Toplam Tutar') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (($routeGroup['kalemler'] ?? []) as $item)
+                                    @php
+                                        $amount = (float) ($item['miktar'] ?? 0);
+                                        $unitPrice = $resolveUnitPrice((string) ($routeGroup['route_label'] ?? ''), (string) ($item['tasima_tipi'] ?? ''));
+                                        $lineTotal = round($amount * $unitPrice, 2);
+                                    @endphp
+                                    <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $routeGroup['route_label'] ?? '-' }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $item['material_code'] ?? '-' }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $item['material_short'] ?? '-' }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $item['nerden_nereye'] ?? '-' }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">
+                                            @if (($item['tasima_tipi'] ?? '') === 'Dolu-Dolu')
+                                                <flux:badge color="green" size="sm">{{ __('Dolu-Dolu') }}</flux:badge>
+                                            @else
+                                                <flux:badge color="sky" size="sm">{{ __('Boş-Dolu') }}</flux:badge>
+                                            @endif
+                                        </td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                            {{ number_format($amount, 2, ',', '.') }}
+                                        </td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                            {{ number_format($unitPrice, 2, ',', '.') }}
+                                        </td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                            {{ number_format($lineTotal, 2, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                @php
+                                    $routeTotalAmount = (float) ($routeGroup['route_toplam'] ?? 0);
+                                    $routeTotalPrice = 0.0;
+                                    foreach (($routeGroup['kalemler'] ?? []) as $item) {
+                                        $amount = (float) ($item['miktar'] ?? 0);
+                                        $unitPrice = $resolveUnitPrice((string) ($routeGroup['route_label'] ?? ''), (string) ($item['tasima_tipi'] ?? ''));
+                                        $routeTotalPrice += round($amount * $unitPrice, 2);
+                                    }
+                                @endphp
+                                <tr class="bg-zinc-100 dark:bg-zinc-800">
+                                    <td class="border border-zinc-200 px-3 py-2 font-semibold dark:border-zinc-600" colspan="5">{{ __('Rota Toplamı') }}</td>
+                                    <td class="border border-zinc-200 px-3 py-2 text-right font-semibold tabular-nums dark:border-zinc-600">
+                                        {{ number_format($routeTotalAmount, 2, ',', '.') }}
+                                    </td>
+                                    <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600"></td>
+                                    <td class="border border-zinc-200 px-3 py-2 text-right font-semibold tabular-nums dark:border-zinc-600">
+                                        {{ number_format($routeTotalPrice, 2, ',', '.') }}
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </flux:card>
+
+    <flux:card class="p-4">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <flux:heading size="lg">{{ __('Plaka Bazlı Fatura Kalemleri') }}</flux:heading>
+            <flux:text class="text-sm text-zinc-500">{{ __('Tevkifatlı ve tevkifatsız gruplar, ana fatura kalemlerinden plaka dağılımına göre türetilir') }}</flux:text>
+        </div>
+        @if ($plateInvoiceGroups === [])
+            <flux:text class="text-sm text-zinc-500">{{ __('Plaka bazlı fatura kalemi verisi bulunamadı.') }}</flux:text>
+        @else
+            <div class="space-y-5">
+                @foreach ($plateInvoiceGroups as $firmaGroup)
+                    <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <flux:badge color="zinc" size="sm">{{ $firmaGroup['label'] ?? __('Firma') }}</flux:badge>
+                            <flux:text class="text-sm font-semibold tabular-nums">
+                                {{ __('Firma Toplamı: :amount Ton', ['amount' => number_format((float) ($firmaGroup['toplam'] ?? 0), 2, ',', '.')]) }}
+                            </flux:text>
+                        </div>
+                        <div class="space-y-3">
+                            @foreach (($firmaGroup['tablolar'] ?? []) as $plateTable)
+                                <div class="rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                                    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                        <flux:badge color="amber" size="sm">{{ __('Plaka: :plate', ['plate' => $plateTable['plaka'] ?? '-']) }}</flux:badge>
+                                        <flux:text class="text-sm font-semibold tabular-nums">
+                                            {{ __('Plaka Toplamı: :amount Ton', ['amount' => number_format((float) ($plateTable['toplam'] ?? 0), 2, ',', '.')]) }}
+                                        </flux:text>
+                                    </div>
+                                    @foreach (($plateTable['rota_gruplari'] ?? []) as $routeGroup)
+                                        <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700 mb-3 last:mb-0">
+                                            <table class="min-w-[900px] w-full border-collapse text-sm">
+                                                <thead class="bg-zinc-100 dark:bg-zinc-800">
+                                                    <tr>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Rota') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Malzeme Kodu') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Malzeme') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Nereden → Nereye') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Taşıma Tipi') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Miktar (Ton)') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Birim Fiyat') }}</th>
+                                                        <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Toplam Tutar') }}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (($routeGroup['kalemler'] ?? []) as $item)
+                                                        @php
+                                                            $amount = (float) ($item['miktar'] ?? 0);
+                                                            $unitPrice = $resolveUnitPrice((string) ($routeGroup['route_label'] ?? ''), (string) ($item['tasima_tipi'] ?? ''));
+                                                            $lineTotal = round($amount * $unitPrice, 2);
+                                                        @endphp
+                                                        <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $routeGroup['route_label'] ?? '-' }}</td>
+                                                            <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $item['material_code'] ?? '-' }}</td>
+                                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $item['material_short'] ?? '-' }}</td>
+                                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">{{ $item['nerden_nereye'] ?? '-' }}</td>
+                                                            <td class="border border-zinc-200 px-3 py-2 dark:border-zinc-600">
+                                                                @if (($item['tasima_tipi'] ?? '') === 'Dolu-Dolu')
+                                                                    <flux:badge color="green" size="sm">{{ __('Dolu-Dolu') }}</flux:badge>
+                                                                @else
+                                                                    <flux:badge color="sky" size="sm">{{ __('Boş-Dolu') }}</flux:badge>
+                                                                @endif
+                                                            </td>
+                                                            <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                                                {{ number_format($amount, 2, ',', '.') }}
+                                                            </td>
+                                                            <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                                                {{ number_format($unitPrice, 2, ',', '.') }}
+                                                            </td>
+                                                            <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                                                {{ number_format($lineTotal, 2, ',', '.') }}
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </flux:card>
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <flux:card class="p-4">
+            <div class="mb-3 flex items-center justify-between gap-2">
+                <flux:heading size="lg">{{ __('Tevkifatlı Fatura Kalemleri') }}</flux:heading>
+                <flux:badge color="green" size="sm">
+                    {{ number_format($tevkifatliTotal, 2, ',', '.') }} {{ __('Ton') }}
+                </flux:badge>
+            </div>
+            @if ($tevkifatliPlates === [])
+                <flux:text class="text-sm text-zinc-500">{{ __('Tevkifatlı plaka bulunamadı.') }}</flux:text>
+            @else
+                <div class="mb-3 flex flex-wrap gap-2">
+                    @foreach ($tevkifatliPlates as $plate)
+                        <flux:badge color="green" size="sm">{{ $plate }}</flux:badge>
+                    @endforeach
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    <table class="w-full min-w-[320px] border-collapse text-sm">
+                        <thead class="bg-zinc-100 dark:bg-zinc-800">
+                            <tr>
+                                <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Plaka') }}</th>
+                                <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Miktar (Ton)') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($plateAmounts as $plateRow)
+                                @php
+                                    $plate = (string) ($plateRow['plaka'] ?? '');
+                                    $normalizedPlate = strtoupper(str_replace([' ', '-'], '', trim($plate)));
+                                @endphp
+                                @if (isset($tevkifatliPlateSet[$normalizedPlate]))
+                                    <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                        <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $plate }}</td>
+                                        <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                            {{ number_format((float) ($plateRow['miktar'] ?? 0), 2, ',', '.') }}
+                                        </td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </flux:card>
+
+        <flux:card class="p-4">
+            <div class="mb-3 flex items-center justify-between gap-2">
+                <flux:heading size="lg">{{ __('Tevkifatsız Fatura Kalemleri') }}</flux:heading>
+                <flux:badge color="sky" size="sm">
+                    {{ number_format($tevkifatsizTotal, 2, ',', '.') }} {{ __('Ton') }}
+                </flux:badge>
+            </div>
+            <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <table class="w-full min-w-[320px] border-collapse text-sm">
+                    <thead class="bg-zinc-100 dark:bg-zinc-800">
+                        <tr>
+                            <th class="border border-zinc-200 px-3 py-2 text-left font-semibold dark:border-zinc-600">{{ __('Plaka') }}</th>
+                            <th class="border border-zinc-200 px-3 py-2 text-right font-semibold dark:border-zinc-600">{{ __('Miktar (Ton)') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @php $hasTevkifatsiz = false; @endphp
+                        @foreach ($plateAmounts as $plateRow)
+                            @php
+                                $plate = (string) ($plateRow['plaka'] ?? '');
+                                $normalizedPlate = strtoupper(str_replace([' ', '-'], '', trim($plate)));
+                            @endphp
+                            @if (! isset($tevkifatliPlateSet[$normalizedPlate]))
+                                @php $hasTevkifatsiz = true; @endphp
+                                <tr class="odd:bg-white even:bg-zinc-50 dark:odd:bg-zinc-950 dark:even:bg-zinc-900">
+                                    <td class="border border-zinc-200 px-3 py-2 font-mono dark:border-zinc-600">{{ $plate }}</td>
+                                    <td class="border border-zinc-200 px-3 py-2 text-right font-mono tabular-nums dark:border-zinc-600">
+                                        {{ number_format((float) ($plateRow['miktar'] ?? 0), 2, ',', '.') }}
+                                    </td>
+                                </tr>
+                            @endif
+                        @endforeach
+                        @if (! $hasTevkifatsiz)
+                            <tr>
+                                <td class="border border-zinc-200 px-3 py-2 text-sm text-zinc-500 dark:border-zinc-600" colspan="2">
+                                    {{ __('Tevkifatsız plaka bulunamadı.') }}
+                                </td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+        </flux:card>
+    </div>
+
     {{-- Raw rows (Excel grid: row × column) --}}
     <flux:card id="delivery-import-grid" class="scroll-mt-24 p-4">
         <div class="mb-4 flex flex-wrap items-end justify-between gap-4">
